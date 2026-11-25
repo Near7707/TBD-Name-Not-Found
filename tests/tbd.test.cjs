@@ -452,3 +452,22 @@ test('v0.1.11: max tokens default 2000, old default moves once, junk history is 
     old.api.rememberNames(['{bad', 'Voreth'], st);
     assert.ok(!st.history.includes('{bad') && st.history.includes('Voreth'));
 });
+
+test('v0.1.12: past names list shows newest first, escaped, and the insert button is gone', () => {
+    const { api } = load();
+    const st = api.settings();
+    st.history = ['Aldric', 'Bo<b>x', 'Corveth'];
+    const L = api.STRINGS.ko;
+    const html = api.historyHtml(st, L);
+    assert.ok(html.indexOf('Corveth') < html.indexOf('Aldric'));
+    assert.ok(!html.includes('<b>') && html.includes('Bo&lt;b&gt;x'));
+    assert.ok(html.includes('data-i="2"'));
+    st.history = [];
+    assert.ok(api.historyHtml(st, L).includes(L.sHistoryEmpty));
+    for (const lang of ['en', 'ko']) {
+        const S = api.STRINGS[lang];
+        assert.ok(S.sHistoryShow.includes('{n}') && S.sHistoryRemove);
+        assert.equal(S.insert, undefined);
+    }
+    assert.equal(api.insertAtCursor, undefined);
+});

@@ -217,9 +217,19 @@
     cursor: pointer;
     touch-action: manipulation;
 }
-#tbd_panel .tbd-piece-copy { padding: 2px 8px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#tbd_panel .tbd-piece-roll { flex: none; width: 28px; padding: 0; border-left: 1px solid var(--tbd-line); color: var(--tbd-dim); font-size: 11px; }
+/* Two clearly separate parts: [⧉ name | 🔄]. The swap side gets its own tint and a solid divider. */
+#tbd_panel .tbd-piece-copy { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; min-width: 0; }
+#tbd_panel .tbd-piece-copy i { flex: none; font-size: 10px; color: var(--tbd-dim); }
+#tbd_panel .tbd-piece-copy span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tbd_panel .tbd-piece-roll {
+    flex: none; width: 32px; padding: 0;
+    border-left: 1px solid var(--tbd-dim) !important;
+    background: rgba(127, 127, 127, .14) !important;
+    background: color-mix(in srgb, var(--tbd-accent) 14%, transparent) !important;
+    color: var(--tbd-fg); font-size: 11px;
+}
 #tbd_panel .tbd-piece-roll i { font-size: 11px; }
+#tbd_panel .tbd-piece-copy:hover i { color: var(--tbd-accent); }
 #tbd_panel .tbd-piece button:hover { color: var(--tbd-accent); }
 #tbd_panel .tbd-piece-roll[disabled] { opacity: .35; cursor: default; }
 
@@ -607,3 +617,26 @@
 .tbd-chips[hidden] { display: none; }
 /* Plain-word names (Wren, Ox): marked, not hidden. */
 .tbd-word-tag { border-color: color-mix(in srgb, var(--tbd-accent) 60%, transparent); color: var(--tbd-fg); white-space: nowrap; }
+
+/* Past names list (settings, both places). Works outside the panel too, so every color has a fallback. */
+.tbd-hist { margin: 2px 0; }
+.tbd-hist > summary { cursor: pointer; font-size: 13px; padding: 4px 0; color: var(--tbd-dim, inherit); user-select: none; -webkit-user-select: none; }
+.tbd-hist > summary:hover { color: var(--tbd-fg, inherit); }
+.tbd-hist-list {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    max-height: 220px; overflow-y: auto; overscroll-behavior: contain;
+    padding: 4px 0;
+}
+.tbd-hist-item {
+    display: inline-flex; align-items: center; max-width: 100%;
+    border: 1px solid var(--tbd-line, var(--SmartThemeBorderColor, rgba(127,127,127,.5)));
+    border-radius: 6px; font-size: 13px;
+}
+.tbd-hist-name { padding: 2px 4px 2px 8px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tbd-hist-del {
+    flex: none; width: 28px; min-height: 28px; padding: 0; margin: 0;
+    background: transparent !important; border: 0 !important;
+    color: var(--tbd-dim, inherit); font-size: 15px; line-height: 1; cursor: pointer; touch-action: manipulation;
+}
+.tbd-hist-del:hover { color: var(--tbd-accent, inherit); }
+.tbd-hist-empty { font-size: 12px; opacity: .75; }

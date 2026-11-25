@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.11
+// TBD — Name Not Found v0.1.12
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -15,9 +15,8 @@
             target: 'Target', vibe: 'Vibe', gender: 'Gender', length: 'Length', sound: 'Sound', mustContain: 'Must contain',
             customVibePh: 'e.g. foggy harbor town', mustContainPh: 'e.g. ren',
             find: 'Find names', cancel: 'Cancel', again: 'Roll again',
-            copy: 'Copy', insert: 'Put in input box', close: 'Close',
-            copied: 'Copied', inserted: 'Added to the input box', copyFail: "Couldn't copy. Select the text and copy it yourself.",
-            noChat: 'Open a chat first to use the input box.',
+            copy: 'Copy', close: 'Close',
+            copied: 'Copied', copyFail: "Couldn't copy. Select the text and copy it yourself.",
             empty: 'Pick your conditions and press "Find names".',
             parseFail: "The AI's answer couldn't be read. Try again.",
             allFiltered: 'Every name was on the avoid list. Try again.',
@@ -65,6 +64,7 @@
             wordTip: 'This is an existing English word. Keep it, or reshape it with ✨.',
             sHistory: 'Avoid names I already got',
             sHistoryClear: 'Forget past names', sHistoryCleared: 'Past names forgotten',
+            sHistoryShow: 'See past names ({n})', sHistoryEmpty: 'No past names yet.', sHistoryRemove: 'Forget this one',
             sBan: 'Names to always avoid (comma or new line)',
             sBanHint: 'Common AI picks are already avoided.',
             th: { st: 'Follow SillyTavern', terminal: 'Terminal', bsod: 'Blue screen', panic: 'Kernel panic', glass: 'Glass (dark)', glasslight: 'Glass (clear)', oldwin: 'Old error box', tape: 'Warning tape', neon: 'Neon glitch' },
@@ -75,9 +75,8 @@
             target: '대상', vibe: '분위기', gender: '성별', length: '길이', sound: '소리 느낌', mustContain: '꼭 들어갈 글자',
             customVibePh: '예: 안개 낀 항구 마을', mustContainPh: '예: ren',
             find: '이름 찾기', cancel: '취소', again: '다시 뽑기',
-            copy: '복사', insert: '입력창에 넣기', close: '닫기',
-            copied: '복사했어요', inserted: '입력창에 넣었어요', copyFail: '복사가 안 됐어요. 글자를 직접 골라서 복사해 주세요.',
-            noChat: '입력창에 넣으려면 먼저 채팅방을 열어 주세요.',
+            copy: '복사', close: '닫기',
+            copied: '복사했어요', copyFail: '복사가 안 됐어요. 글자를 직접 골라서 복사해 주세요.',
             empty: '조건을 고르고 "이름 찾기"를 눌러 보세요.',
             parseFail: 'AI 답을 읽지 못했어요. 다시 해 보세요.',
             allFiltered: '나온 이름이 전부 피할 목록에 있었어요. 다시 해 보세요.',
@@ -124,6 +123,7 @@
             wordTip: '실제 영어 낱말이에요. 그대로 써도 되고, ✨로 바꿔 볼 수도 있어요.',
             sHistory: '이미 나온 이름은 피하기',
             sHistoryClear: '지난 이름 잊기', sHistoryCleared: '지난 이름을 잊었어요',
+            sHistoryShow: '지난 이름 보기 ({n}개)', sHistoryEmpty: '아직 지난 이름이 없어요.', sHistoryRemove: '이 이름 잊기',
             sBan: '항상 피할 이름 (쉼표나 줄바꿈으로 구분)',
             sBanHint: 'AI가 자주 내는 뻔한 이름은 이미 피하고 있어요.',
             th: { st: '실리태번 따라가기', terminal: '터미널', bsod: '블루스크린', panic: '커널 패닉', glass: '유리 (어둡게)', glasslight: '유리 (맑게)', oldwin: '옛날 오류창', tape: '경고 테이프', neon: '네온 글리치' },
@@ -1010,7 +1010,7 @@
         const L = T();
         return `<div class="tbd-pieces">${r.pieces.map((p, k) => {
             const label = L.pc[p.role] || L.ex[p.role] || p.role;
-            return `<span class="tbd-piece" data-k="${k}"><button class="tbd-piece-copy" title="${escapeHtml(`${label} — ${L.copyPiece}`)}">${escapeHtml(p.text)}</button>${p.fixed ? ''
+            return `<span class="tbd-piece" data-k="${k}"><button class="tbd-piece-copy" title="${escapeHtml(`${label} — ${L.copyPiece}`)}"><i class="fa-regular fa-copy" aria-hidden="true"></i><span>${escapeHtml(p.text)}</span></button>${p.fixed ? ''
                 : `<button class="tbd-piece-roll" title="${escapeHtml(L.rerollPiece)}" aria-label="${escapeHtml(`${label}: ${L.rerollPiece}`)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>`}</span>`;
         }).join('')}</div>`;
     }
@@ -1036,7 +1036,6 @@
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
-                    <button class="tbd-icon-btn tbd-insert" title="${escapeHtml(L.insert)}" aria-label="${escapeHtml(L.insert)}"><i class="fa-solid fa-pen-to-square"></i></button>
                 </div>${piecesHtml(r)}${menu}${working}
             </div>`;
         }).join('');
@@ -1153,7 +1152,7 @@
             } else {
                 const used = { ...form };
                 results = kept.slice(0, count).map(k => ({ ...k, form: used }));
-                rememberNames(results.flatMap(memoryNames), st);
+                rememberNames(results.flatMap(memoryNames), st); refreshHistory();
                 save();
                 status = cut ? { kind: 'error', text: T().foundCut(results.length) } : { kind: 'ok', text: T().found(results.length) };
             }
@@ -1204,7 +1203,7 @@
                 let j = at + 1;
                 while (j < results.length && (results[j].depth || 0) > depth) j++;
                 results.splice(j, 0, ...kept.map(k => ({ ...k, depth: Math.min(depth + 1, 3), tag: mode, from: src, form: src.form })));
-                rememberNames(kept.flatMap(memoryNames), st);
+                rememberNames(kept.flatMap(memoryNames), st); refreshHistory();
                 save();
                 status = { kind: 'ok', text: L.variants(kept.length) };
             }
@@ -1255,7 +1254,7 @@
                 let end = at + 1;
                 while (end < results.length && (results[end].depth || 0) > depth) end++;
                 results.splice(at, end - at, fresh);
-                rememberNames(memoryNames(fresh), st);
+                rememberNames(memoryNames(fresh), st); refreshHistory();
                 save();
                 status = { kind: 'ok', text: L.rerolled };
             }
@@ -1302,7 +1301,7 @@
                 src.pieces = src.pieces.map((p, j) => (j === k ? { ...p, text } : p));
                 src.name = joinPieces(src.pieces);
                 src.read = reading ? String(parsed[0].read || '').slice(0, 80) : '';
-                if (NAME_ROLES.includes(piece.role)) rememberNames([text], st);
+                if (NAME_ROLES.includes(piece.role)) { rememberNames([text], st); refreshHistory(); }
                 save();
                 status = { kind: 'ok', text: L.pieceRerolled };
             }
@@ -1344,25 +1343,30 @@
         } catch { return false; }
     }
 
-    // Put the name where the cursor is, without wiping what's already typed.
-    function insertAtCursor(text) {
-        const ta = document.getElementById('send_textarea');
-        if (!ta) return false;
-        const v = ta.value || '';
-        const startPos = Number.isInteger(ta.selectionStart) ? ta.selectionStart : v.length;
-        const endPos = Number.isInteger(ta.selectionEnd) ? ta.selectionEnd : v.length;
-        const before = v.slice(0, startPos);
-        const after = v.slice(endPos);
-        const pad = before && !/\s$/.test(before) ? ' ' : '';
-        ta.value = before + pad + text + after;
-        const caret = (before + pad + text).length;
-        try { ta.setSelectionRange(caret, caret); } catch { /* some inputs don't allow it */ }
-        ta.dispatchEvent(new Event('input', { bubbles: true }));
-        ta.focus();
-        return true;
+    // ---------- settings (left drawer and the ⚙ page share the same fields) ----------
+    // Past names, newest first, each with its own forget button. Index points into st.history.
+    function historyHtml(st, L) {
+        if (!st.history.length) return `<div class="tbd-hist-empty">${escapeHtml(L.sHistoryEmpty)}</div>`;
+        const items = [];
+        for (let i = st.history.length - 1; i >= 0; i--) {
+            items.push(`<span class="tbd-hist-item" data-i="${i}"><span class="tbd-hist-name">${escapeHtml(st.history[i])}</span>`
+                + `<button type="button" class="tbd-hist-del" title="${escapeHtml(L.sHistoryRemove)}" aria-label="${escapeHtml(`${st.history[i]}: ${L.sHistoryRemove}`)}">×</button></span>`);
+        }
+        return items.join('');
     }
 
-    // ---------- settings (left drawer and the ⚙ page share the same fields) ----------
+    // Update the count, and the list where it's open. Closed lists are filled when opened.
+    function refreshHistory() {
+        const st = settings();
+        const L = T();
+        $('.tbd-hist').each(function () {
+            $(this).children('summary').text(L.sHistoryShow.replace('{n}', String(st.history.length)));
+            const $list = $(this).children('.tbd-hist-list');
+            if (this.open) $list.html(historyHtml(st, L));
+            else $list.empty();
+        });
+    }
+
     function settingsFieldsHtml(prefix) {
         const L = T();
         const st = settings();
@@ -1385,6 +1389,7 @@
             <label class="checkbox_label"><input id="${id('reading')}" type="checkbox" data-tbd-set="reading"><span>${escapeHtml(L.sReading)}</span></label>
             <label for="${id('words')}">${escapeHtml(L.sWords)}</label>${sel('words', optionList(L.sWordOpts, st.wordNames))}
             <label class="checkbox_label"><input id="${id('hist')}" type="checkbox" data-tbd-set="hist"><span>${escapeHtml(L.sHistory)}</span></label>
+            <details class="tbd-hist"><summary>${escapeHtml(L.sHistoryShow.replace('{n}', String(st.history.length)))}</summary><div class="tbd-hist-list"></div></details>
             <div><button type="button" class="${inPanel ? 'tbd-small-btn' : 'menu_button'} tbd-hist-clear">${escapeHtml(L.sHistoryClear)}</button></div>
             <label for="${id('ban')}">${escapeHtml(L.sBan)}</label>
             <textarea id="${id('ban')}" class="text_pole" rows="3" data-tbd-set="ban"></textarea>
@@ -1416,6 +1421,7 @@
             if (key in checks) $(this).prop('checked', checks[key]);
             else if (key !== 'profile' && key in values) $(this).val(values[key]);
         });
+        refreshHistory();
     }
 
     function fillProfileSelects() {
@@ -1515,7 +1521,19 @@
         $doc.on('click', '#tbd_back', () => { view = 'form'; render(); });
         $doc.on('change input', '[data-tbd-set]', function (e) { applySetting(this, e.type); });
         $doc.on('focusin', '[data-tbd-set="profile"]', function () { if (!this.options || this.options.length <= 1) fillProfileSelects(); });
-        $doc.on('click', '.tbd-hist-clear', () => { settings().history = []; save(); toastr.info(T().sHistoryCleared, 'TBD'); });
+        $doc.on('click', '.tbd-hist-clear', () => { settings().history = []; save(); refreshHistory(); toastr.info(T().sHistoryCleared, 'TBD'); });
+        // <details> toggle doesn't bubble, so listen in the capture phase.
+        document.addEventListener('toggle', e => { if (e.target?.classList?.contains('tbd-hist')) refreshHistory(); }, true);
+        $doc.on('click', '.tbd-hist-del', function () {
+            const st = settings();
+            const i = Number($(this).closest('.tbd-hist-item').data('i'));
+            const name = $(this).siblings('.tbd-hist-name').text();
+            // Check the name too, in case the list changed under the click.
+            if (st.history[i] === name) st.history.splice(i, 1);
+            else { const k = st.history.indexOf(name); if (k >= 0) st.history.splice(k, 1); }
+            save();
+            refreshHistory();
+        });
         $doc.on('click', '#tbd_go', generate);
         $doc.on('click', '#tbd_again', generate);
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
@@ -1583,19 +1601,13 @@
             if (await copyText(r.name)) toastr.success(T().copied, 'TBD');
             else toastr.warning(T().copyFail, 'TBD');
         });
-        $doc.on('click', '#tbd_panel .tbd-insert', function () {
-            const r = results[Number($(this).closest('.tbd-row').data('i'))];
-            if (!r) return;
-            if (insertAtCursor(r.name)) toastr.success(T().inserted, 'TBD');
-            else toastr.info(T().noChat, 'TBD');
-        });
     }
 
     // Tests load this file without SillyTavern and call the pieces directly.
     if (globalThis.__TBD_TEST__) {
         globalThis.__TBD_TEST__.api = {
             rollSeeds, buildMessages, buildRefineMessages, REFINE_MODES, parseNames, filterNames, avoidList, rememberNames, detectLang,
-            tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
+            tokensFor, settings, historyHtml, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, looksLikeName,
         };
