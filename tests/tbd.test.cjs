@@ -731,3 +731,44 @@ test('v0.1.21: one swapped part follows the real-names choice', () => {
     const ref = api.buildRefineMessages({ name: 'Agnes' }, 'soft', { target: 'person', vibe: 'medieval', realNames: 'near' }, { lang: 'en' })[1].content;
     assert.ok(!ref.includes('Bridget') && ref.includes('"real": false'));
 });
+
+test('v0.1.22: myth, game, Lovecraftian and weird vibes have their own seeds and rules', () => {
+    const { api } = load();
+    for (const vibe of ['myth', 'game', 'cosmic', 'weird']) {
+        assert.ok(api.STRINGS.en.v[vibe] && api.STRINGS.ko.v[vibe], `${vibe} has labels`);
+        assert.ok(api.SPARKS[vibe].length >= 20, `${vibe} has inspiration words`);
+        assert.ok(api.FAMILY_STYLES[vibe], `${vibe} has family styles`);
+        const seeds = api.rollSeeds(10, { target: 'person', vibe, length: 'any', sound: 'any', mustContain: '' }, seeded(5));
+        assert.ok(seeds.every(s => api.SPARKS[vibe].includes(s.spark)), `${vibe} sparks come from its own list`);
+        const user = api.buildMessages({ target: 'person', vibe, gender: 'any', length: 'any', sound: 'any', mustContain: '' }, seeds.slice(0, 2), {})[1].content;
+        assert.ok(!/Setting \/ vibe: any/.test(user), `${vibe} has a vibe line`);
+    }
+    assert.equal(api.STRINGS.ko.v.cosmic, '러브크래프트풍');
+    assert.equal(api.STRINGS.en.v.cosmic, 'Lovecraftian');
+    // Lovecraftian: don't reuse canon; beings may sound alien.
+    const other = api.buildMessages({ target: 'other', vibe: 'cosmic', length: 'any', sound: 'any', mustContain: '' }, [{}], {})[1].content;
+    assert.match(other, /Lovecraft's own stories/);
+    assert.match(other, /alien/);
+    // Weird stays sayable, and weird places get no pushed ending.
+    const weird = api.buildMessages({ target: 'place', vibe: 'weird', length: 'any', sound: 'any', mustContain: '' }, [{}], {})[1].content;
+    assert.match(weird, /sayable aloud/);
+    assert.ok(api.rollSeeds(10, { target: 'place', vibe: 'weird' }, seeded(6)).every(s => !s.ending));
+    // Game items can get loot shapes; myth items the old epithet shapes.
+    const gameShapes = new Set(api.rollSeeds(40, { target: 'item', vibe: 'game' }, seeded(7)).map(s => s.shape));
+    assert.ok([...gameShapes].some(s => /legendary|loot/.test(s)));
+    const mythShapes = new Set(api.rollSeeds(40, { target: 'item', vibe: 'myth' }, seeded(8)).map(s => s.shape));
+    assert.ok(mythShapes.has('"the … of …"'));
+});
+
+test('v0.1.22: game favorites and Lovecraft names are marked, not avoided', () => {
+    const { api } = load();
+    assert.ok(api.clicheHit({ name: 'Shadowfang' }));
+    assert.ok(!api.avoidList(api.settings(), { target: 'item' }).includes('Shadowfang'));
+    assert.ok(api.canonHit({ name: 'Innsmouth' }) && api.canonHit({ name: "r'lyeh" }));
+    assert.ok(!api.canonHit({ name: 'Innsmoor' }));
+    const form = { target: 'place', vibe: 'cosmic' };
+    api.setResults([{ name: 'Arkham', note: 'n', form }, { name: 'Bloodmoon', note: 'n', form }]);
+    const html = api.resultsHtml();
+    assert.match(html, />Lovecraft</);
+    assert.match(html, />AI favorite</);
+});

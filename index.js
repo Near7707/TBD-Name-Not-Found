@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.21
+// TBD — Name Not Found v0.1.22
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -35,7 +35,7 @@
             busy: 'Already searching. Wait or cancel first.',
             noProfileApi: "This SillyTavern version can't send requests with a connection profile.",
             t: { person: 'Person', place: 'Place', shop: 'Shop', item: 'Item', other: 'Other' },
-            v: { fantasy: 'Fantasy', medieval: 'Medieval', scifi: 'Sci-fi / cyber', modern: 'Modern', gothic: 'Gothic', cozy: 'Cozy / whimsical', custom: 'Custom…' },
+            v: { fantasy: 'Fantasy', medieval: 'Medieval', scifi: 'Sci-fi / cyber', modern: 'Modern', gothic: 'Gothic', cozy: 'Cozy / whimsical', myth: 'Myth & legend', game: 'Fantasy game', cosmic: 'Lovecraftian', weird: 'Weird', custom: 'Custom…' },
             g: { any: 'Any', feminine: 'Feminine', masculine: 'Masculine', neutral: 'Neutral' },
             l: { any: 'Any', short: 'Short', medium: 'Medium', long: 'Long' },
             s: { any: 'Any', soft: 'Soft', hard: 'Hard', sharp: 'Sharp', bright: 'Bright', dark: 'Dark' },
@@ -57,6 +57,7 @@
             realNames: 'Real names', realOpts: { invented: 'Invented only', near: 'Close to real names', mix: 'Mix in real names', only: 'Real names only' },
             realTag: 'real', realTip: 'The AI says real people use this name. It can be wrong.',
             clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
+            canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
             nicks: 'Nicknames', nickCopy: 'Copy this nickname',
             copyPiece: 'Copy this part', rerollPiece: 'Swap just this part', rerollingPiece: 'Swapping one part…', pieceRerolled: '200 OK — part swapped',
             gear: 'Settings', back: 'Back',
@@ -107,7 +108,7 @@
             busy: '이미 찾는 중이에요. 기다리거나 먼저 취소해 주세요.',
             noProfileApi: '이 실리태번 버전에선 연결 프로필로 요청할 수 없어요.',
             t: { person: '사람', place: '장소', shop: '가게', item: '아이템', other: '기타' },
-            v: { fantasy: '판타지', medieval: '중세', scifi: 'SF / 사이버', modern: '현대', gothic: '고딕', cozy: '아기자기', custom: '직접 쓰기…' },
+            v: { fantasy: '판타지', medieval: '중세', scifi: 'SF / 사이버', modern: '현대', gothic: '고딕', cozy: '아기자기', myth: '신화·전설', game: '판타지 게임', cosmic: '러브크래프트풍', weird: '기묘한', custom: '직접 쓰기…' },
             g: { any: '상관없음', feminine: '여성적', masculine: '남성적', neutral: '중성적' },
             l: { any: '상관없음', short: '짧게', medium: '보통', long: '길게' },
             s: { any: '상관없음', soft: '부드럽게', hard: '단단하게', sharp: '날카롭게', bright: '밝게', dark: '어둡게' },
@@ -129,6 +130,7 @@
             realNames: '실제 이름', realOpts: { invented: '지어낸 이름만', near: '실제 이름 비슷하게', mix: '실제 이름도 섞기', only: '실제 이름만' },
             realTag: '실제', realTip: 'AI가 실제로 쓰는 이름이라고 했어요. 틀릴 수 있어요.',
             clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
+            canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
             nicks: '애칭', nickCopy: '이 애칭 복사',
             copyPiece: '이 조각 복사', rerollPiece: '이 조각만 다시 뽑기', rerollingPiece: '조각 하나 바꾸는 중…', pieceRerolled: '200 OK — 조각 바꿈',
             gear: '설정', back: '돌아가기',
@@ -240,9 +242,23 @@
     }
     // AI models' favorite names. With "real names only" they aren't banned (Luna is a real name), just marked.
     const CLICHE_SET = new Set(CLICHES.map(c => c.toLowerCase()));
+    // Game-style favorites: only marked, never avoided (a twist on one can still be nice).
+    const SOFT_CLICHES = ['Shadowfang', 'Bloodthorn', 'Aetherion', 'Dragonsbane', 'Soulreaver', 'Doomblade', 'Darkblade',
+        'Netherbane', 'Voidheart', 'Shadowbane', 'Nightfall', 'Dreadmaw', 'Bloodmoon', 'Soulfire'];
+    // Names from Lovecraft's own stories: marked so a copy is easy to spot. The cosmic vibe also asks not to reuse them.
+    const CANON_NAMES = ['Cthulhu', 'Nyarlathotep', 'Azathoth', 'Yog-Sothoth', 'Shub-Niggurath', 'Dagon', 'Hastur', 'Tsathoggua',
+        'Nodens', "R'lyeh", 'Innsmouth', 'Arkham', 'Dunwich', 'Kingsport', 'Miskatonic', 'Kadath', 'Yuggoth', 'Leng',
+        'Necronomicon', 'Shoggoth', 'Mi-Go', 'Yith'];
+    const SOFT_SET = new Set(SOFT_CLICHES.map(c => c.toLowerCase()));
+    const CANON_SET = new Set(CANON_NAMES.map(c => c.toLowerCase()));
+    function markTexts(r) {
+        return r.pieces ? r.pieces.filter(p => REAL_ROLES.includes(p.role)).map(p => p.text) : [r.name];
+    }
     function clicheHit(r) {
-        const texts = r.pieces ? r.pieces.filter(p => REAL_ROLES.includes(p.role)).map(p => p.text) : [r.name];
-        return texts.some(t => CLICHE_SET.has(String(t).trim().toLowerCase()));
+        return markTexts(r).some(t => { const k = String(t).trim().toLowerCase(); return CLICHE_SET.has(k) || SOFT_SET.has(k); });
+    }
+    function canonHit(r) {
+        return markTexts(r).some(t => CANON_SET.has(String(t).trim().toLowerCase()));
     }
     // "nicks" from the answer: a list (or a comma string), a few short name-like bits, not the name itself.
     function cleanNicks(v, name = '') {
@@ -276,11 +292,20 @@
         scifi: ['-ek', '-a', '-o', '-ae', '-in', '-iko', '-ra', '-ov', '-is', '-ay', '-en', '-yx', '-i', '-ash'],
         modern: ['-en', '-y', '-ie', '-a', '-on', '-er', '-ia', '-ley', '-son', '-o', '-ah', '-ce'],
         cozy: ['-y', '-ie', '-kin', '-a', '-elle', '-o', '-et', '-ly', '-bee', '-ette', '-ow'],
+        myth: ['-os', '-eus', '-a', '-is', '-on', '-ir', '-ra', '-ys', '-und', '-ia', '-ar', '-eth', '-ax', '-ura', '-ne'],
+        game: ['-ion', '-ius', '-ra', '-ex', '-yn', '-or', '-ael', '-is', '-ia', '-os', '-iel', '-yx', '-ar', '-en', '-ka'],
+        // Lovecraftian people are plain old-town folk; the alien sounds are for beings and places.
+        cosmic: ['-iah', '-el', '-er', '-ard', '-ith', '-ah', '-ey', '-on', '-us', '-a', '-ence', '-ott', '-ias', '-ine'],
+        weird: ['-ub', '-ix', '-oom', '-ilk', '-eth', '-uzz', '-ip', '-orm', '-ae', '-ogg', '-elm', '-oe', '-umble', '-iv'],
     };
     const ENDINGS = {
         placeOld: ['-holm', '-mere', '-wick', '-ford', '-by', '-thorpe', '-moor', '-crag', '-ley', '-stead', '-gate', '-combe', '-den', '-wold', '-fell', '-bury'],
         placeTech: ['-ex', '-ion', '-ax', '-on', '-ar', '-is', ' Station', ' Array', ' Prime', ' Hub', ' Sector', '-7', '-IX', ' Spire'],
         placeModern: ['-ton', '-field', '-ville', ' Heights', ' Park', ' Bay', ' Point', '-burg', '-dale', ' Junction', ' Cross', '-side'],
+        placeMyth: ['-os', '-ia', '-heim', '-gard', '-on', '-ys', '-ara', '-eum', ' Mount', ' Isle', '-ion', '-und', ' Spring', ' Gate'],
+        placeGame: [' Keep', ' Hold', '-heim', '-ia', ' Wastes', ' Spire', '-gard', ' Reach', ' Citadel', ' Depths', ' Ruins', '-or', ' Pass', ' Sanctum'],
+        // Two kinds: decaying old seaside towns, and alien places that should not exist.
+        placeCosmic: ['-mouth', '-wich', '-ham', '-port', '-ton', ' Hollow', ' Marsh', ' Reef', ' Deep', "'th", '-oth', '-uun', '-yeh', '-ath'],
     };
     function endingsFor(target, vibe) {
         // A typed vibe decides the sound itself, so no person ending is pushed on it.
@@ -288,6 +313,11 @@
         if (target !== 'place') return null;
         if (vibe === 'scifi') return ENDINGS.placeTech;
         if (vibe === 'modern') return ENDINGS.placeModern;
+        if (vibe === 'myth') return ENDINGS.placeMyth;
+        if (vibe === 'game') return ENDINGS.placeGame;
+        if (vibe === 'cosmic') return ENDINGS.placeCosmic;
+        // Weird places should be free to be anything, so no ending is pushed.
+        if (vibe === 'weird') return null;
         if (vibe === 'custom') return [...ENDINGS.placeOld, ...ENDINGS.placeModern];
         return ENDINGS.placeOld;
     }
@@ -297,6 +327,8 @@
         // "A word for what it is" keeps the name on the thing (bread → loaf, bun), not on a random object.
         item: ['one invented word', 'an invented word + a plain word for what it is', "an invented maker's name + 's + a plain word for what it is", 'a short descriptive phrase'],
         itemOld: ['"the … of …"', 'a title-like epithet'],
+        // Game gear sounds like loot: grand, named, a little boastful.
+        itemGame: ['a grand invented name for a legendary piece', 'adjective + a plain word for what it is, like named loot'],
         itemTech: ['a model name with letters or numbers', 'a brand-like invented word', 'an invented word + a plain word for what it is'],
         // Real place names often use real words, so places mix invented and real-word shapes.
         place: ['one invented word', 'one invented word', 'two real words joined into one', 'a real word + a place word', 'an invented word + a place word', 'a real word blended with an invented part'],
@@ -307,14 +339,17 @@
         if (target === 'item') {
             if (vibe === 'scifi') return [...SHAPES.item, ...SHAPES.itemTech];
             // "The … of …" and epithets only suit old-world settings ("The Ease of Loaf" was odd in a modern bakery).
-            if (['fantasy', 'medieval', 'gothic'].includes(vibe)) return [...SHAPES.item, ...SHAPES.itemOld];
+            if (vibe === 'game') return [...SHAPES.item, ...SHAPES.itemOld, ...SHAPES.itemGame];
+            if (['fantasy', 'medieval', 'gothic', 'myth', 'cosmic'].includes(vibe)) return [...SHAPES.item, ...SHAPES.itemOld];
             return SHAPES.item;
         }
         return null;
     }
     const TEXTURES = ['soft', 'sharp', 'earthy', 'airy', 'heavy', 'bright', 'old-fashioned', 'clipped', 'rolling', 'rough', 'playful', 'stern'];
     // Old-world textures pulled sci-fi and modern names back toward fantasy.
+    const WEIRD_TEXTURES = ['uncanny', 'lopsided', 'dreamlike', 'slippery', 'off-key'];
     function texturesFor(vibe) {
+        if (vibe === 'weird') return [...TEXTURES, ...WEIRD_TEXTURES];
         return vibe === 'scifi' || vibe === 'modern' ? TEXTURES.filter(t => t !== 'old-fashioned' && t !== 'earthy') : TEXTURES;
     }
     // Inspiration words per vibe. One shared rural list pulled every vibe toward the countryside.
@@ -336,6 +371,18 @@
             'hunger', 'midnight', 'silver mirror'],
         cozy: ['teapot', 'honey', 'mitten', 'cinnamon', 'acorn', 'button', 'quilt', 'muffin', 'fireplace', 'kitten', 'jam jar', 'pinecone',
             'tea cozy', 'marshmallow', 'bumblebee', 'clover', 'biscuit', 'snail', 'window box', 'yarn', 'pancake', 'meadow', 'pudding', 'mushroom'],
+        myth: ['golden fleece', 'oracle smoke', 'world tree', 'thunderbolt', 'labyrinth', 'river of the dead', 'sun chariot', 'sacred grove',
+            'sea foam', 'titan bone', 'laurel wreath', 'underworld gate', 'winged sandal', 'serpent coil', 'burning altar', 'nectar',
+            'spindle of fate', "giant's hammer", 'star map', 'sacred spring', 'raven messenger', 'mountain throne', 'tidal horn', 'stolen fire'],
+        game: ['loot chest', 'boss gate', 'mana potion', 'respawn point', 'skill tree', 'raid banner', 'legendary drop', 'dungeon key',
+            'guild hall', 'quest board', 'critical hit', 'dragon egg', 'teleport rune', 'save crystal', 'arena', 'class crest', 'world map',
+            'enchant slot', 'summon circle', 'final dungeon', 'hidden ending', 'airship', 'boss theme', 'starter village'],
+        cosmic: ['drowned city', 'sunken idol', 'salt marsh', 'fish-eyed stranger', 'old manuscript', 'starless sky', 'fog bell', 'ancient tablet',
+            'asylum', 'dead language', 'abyssal trench', 'wrong geometry', 'whispering well', 'eclipse', 'cult chant', 'black stone', 'tidal cave',
+            'forbidden library', 'endless sleep', 'pale lamp', 'rotting wharf', 'choir in the deep', 'bone flute', 'static from the stars'],
+        weird: ['melting clock', 'door to nowhere', 'teeth in a jar', 'upside-down rain', 'moth with a face', 'talking soup', 'endless hallway',
+            'spoon collection', 'humming fog', 'wrong shadow', 'rubber moon', 'stitched doll', 'backwards song', 'bottled whisper', 'eye in the wall',
+            'paper bones', 'jelly crown', 'clock with no hands', 'stairs into water', 'glass worm', 'smiling well', 'button eyes', 'inside-out umbrella'],
     };
     const ALL_SPARKS = [...new Set(Object.values(SPARKS).flat())];
     const SYLLABLES = { short: [1, 2], medium: [2, 3], long: [3, 4], any: [1, 4] };
@@ -437,6 +484,18 @@
             title: 'Auntie, Old, Miss, Grandpa', particle: 'de, "of Bramble Lane"', origin: '"of Hollyhill", "from the Mill"',
             patronymic: 'Wrenson, Dillson', epithet: '"Button", "the Baker"', religious: '"Brother Bramble", "Sister Clover"', codename: 'Pip, Biscuit-2',
         },
+        game: {
+            title: 'Hero, Lord, Archmage, Captain', particle: 'von, de, "of House Varn"', origin: '"of the Frozen North", "from the Ashlands"',
+            patronymic: 'Erikson, MacArran', epithet: '"the Undying", "Kingslayer"', religious: '"High Priestess Ione", "Brother Anselm"', codename: 'Reaper, X-01',
+        },
+        cosmic: {
+            title: 'Professor, Dr., Mrs., Captain', particle: 'van der, de', origin: '"of Saltmarsh", "from the old harbor"',
+            patronymic: 'Abrahamson, MacKay', epithet: '"the Hermit", "Old"', religious: '"Brother Ezra", "Mother Abigail"', codename: 'Watcher, Mr. Grey',
+        },
+        weird: {
+            title: 'Mister, Old, Auntie, Doctor', particle: 'de, "of the Hum"', origin: '"of Under the Stairs", "from the Wet Room"',
+            patronymic: 'Mothson, Spoonsdottir', epithet: '"the Upside-Down", "Twelve Spoons"', religious: '"Brother Static", "Sister Moth"', codename: 'Moth, Static-0',
+        },
     };
     function pieceDesc(role, vibe) {
         // A typed vibe gets no examples, so they don't fight what was typed.
@@ -454,6 +513,10 @@
         scifi: ['short and clipped, one or two syllables', 'corporate or code-like', 'a blend of two languages', 'a colony- or ship-born name'],
         modern: ['a realistic everyday surname', 'from a place', 'from a trade', "from a father's name"],
         cozy: ['from a plant or food', 'from a craft', 'from a cosy little place', 'soft and homely'],
+        myth: ['from an invented hero or ancestor', 'from a sacred place', "a \"son/daughter of\" form", 'from a divine title or gift'],
+        game: ['grand and heroic', 'from a clan or guild', 'from an invented kingdom', 'dark and edgy, two syllables'],
+        cosmic: ['an old New England-style surname', 'from a decaying family estate', 'plain and old-fashioned, two syllables', 'from a seaport or marsh town'],
+        weird: ['from an odd everyday object', 'a sound that is slightly off', 'two mismatched words joined', 'strange but still sayable'],
     };
     const ALL_FAMILY_STYLES = [...new Set(Object.values(FAMILY_STYLES).flat())];
 
@@ -664,6 +727,10 @@
         modern: 'modern-day (real-world today)',
         gothic: 'gothic, dark and old (decay, nobility, churches, night)',
         cozy: 'cozy, whimsical and warm (small, cute, homely)',
+        myth: 'myth and legend (gods, heroes, monsters and sacred places, from many ancient cultures)',
+        game: 'fantasy video game (bold, flashy and memorable: heroes, bosses, classes, dungeons, legendary gear)',
+        cosmic: 'Lovecraftian cosmic horror (ancient unknowable beings, decaying old towns, forbidden knowledge, the deep sea and the stars)',
+        weird: 'weird and uncanny (strange, surreal, eerie or absurd; far from ordinary)',
     };
 
     // How people sound in each setting. Without this, every setting drifted toward fantasy.
@@ -674,6 +741,10 @@
         scifi: 'Sci-fi people sound like the future: a mix of world cultures, short clipped forms, or slightly altered real names. Never like fantasy elves, knights or wizards.',
         modern: 'Modern people sound like someone you could meet today: uncommon is fine, but it must be believable on a real passport. Nothing fantasy-like.',
         cozy: 'Cozy people sound warm, simple and friendly; small and cute rather than grand or epic.',
+        myth: 'Myth people sound grand and ancient, like gods, heroes or figures from old legends of any culture.',
+        game: 'Game people sound bold, flashy and easy to remember, like heroes, villains or party members in a fantasy video game.',
+        cosmic: 'Lovecraftian people sound like plain, old-fashioned folk from a decaying old coastal town about a hundred years ago; never elvish or grand.',
+        weird: 'Weird people sound strange or slightly wrong, like someone from a dream.',
     };
     function personVibeRule(form) {
         return form.target === 'person' ? (PERSON_VIBE_RULES[form.vibe] || '') : '';
@@ -683,11 +754,20 @@
     function shapeRules(form) {
         const out = [];
         if (personVibeRule(form)) out.push(personVibeRule(form));
+        // Whole-vibe rules, for every target.
+        if (form.vibe === 'cosmic') {
+            if (form.target === 'other') out.push('Ancient beings may sound alien and hard to say (odd consonant clusters, an apostrophe), but stay readable.');
+            out.push("Don't reuse names from Lovecraft's own stories, or ones only a letter away.");
+        }
+        if (form.vibe === 'weird') out.push('However strange, it must still be sayable aloud: no random strings of letters.');
         if (form.target === 'place') {
             out.push("It must sound like a place, not like a person's first name.");
             if (form.vibe === 'scifi') out.push('Sci-fi places can use tech or corporate roots, designations and numbers (a station, array, sector, hub, a "-7" suffix).');
             else if (form.vibe === 'modern') out.push('Modern places can sound like real towns, streets or districts (-ton, -field, Heights, Bay, Park…).');
-            else if (form.vibe !== 'custom') out.push('Old-world places often use landscape endings (-holm, -mere, -wick, -ford, -by, -moor…). Mix them; don\'t put the same ending on every name.');
+            else if (form.vibe === 'cosmic') out.push('Cosmic-horror places are either decaying old towns by the sea or marsh, or ancient alien places that should not exist. Mix both.');
+            else if (form.vibe === 'game') out.push('Game places sound like map areas or dungeons: grand, clear and easy to remember.');
+            else if (form.vibe === 'myth') out.push('Myth places sound like sacred or legendary sites from old stories.');
+            else if (form.vibe !== 'custom' && form.vibe !== 'weird') out.push('Old-world places often use landscape endings (-holm, -mere, -wick, -ford, -by, -moor…). Mix them; don\'t put the same ending on every name.');
         } else if (form.target === 'shop') {
             out.push('It must sound like a shop sign, not like a person. Shop names may use real words or a short phrase, as long as the whole name is fresh.');
         } else if (form.target === 'item') {
@@ -1282,6 +1362,7 @@
             const wordTag = words.length ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.wordTip)}">${escapeHtml(L.wordTag(words))}</span>` : '';
             const realTag = r.real ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.realTip)}">${escapeHtml(L.realTag)}</span>` : '';
             const clicheTag = clicheHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.clicheTip)}">${escapeHtml(L.clicheTag)}</span>` : '';
+            const canonTag = canonHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.canonTip)}">${escapeHtml(L.canonTag)}</span>` : '';
             const nicks = showNicks && r.nicks?.length ? `<div class="tbd-nicks"><span class="tbd-nicks-label">${escapeHtml(L.nicks)}:</span>${r.nicks.map((n, k) =>
                 `${k ? '<span class="tbd-nick-dot" aria-hidden="true">·</span>' : ''}<button type="button" class="tbd-nick" data-n="${k}" title="${escapeHtml(L.nickCopy)}">${escapeHtml(n)}</button>`).join('')}</div>` : '';
             const menu = menuFor === r ? `<div class="tbd-refine-menu">${REFINE_MODES.map(m =>
@@ -1291,7 +1372,7 @@
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
-                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}${realTag}${wordTag}${clicheTag}</div>${nicks}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
+                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}${realTag}${wordTag}${clicheTag}${canonTag}</div>${nicks}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
@@ -1910,7 +1991,7 @@
             tokensFor, settings, historyHtml, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
-            realMode, realRoles, realRule, realPieceRule, nickOn, cleanNicks, clicheHit, answerJson, resultsHtml,
+            realMode, realRoles, realRule, realPieceRule, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             setResults: list => { results = list; },
         };
     } else {
