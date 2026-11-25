@@ -582,3 +582,26 @@
     padding: 4px 12px;
     margin: 6px 0 2px;
 }
+
+/* ---------- extras fold (v0.1.9) ---------- */
+#tbd_panel .tbd-fold {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 28px;
+    margin: 0;
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    color: var(--tbd-dim);
+    font-family: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+#tbd_panel .tbd-fold i { width: 10px; font-size: 10px; flex: none; }
+#tbd_panel .tbd-fold:hover { color: var(--tbd-fg); }
+#tbd_panel .tbd-fold-sum { color: var(--tbd-accent); font-weight: bold; }
+.tbd-chips[hidden] { display: none; }

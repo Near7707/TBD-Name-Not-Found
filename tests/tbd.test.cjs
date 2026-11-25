@@ -257,7 +257,9 @@ test('the details box goes into the prompt', () => {
     const { api } = load();
     assert.match(api.targetText({ target: 'item', kind: 'device', kindText: 'a half-broken military drone' }),
         /specifically an electronic device or gadget\. Details from the user: "a half-broken military drone"/);
-    assert.match(api.targetText({ target: 'place', kind: 'any', kindText: 'an abandoned subway station' }), /Details from the user/);
+    // No kind picked: the details say what the thing itself is.
+    assert.match(api.targetText({ target: 'place', kind: 'any', kindText: 'an abandoned subway station' }), /a place, namely: "an abandoned subway station" \(the name is for this exact thing/);
+    assert.match(api.targetText({ target: 'item', kind: 'any', kindText: '빵' }), /an item or object, namely: "빵"/);
     assert.equal(api.targetText({ target: 'shop', kind: 'bar', kindText: '  ' }), 'a shop or business, specifically a bar or pub');
 });
 
@@ -341,4 +343,58 @@ test('part labels exist in both languages', () => {
         assert.equal(Object.keys(L.ex).length, 8);
         for (const k of ['parts', 'extras', 'fixedFamily', 'fixedFamilyPh', 'copyPiece', 'rerollPiece', 'rerollingPiece', 'pieceRerolled']) assert.ok(L[k], `${lang}.${k}`);
     }
+});
+
+test('v0.1.9: person seeds follow the setting', () => {
+    const { api } = load();
+    const fantasyOnly = ['-wyn', '-ith', '-ond', '-ock', '-ane'];
+    for (const vibe of ['scifi', 'modern', 'cozy']) {
+        const form = { target: 'person', vibe, length: 'any', sound: 'any', mustContain: '' };
+        const seeds = api.rollSeeds(40, form, seeded(9));
+        assert.ok(!seeds.some(s => fantasyOnly.includes(s.ending)), `${vibe} got a fantasy ending`);
+        if (vibe !== 'cozy') assert.ok(!seeds.some(s => ['old-fashioned', 'earthy'].includes(s.texture)), `${vibe} got an old texture`);
+    }
+    const custom = api.rollSeeds(20, { target: 'person', vibe: 'custom', customVibe: '1920s noir' }, seeded(2));
+    assert.ok(custom.every(s => !s.spark && !s.ending), 'a typed vibe gets no inspiration word and no ending');
+    const sf = { target: 'person', vibe: 'scifi', length: 'any', sound: 'any', mustContain: '' };
+    const user = api.buildMessages(sf, api.rollSeeds(3, sf, seeded(1)), {})[1].content;
+    assert.match(user, /Never like fantasy elves/);
+    assert.match(user, /Setting \/ vibe: sci-fi \/ cyberpunk \(future technology, space travel, corporations, code\)/, 'no "neon" pushed by the vibe line');
+    assert.doesNotMatch(api.buildMessages(sf, [], {})[0].content, /fantasy/);
+});
+
+test('v0.1.9: part examples follow the setting', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'scifi', gender: 'any', length: 'any', sound: 'any', mustContain: '', parts: ['given'], extras: ['title', 'epithet'] };
+    const user = api.buildMessages(form, api.rollSeeds(2, form, seeded(3)), {})[1].content;
+    assert.match(user, /- title: title or honorific \(like Dr\., Commander/);
+    assert.doesNotMatch(user, /Sir, Lady|the Grey/);
+    const old = api.buildMessages({ ...form, vibe: 'medieval' }, api.rollSeeds(2, { ...form, vibe: 'medieval' }, seeded(3)), {})[1].content;
+    assert.match(old, /Sir, Lady/);
+    const src = { name: 'Kade "Static"', pieces: [{ role: 'given', text: 'Kade' }, { role: 'codename', text: 'Static' }] };
+    const piece = api.buildPieceMessages(src, 'codename', { vibe: 'scifi' }, {})[1].content;
+    assert.match(piece, /like Static, Vex-9/);
+    assert.match(piece, /Never like fantasy elves/);
+});
+
+test('v0.1.9: details and batches keep inspiration words in check', () => {
+    const { api } = load();
+    const bread = { target: 'item', vibe: 'modern', kind: 'any', kindText: '빵', length: 'short', sound: 'any', mustContain: '' };
+    const seeds = api.rollSeeds(5, bread, seeded(4));
+    assert.ok(seeds.every(s => !s.spark), 'typed details drop the inspiration word');
+    assert.ok(!seeds.some(s => /the … of|epithet/.test(s.shape)), 'no old-world shapes in a modern setting');
+    const user = api.buildMessages(bread, seeds, {})[1].content;
+    assert.doesNotMatch(user, /inspiration: "/);
+    assert.match(user, /plain word for this kind of thing/);
+    assert.match(user, /ignore it if it doesn't fit/);
+    assert.match(user, /same idea or image/);
+    for (let k = 1; k < 20; k++) {
+        const sparks = api.rollSeeds(8, { target: 'shop', vibe: 'scifi' }, seeded(k)).map(s => s.spark);
+        assert.equal(new Set(sparks).size, sparks.length, `seed ${k}: repeated inspiration word`);
+    }
+});
+
+test('v0.1.9: extras fold is closed by default', () => {
+    const { api } = load();
+    assert.equal(api.settings().extrasOpen, false);
 });

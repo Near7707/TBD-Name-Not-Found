@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.8
+// TBD — Name Not Found v0.1.9
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -144,14 +144,23 @@
     // ---------- random seeds ----------
     const START_LETTERS = 'BCDFGHJKLMNPRSTVWAEIOU'.split('');
     // Endings depend on what is being named: person endings on a place made places sound like people.
+    // Person endings follow the setting too: one shared list made sci-fi and modern people sound like fantasy.
+    const PERSON_ENDINGS = {
+        fantasy: ['-an', '-el', '-ick', '-or', '-wyn', '-ard', '-is', '-et', '-um', '-ow', '-ane', '-ith', '-ock', '-ess', '-ry', '-ay', '-ond', '-ix', '-ler', '-ia'],
+        medieval: ['-in', '-et', '-ard', '-ric', '-mund', '-wen', '-ot', '-ild', '-ey', '-is', '-a', '-elle', '-iam', '-er'],
+        gothic: ['-ias', '-ine', '-ard', '-ius', '-ora', '-mond', '-ette', '-iel', '-ane', '-ica', '-ault', '-ian'],
+        scifi: ['-ek', '-a', '-o', '-ae', '-in', '-iko', '-ra', '-ov', '-is', '-ay', '-en', '-yx', '-i', '-ash'],
+        modern: ['-en', '-y', '-ie', '-a', '-on', '-er', '-ia', '-ley', '-son', '-o', '-ah', '-ce'],
+        cozy: ['-y', '-ie', '-kin', '-a', '-elle', '-o', '-et', '-ly', '-bee', '-ette', '-ow'],
+    };
     const ENDINGS = {
-        person: ['-an', '-el', '-ick', '-or', '-wyn', '-ard', '-is', '-et', '-um', '-ow', '-ane', '-ith', '-ock', '-ess', '-ry', '-ay', '-ond', '-ix', '-ler', '-ia'],
         placeOld: ['-holm', '-mere', '-wick', '-ford', '-by', '-thorpe', '-moor', '-crag', '-ley', '-stead', '-gate', '-combe', '-den', '-wold', '-fell', '-bury'],
         placeTech: ['-ex', '-ion', '-ax', '-on', '-ar', '-is', ' Station', ' Array', ' Prime', ' Hub', ' Sector', '-7', '-IX', ' Spire'],
         placeModern: ['-ton', '-field', '-ville', ' Heights', ' Park', ' Bay', ' Point', '-burg', '-dale', ' Junction', ' Cross', '-side'],
     };
     function endingsFor(target, vibe) {
-        if (target === 'person') return ENDINGS.person;
+        // A typed vibe decides the sound itself, so no person ending is pushed on it.
+        if (target === 'person') return vibe === 'custom' ? null : (PERSON_ENDINGS[vibe] || PERSON_ENDINGS.fantasy);
         if (target !== 'place') return null;
         if (vibe === 'scifi') return ENDINGS.placeTech;
         if (vibe === 'modern') return ENDINGS.placeModern;
@@ -161,18 +170,29 @@
     // Shops and items are often phrases, so they get a shape instead of an ending.
     const SHAPES = {
         shop: ['one invented word', 'The + adjective + noun', "an invented owner's name + 's", 'a short pun on the trade', 'noun & noun', 'an invented word + the kind of shop'],
-        item: ['one invented word', 'an invented word + an object noun', '"the … of …"', "an invented maker's name + 's + object", 'a title-like epithet'],
-        itemTech: ['a model name with letters or numbers', 'a brand-like invented word', 'an invented word + a tech noun'],
+        // "A word for what it is" keeps the name on the thing (bread → loaf, bun), not on a random object.
+        item: ['one invented word', 'an invented word + a plain word for what it is', "an invented maker's name + 's + a plain word for what it is", 'a short descriptive phrase'],
+        itemOld: ['"the … of …"', 'a title-like epithet'],
+        itemTech: ['a model name with letters or numbers', 'a brand-like invented word', 'an invented word + a plain word for what it is'],
         // Real place names often use real words, so places mix invented and real-word shapes.
         place: ['one invented word', 'one invented word', 'two real words joined into one', 'a real word + a place word', 'an invented word + a place word', 'a real word blended with an invented part'],
     };
     function shapesFor(target, vibe) {
         if (target === 'shop') return SHAPES.shop;
         if (target === 'place') return SHAPES.place;
-        if (target === 'item') return vibe === 'scifi' ? [...SHAPES.item, ...SHAPES.itemTech] : SHAPES.item;
+        if (target === 'item') {
+            if (vibe === 'scifi') return [...SHAPES.item, ...SHAPES.itemTech];
+            // "The … of …" and epithets only suit old-world settings ("The Ease of Loaf" was odd in a modern bakery).
+            if (['fantasy', 'medieval', 'gothic'].includes(vibe)) return [...SHAPES.item, ...SHAPES.itemOld];
+            return SHAPES.item;
+        }
         return null;
     }
     const TEXTURES = ['soft', 'sharp', 'earthy', 'airy', 'heavy', 'bright', 'old-fashioned', 'clipped', 'rolling', 'rough', 'playful', 'stern'];
+    // Old-world textures pulled sci-fi and modern names back toward fantasy.
+    function texturesFor(vibe) {
+        return vibe === 'scifi' || vibe === 'modern' ? TEXTURES.filter(t => t !== 'old-fashioned' && t !== 'earthy') : TEXTURES;
+    }
     // Inspiration words per vibe. One shared rural list pulled every vibe toward the countryside.
     const SPARKS = {
         fantasy: ['moonlit spring', 'dragon bone', 'rune stone', 'silver birch', 'wyvern nest', 'enchanted mirror', 'crystal cave', 'elder oak',
@@ -201,8 +221,12 @@
     // One seed per name. Each name gets its own nudge so the batch spreads out.
     function rollSeeds(count, opts = {}, rnd = Math.random) {
         const [lo, hi] = SYLLABLES[opts.length] || SYLLABLES.any;
-        const sparks = SPARKS[opts.vibe] || ALL_SPARKS;
         const target = opts.target || 'person';
+        // No inspiration word when the user typed a vibe or details: their words already set the direction,
+        // and a random word ("bus stop") pulled names away from what was typed ("bread").
+        const typedDetail = target !== 'person' && String(opts.kindText || '').trim();
+        const sparks = opts.vibe === 'custom' || typedDetail ? null : (SPARKS[opts.vibe] || ALL_SPARKS);
+        const textures = texturesFor(opts.vibe);
         const endings = endingsFor(target, opts.vibe);
         const shapes = shapesFor(target, opts.vibe);
         const shape = nameShape(opts);
@@ -210,12 +234,18 @@
         const seeds = [];
         const usedEndings = new Set();
         const usedFamily = new Set();
+        const usedSparks = new Set();
         for (let i = 0; i < count; i++) {
             const seed = {
                 syllables: lo + Math.floor(rnd() * (hi - lo + 1)),
-                texture: pick(TEXTURES, rnd),
-                spark: pick(sparks, rnd),
+                texture: pick(textures, rnd),
             };
+            // Like endings, no inspiration word twice in one batch (three "neon" names looked samey).
+            if (sparks) {
+                const fresh = sparks.filter(s => !usedSparks.has(s));
+                seed.spark = pick(fresh.length ? fresh : sparks, rnd);
+                usedSparks.add(seed.spark);
+            }
             // A forced start letter would fight "must contain", so skip it then.
             if (!opts.mustContain) seed.start = pick(START_LETTERS, rnd);
             // Only nudge the ending about half the time; always forcing it sounds samey too.
@@ -245,15 +275,40 @@
         given: 'given (first) name',
         middle: 'middle name',
         family: 'family name (surname)',
-        title: 'title or honorific (like Sir, Lady, Captain, Doctor)',
-        particle: 'nobility particle (like von, de, of House) that sits right before the family name; if there is no family name, include the house name in it (like "of House Varn")',
-        origin: 'place of origin (like "of Westmere", "da Riva"), with an invented place',
-        patronymic: 'surname made from an invented father\'s name (like Erikson, ap Rhys, MacArran)',
-        epithet: 'nickname or epithet (like "the Grey", "Ironhand")',
-        religious: 'religious or monastic name, with its title (like "Brother Anselm", "Sister Maren")',
-        codename: 'codename or handle (like Nightjar, Vex-9)',
+        title: 'title or honorific',
+        particle: 'nobility or house particle that sits right before the family name; if there is no family name, include the house name in it',
+        origin: 'place of origin, with an invented place',
+        patronymic: 'surname made from an invented father\'s name',
+        epithet: 'nickname or epithet',
+        religious: 'religious or monastic name, with its title',
+        codename: 'codename or handle',
         alias: 'alias or stage name (another name they go by)',
     };
+    // Examples follow the setting: AI copies the style of examples, and "Sir" or "the Grey" pulled sci-fi names into fantasy.
+    const PIECE_EXAMPLES = {
+        old: {
+            title: 'Sir, Lady, Captain, Doctor', particle: 'von, de, "of House Varn"', origin: '"of Westmere", "da Riva"',
+            patronymic: 'Erikson, ap Rhys, MacArran', epithet: '"the Grey", "Ironhand"', religious: '"Brother Anselm", "Sister Maren"', codename: 'Nightjar, Vex-9',
+        },
+        scifi: {
+            title: 'Dr., Commander, Captain, Unit', particle: 'von, de, "of the Ceres line"', origin: '"of Ceres Station", "from Dock 9"',
+            patronymic: 'Ivanovich, bint Rahim, Sigurdsdottir', epithet: '"Deadwire", "the Ghost"', religious: '"Brother Kei", "Sister Ofelia"', codename: 'Static, Vex-9, Patchwork',
+        },
+        modern: {
+            title: 'Dr., Ms., Officer, Coach', particle: 'von, de, van der', origin: '"from Leeds", "of Brooklyn"',
+            patronymic: 'Petrovich, Jensen, MacArthur', epithet: '"Lucky", "the Kid"', religious: '"Father Tomas", "Sister Grace"', codename: 'Falcon, Zero, Echo-2',
+        },
+        cozy: {
+            title: 'Auntie, Old, Miss, Grandpa', particle: 'de, "of Bramble Lane"', origin: '"of Hollyhill", "from the Mill"',
+            patronymic: 'Wrenson, Dillson', epithet: '"Button", "the Baker"', religious: '"Brother Bramble", "Sister Clover"', codename: 'Pip, Biscuit-2',
+        },
+    };
+    function pieceDesc(role, vibe) {
+        // A typed vibe gets no examples, so they don't fight what was typed.
+        const group = vibe === 'custom' ? null : (PIECE_EXAMPLES[vibe] || PIECE_EXAMPLES.old);
+        const ex = group?.[role];
+        return ex ? `${PIECE_DESC[role]} (like ${ex})` : PIECE_DESC[role];
+    }
     // Parts that are names of their own, so they go on the avoid list. Titles and particles don't.
     const NAME_ROLES = ['given', 'middle', 'family', 'patronymic', 'codename', 'alias'];
     // Family names follow the setting, like place endings do.
@@ -324,6 +379,7 @@
         history: [],
         banList: '',
         showReading: true,
+        extrasOpen: false,
         form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', parts: ['given'], extras: [], fixedFamily: '' },
     };
 
@@ -431,6 +487,8 @@
         if (target === 'person') return TARGET_DESC.person;
         const kindId = normalizeKind(target, form.kind);
         if (kindId === 'custom' && own) return `${TARGET_DESC[target]}, specifically: "${own}"`;
+        // No kind picked: the details say what the thing is ("bread" names a bread, not a bread basket or bakery).
+        if (own && kindId === 'any') return `${TARGET_DESC[target]}, namely: "${own}" (the name is for this exact thing, not for something connected to it)`;
         const kind = KIND_DESC[target]?.[kindId];
         const base = kind ? `${TARGET_DESC[target]}, specifically ${kind}` : TARGET_DESC[target];
         // The optional details box: the name and the note should fit it.
@@ -440,15 +498,29 @@
     const VIBE_DESC = {
         fantasy: 'fantasy (magic, myth, old kingdoms)',
         medieval: 'grounded medieval European (villages, trades, churches, no magic)',
-        scifi: 'sci-fi / cyberpunk (technology, corporations, space, neon, code, chrome)',
+        scifi: 'sci-fi / cyberpunk (future technology, space travel, corporations, code)',
         modern: 'modern-day (real-world today)',
         gothic: 'gothic, dark and old (decay, nobility, churches, night)',
         cozy: 'cozy, whimsical and warm (small, cute, homely)',
     };
 
+    // How people sound in each setting. Without this, every setting drifted toward fantasy.
+    const PERSON_VIBE_RULES = {
+        fantasy: 'Fantasy names may be freely invented, but avoid the overused elvish style.',
+        medieval: 'Medieval people sound like old European village or church records, not magical fantasy.',
+        gothic: 'Gothic people sound old, formal and aristocratic or churchly; dark but believable, not elvish.',
+        scifi: 'Sci-fi people sound like the future: a mix of world cultures, short clipped forms, or slightly altered real names. Never like fantasy elves, knights or wizards.',
+        modern: 'Modern people sound like someone you could meet today: uncommon is fine, but it must be believable on a real passport. Nothing fantasy-like.',
+        cozy: 'Cozy people sound warm, simple and friendly; small and cute rather than grand or epic.',
+    };
+    function personVibeRule(form) {
+        return form.target === 'person' ? (PERSON_VIBE_RULES[form.vibe] || '') : '';
+    }
+
     // What the name has to sound like, so a place doesn't come back as a person's name.
     function shapeRules(form) {
         const out = [];
+        if (personVibeRule(form)) out.push(personVibeRule(form));
         if (form.target === 'place') {
             out.push("It must sound like a place, not like a person's first name.");
             if (form.vibe === 'scifi') out.push('Sci-fi places can use tech or corporate roots, designations and numbers (a station, array, sector, hub, a "-7" suffix).');
@@ -458,6 +530,7 @@
             out.push('It must sound like a shop sign, not like a person. Shop names may use real words or a short phrase, as long as the whole name is fresh.');
         } else if (form.target === 'item') {
             out.push('It must sound like the name of an object, not of a person. A short phrase is fine.');
+            out.push('When a shape asks for a word for what it is, use a plain word for this kind of thing (for bread: loaf, bun, roll), never an unrelated object.');
         } else if (form.target === 'other') {
             out.push('It must fit what is being named.');
         }
@@ -488,10 +561,10 @@
     }
 
     // The parts a person's name must have, and the JSON shape to answer in.
-    function shapeLines(shape) {
+    function shapeLines(shape, vibe) {
         const lines = ['Each full name is made of exactly these parts, in this order (nothing else):'];
         for (const role of shape.roles) {
-            lines.push(`- ${role}: ${PIECE_DESC[role]}${role === 'family' && shape.fixed ? ` — always exactly "${shape.fixed}"` : ''}`);
+            lines.push(`- ${role}: ${pieceDesc(role, vibe)}${role === 'family' && shape.fixed ? ` — always exactly "${shape.fixed}"` : ''}`);
         }
         if (shape.fixed) lines.push(`They are all family: every name keeps the family name "${shape.fixed}", so make the other parts fit it.`);
         lines.push('Put each part in its own field, without quotes or brackets.');
@@ -535,7 +608,7 @@
         const lines = [];
         if (shape) {
             lines.push(`Invent ${seeds.length} original full name${seeds.length === 1 ? '' : 's'} for a person.`);
-            lines.push(...shapeLines(shape));
+            lines.push(...shapeLines(shape, form.vibe));
         } else {
             lines.push(`Invent ${seeds.length} original name${seeds.length === 1 ? '' : 's'} for ${targetText(form)}.`);
         }
@@ -547,7 +620,8 @@
         if (form.mustContain) lines.push(`Every ${shape ? 'full ' : ''}name must contain the letters "${String(form.mustContain).trim()}" (any position).`);
         lines.push('');
         lines.push('The setting and what is being named come first. Each name also has a seed that only adds variety:');
-        lines.push('follow its sound hints, but bend the inspiration word to fit the setting (never let it pull the name out of the setting).');
+        lines.push('follow its sound hints. An inspiration word is only a loose mood: bend it to fit what is being named and the setting, and ignore it if it doesn\'t fit.');
+        lines.push('Never put the inspiration object itself into the name or the note when it isn\'t part of what is being named (no "bus stop" in the name of a bread).');
         const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
         seeds.forEach((s, i) => {
             const parts = [];
@@ -556,9 +630,10 @@
             parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
             if (s.ending) parts.push(`ends with "${s.ending}"`);
             if (!sound) parts.push(`${s.texture} sound`);
-            parts.push(`inspiration: "${s.spark}"`);
+            if (s.spark) parts.push(`inspiration: "${s.spark}"`);
             lines.push(`${i + 1}. ${main}${parts.join(', ')}${s.family ? `; family name: ${s.family}` : ''}`);
         });
+        if (seeds.length > 1) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
         if (avoid.length) {
             lines.push('');
             lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
@@ -569,7 +644,7 @@
         lines.push('Reply with ONLY a JSON array, nothing else:');
         lines.push(shape ? shapeJson(shape, opts.reading) : opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
         return [
-            { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused fantasy clichés.' },
+            { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused, cliché names.' },
             { role: 'user', content: lines.join('\n') },
         ];
     }
@@ -583,7 +658,7 @@
         const lines = [];
         if (shape) {
             lines.push(`Here is a full name for a person: "${src.name}" (${namedPieces(src)}).`);
-            lines.push(...shapeLines(shape));
+            lines.push(...shapeLines(shape, form.vibe));
         } else {
             lines.push(`Here is a name for ${targetText(form)}: "${src.name}".`);
         }
@@ -616,7 +691,9 @@
         const lines = [];
         lines.push(`Here is a full name for a person: "${src.name}" (${namedPieces(src)}).`);
         lines.push(`Setting / vibe: ${vibeText(form)}.`);
-        lines.push(`Replace only its ${role} part, now "${current}". The new part is a ${PIECE_DESC[role]}.`);
+        lines.push(`Replace only its ${role} part, now "${current}". The new part is a ${pieceDesc(role, form.vibe)}.`);
+        const vibeRule = personVibeRule({ ...form, target: 'person' });
+        if (vibeRule) lines.push(vibeRule);
         lines.push('It must fit the rest of the name and the setting, and be clearly different from the current one. Keep Western, English-readable spelling.');
         if (form.gender && form.gender !== 'any' && ['given', 'middle', 'title', 'religious'].includes(role)) lines.push(`Gender feel: ${form.gender}.`);
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
@@ -625,7 +702,7 @@
         lines.push('Reply with ONLY a JSON array with one item, nothing else. "name" is the new part only, without quotes or brackets:');
         lines.push(opts.reading ? '[{"name": "...", "read": "..."}]' : '[{"name": "..."}]');
         return [
-            { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused fantasy clichés.' },
+            { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused, cliché names.' },
             { role: 'user', content: lines.join('\n') },
         ];
     }
@@ -807,9 +884,9 @@
             ${kinds ? `<label id="tbd_kind_wrap">${escapeHtml(L.kind)}${selectHtml('tbd_kind', L.k[form.target], kind)}</label>` : ''}
             <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
             <label>${escapeHtml(L.sound)}${selectHtml('tbd_sound', L.s, form.sound || 'any')}</label>
+            <label>${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
             ${form.target === 'person' ? personPartsHtml(form) : ''}
             ${detailLabel ? `<label class="tbd-wide" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
-            <label class="tbd-wide">${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
         </div>`;
     }
@@ -824,10 +901,19 @@
         return `<div class="tbd-wide tbd-chipset">
                 <div class="tbd-chips-label">${escapeHtml(L.parts)}</div>
                 <div class="tbd-chips">${NAME_PARTS.map(v => chip('part', v, L.pc[v], parts.includes(v))).join('')}</div>
-                <div class="tbd-chips-label">${escapeHtml(L.extras)}</div>
-                <div class="tbd-chips">${NAME_EXTRAS.map(v => chip('extra', v, L.ex[v], extras.includes(v))).join('')}</div>
+                ${extrasFoldHtml(extras)}
+                <div class="tbd-chips" id="tbd_extras_chips"${settings().extrasOpen ? '' : ' hidden'}>${NAME_EXTRAS.map(v => chip('extra', v, L.ex[v], extras.includes(v))).join('')}</div>
             </div>
             <label class="tbd-wide" id="tbd_fixed_wrap"${parts.includes('family') ? '' : ' hidden'}>${escapeHtml(L.fixedFamily)}<input id="tbd_fixed" class="text_pole" type="text" maxlength="40" placeholder="${escapeHtml(L.fixedFamilyPh)}" value="${escapeHtml(form.fixedFamily || '')}"></label>`;
+    }
+
+    // Extras fold away to one line; when folded, the ones that are on still show.
+    function extrasFoldHtml(extras) {
+        const L = T();
+        const open = !!settings().extrasOpen;
+        const on = NAME_EXTRAS.filter(v => extras.includes(v)).map(v => L.ex[v]);
+        const sum = !open && on.length ? `<span class="tbd-fold-sum">: ${escapeHtml(on.join(', '))}</span>` : '';
+        return `<button type="button" id="tbd_extras_fold" class="tbd-fold" aria-expanded="${open ? 'true' : 'false'}"><i class="fa-solid fa-chevron-${open ? 'down' : 'right'}" aria-hidden="true"></i><span>${escapeHtml(L.extras)}${sum}</span></button>`;
     }
 
     // Each part of a full name: tap it to copy, 🔄 to swap just that part.
@@ -836,7 +922,7 @@
         const L = T();
         return `<div class="tbd-pieces">${r.pieces.map((p, k) => {
             const label = L.pc[p.role] || L.ex[p.role] || p.role;
-            return `<span class="tbd-piece" data-k="${k}"><button class="tbd-piece-copy" title="${escapeHtml(`${label} — ${L.copyPiece}`)}">${escapeHtml(pieceText(p))}</button>${p.fixed ? ''
+            return `<span class="tbd-piece" data-k="${k}"><button class="tbd-piece-copy" title="${escapeHtml(`${label} — ${L.copyPiece}`)}">${escapeHtml(p.text)}</button>${p.fixed ? ''
                 : `<button class="tbd-piece-roll" title="${escapeHtml(L.rerollPiece)}" aria-label="${escapeHtml(`${label}: ${L.rerollPiece}`)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>`}</span>`;
         }).join('')}</div>`;
     }
@@ -1342,6 +1428,14 @@
         $doc.on('change', '#tbd_kind', () => readForm());
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
         $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_kindtext, #tbd_fixed', readForm);
+        $doc.on('click', '#tbd_extras_fold', () => {
+            const st = settings();
+            const form = readForm();
+            st.extrasOpen = !st.extrasOpen;
+            save();
+            $('#tbd_extras_chips').prop('hidden', !st.extrasOpen);
+            $('#tbd_extras_fold').replaceWith(extrasFoldHtml(form.extras));
+        });
         $doc.on('click', '#tbd_panel .tbd-chip', function () {
             const form = readForm();
             const key = $(this).data('chip') === 'part' ? 'parts' : 'extras';
