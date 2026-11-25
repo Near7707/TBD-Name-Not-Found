@@ -619,3 +619,10 @@ test('v0.1.18: thinking effort is sent only when picked, and sound-alike asks le
         assert.ok(L.sThink && L.sThinkHint && Object.keys(L.sThinkOpts).length === 5);
     }
 });
+
+test('v0.1.19: max response tokens go up to 65000', () => {
+    const { api, extensionSettings } = load({ extensionSettings: { tbd_names: { maxTokens: 40000 } } });
+    assert.equal(api.tokensFor(5, api.settings()), 40000);
+    extensionSettings.tbd_names.maxTokens = 999999;
+    assert.equal(api.tokensFor(5, api.settings()), 65000);
+});

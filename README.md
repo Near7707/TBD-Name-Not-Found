@@ -8,7 +8,7 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.18)
+## Features (v0.1.19)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
 - Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length, sound feel, letters the name must contain
@@ -52,10 +52,10 @@ Find **TBD — Name Not Found** in the Extensions panel, or press ⚙ next to �
 |---|---|
 | Language | Follow SillyTavern, English, or Korean |
 | Connection profile | Which API to ask. Empty = the one you're using now |
-| Thinking effort | For thinking models. Default sends nothing; pick Low if a thinking model answers empty or slowly (it may spend every token on thinking) |
+| Thinking effort | For thinking models. Default sends nothing; pick Low if a thinking model answers empty or slowly (it may spend every token on thinking). On a Custom (OpenAI-compatible) connection SillyTavern sends it only for OpenAI models, so use the service's own connection or a non-thinking model |
 | Send the profile's preset too | Off by default. A roleplay preset can make the AI answer empty or in character; turn on only if your model needs it |
 | Names per search | 1–30 |
-| Max response tokens | Default 2000, raised automatically for big batches. Thinking models may need more; lower it for a very small local model |
+| Max response tokens | Default 2000, raised automatically for big batches. Up to 65000. Thinking models may need more; lower it for a very small local model |
 | Theme / Moving effects | Look of the window |
 | Show how to read each name | Reading next to each name (on by default) |
 | Names that are plain English words | Mark them (default) or leave them out |

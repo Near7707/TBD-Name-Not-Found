@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.18
+// TBD — Name Not Found v0.1.19
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -28,7 +28,7 @@
             emptyFail: 'The AI sent back an empty answer. A thinking model may have spent every token on thinking: set "Thinking effort" to Low or raise "Max response tokens". With a connection profile, also keep "Send the connection profile\'s preset too" off.',
             showRaw: 'See the answer', hideRaw: 'Hide the answer', rawEmpty: '(empty — no thinking and no answer came back)',
             sThink: 'Thinking effort (thinking models)', sThinkOpts: { default: "Default (don't send)", min: 'Minimal', low: 'Low', medium: 'Medium', high: 'High' },
-            sThinkHint: 'Naming needs little thinking. If a thinking model answers empty or slowly, pick Low. Leave on Default for other models.',
+            sThinkHint: 'Naming needs little thinking. If a thinking model answers empty or slowly, pick Low. Leave on Default for other models. On a Custom (OpenAI-compatible) connection, SillyTavern sends this only for OpenAI models: use the service\'s own connection (like NanoGPT), or pick a non-thinking model.',
             sPreset: "Send the connection profile's preset too", sPresetHint: 'Off by default. A roleplay preset can make the AI answer empty or in character. Turn on only if your model needs its preset.',
             err: m => `500 — ${m}`,
             cancelled: '499 — cancelled',
@@ -95,7 +95,7 @@
             emptyFail: 'AI가 빈 답을 보냈어요. 생각하는 모델이 토큰을 생각에 다 썼을 수 있어요. 설정에서 "생각 정도"를 낮게로 바꾸거나 최대 응답 토큰을 늘려 보세요. 연결 프로필을 쓰면 "연결 프로필의 프리셋도 같이 보내기"는 꺼 두세요.',
             showRaw: '받은 답 보기', hideRaw: '받은 답 접기', rawEmpty: '(비어 있음 — 생각도 답도 안 왔어요)',
             sThink: '생각 정도 (생각하는 모델용)', sThinkOpts: { default: '기본 (안 보냄)', min: '최소', low: '낮게', medium: '보통', high: '높게' },
-            sThinkHint: '이름 짓기는 길게 생각할 필요가 없어요. 생각하는 모델이 빈 답을 보내거나 느리면 "낮게"로 두세요. 다른 모델은 기본 그대로 두면 돼요.',
+            sThinkHint: '이름 짓기는 길게 생각할 필요가 없어요. 생각하는 모델이 빈 답을 보내거나 느리면 "낮게"로 두세요. 다른 모델은 기본 그대로 두면 돼요. Custom(OpenAI 호환) 연결에선 실리태번이 OpenAI 모델에만 이 값을 보내요. NanoGPT 같은 전용 연결을 쓰거나, 생각 안 하는 모델을 고르세요.',
             sPreset: '연결 프로필의 프리셋도 같이 보내기', sPresetHint: '기본은 꺼짐이에요. 롤플레이 프리셋을 같이 보내면 AI가 빈 답이나 롤플레이로 답할 수 있어요. 모델에 프리셋이 꼭 필요할 때만 켜세요.',
             err: m => `500 — ${m}`,
             cancelled: '499 — 취소함',
@@ -476,6 +476,8 @@
 
     // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
     const REASONING_LEVELS = ['default', 'min', 'low', 'medium', 'high'];
+    // Thinking models can spend 10000+ tokens on thought alone.
+    const MAX_TOKENS_CAP = 65000;
 
     function settings() {
         const all = ctx().extensionSettings;
@@ -1006,7 +1008,7 @@
     }
 
     function tokensFor(count, st = settings(), heavy = false) {
-        return Math.max(clampInt(st.maxTokens, 200, 16000, DEFAULTS.maxTokens), 300 + count * (heavy ? 160 : 100));
+        return Math.max(clampInt(st.maxTokens, 200, MAX_TOKENS_CAP, DEFAULTS.maxTokens), 300 + count * (heavy ? 160 : 100));
     }
 
     // ---------- state ----------
@@ -1496,7 +1498,7 @@
             <label for="${id('count')}">${escapeHtml(L.sCount)}</label>
             <input id="${id('count')}" class="text_pole" type="number" min="1" max="30" step="1" data-tbd-set="count">
             <label for="${id('tokens')}">${escapeHtml(L.sTokens)}</label>
-            <input id="${id('tokens')}" class="text_pole" type="number" min="200" max="16000" step="100" data-tbd-set="tokens">
+            <input id="${id('tokens')}" class="text_pole" type="number" min="200" max="${MAX_TOKENS_CAP}" step="100" data-tbd-set="tokens">
             <small>${escapeHtml(L.sTokensHint)}</small>
             <label for="${id('theme')}">${escapeHtml(L.sTheme)}</label>${sel('theme', optionList(L.th, st.theme))}
             <label class="checkbox_label"><input id="${id('fx')}" type="checkbox" data-tbd-set="fx"><span>${escapeHtml(L.sEffects)}</span></label>
@@ -1582,7 +1584,7 @@
                 return;
             case 'profile': st.profileId = String($el.val() || ''); break;
             case 'count': st.count = clampInt($el.val(), 1, 30, 5); $el.val(st.count); break;
-            case 'tokens': st.maxTokens = clampInt($el.val(), 200, 16000, DEFAULTS.maxTokens); $el.val(st.maxTokens); break;
+            case 'tokens': st.maxTokens = clampInt($el.val(), 200, MAX_TOKENS_CAP, DEFAULTS.maxTokens); $el.val(st.maxTokens); break;
             case 'theme': st.theme = THEMES.includes($el.val()) ? $el.val() : 'st'; save(); render(); syncSettingFields(); return;
             case 'fx': st.effects = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
             case 'reading': st.showReading = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
