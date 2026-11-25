@@ -695,3 +695,7 @@
 }
 #tbd_panel .tbd-nick:hover, #tbd_panel .tbd-nick:focus-visible { color: var(--tbd-fg); text-decoration: underline; }
 .tbd-nick-dot { opacity: .6; }
+
+/* v0.1.23: less-used conditions fold away; open, they sit in the same grid as the rest */
+.tbd-form .tbd-more { display: contents; }
+.tbd-form .tbd-more[hidden] { display: none; }

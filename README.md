@@ -8,22 +8,22 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.22)
+## Features (v0.1.23)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
-- Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length, sound feel, letters the name must contain
+- Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length. Less-used ones (sound feel, letters the name must contain, "Like this", real names) fold into **More options**; folded, the line still shows what you changed
 - "Like this": type a name or word (Elric, Aldous) and get names that sound like it (similar rhythm, and each name echoes a different part: start, vowels, ending…; it wins over the vibe), or share its feel (same flavor and era, other sounds). The word itself never comes back. For full names it steers the given name
 - Kind for places, shops and items, in everyday groups that fit any setting (street, station, repair shop, florist, vehicle, medicine, gadget…) or your own words
 - Full names for people: pick the parts (given / middle / family) and extras (title, noble particle, place of origin, father's-name surname, nickname, religious name, codename, alias). Family names follow the vibe. Keep one family name to name a whole family. Extras fold into one line and show which ones are on. With only the given name on, no family name comes back
 - Each part of a full name shows below it: tap to copy just that part, 🔄 to swap just that part
 - An optional details box for places, shops and items (e.g. "a half-broken military drone"); "Other" asks what you're naming. With no kind picked, the details say what the thing itself is ("bread" names a bread, not a bakery or a bread basket)
 - The vibe leads: random inspiration words are picked per vibe and never repeat in one batch, places are told not to sound like people and may use real words (Blackwater, Salt Flats), and a bare dictionary word on its own is avoided
-- Vibes: fantasy, medieval, sci-fi, modern, gothic, cozy, myth & legend, fantasy game, Lovecraftian, weird, or your own words. Lovecraftian people sound like plain old-town folk while beings and places may sound alien; weird names can be as strange as they like but stay sayable
+- Vibes: fantasy, medieval, sci-fi, modern, gothic, cozy, myth & legend, fantasy game, Lovecraftian, weird, or your own words. Lovecraftian names are eldritch (even for people), and with a real-names choice people become the plain old-town folk of those stories; weird names can be as strange as they like but stay sayable
 - Game-style favorites (Shadowfang) get the small "AI favorite" mark, and names from Lovecraft's own stories (Innsmouth) get a "Lovecraft" mark. Both are only marked, never hidden
 - People sound like their setting too: every preset vibe gets their own name endings, rules and examples, so non-fantasy names don't drift into fantasy
 - What you type wins: with your own vibe or details, no random inspiration word is added, and inspiration words never get pasted into the name as unrelated objects
 - Names that are plain English words (Wren, Ox) get a small "word" mark instead of being hidden, so you can keep them or reshape them with ✨. A setting can leave them out instead. Only given/middle names and single-word person, place and other names are checked; exact matches only (Wrenna passes)
-- **Real names** (people): invented only (default), close to real names, mix in real names, or real names only. It applies to given, middle and family names; extras like codenames stay invented, and a kept family name stays as it is. Names the AI says are real get a small "real" mark (the AI can be wrong). With a real-names choice, a real name that is also a word (Rose) stays even when plain words are left out; with "real names only", common AI picks (Luna) are marked instead of avoided
+- **Real names** (people): invented only (default), close to real names, mix in real names, or real names only. In myth "real" means names from real legends, in weird rare real names that sound strange, in fantasy game real names used like game heroes. It applies to given, middle and family names; extras like codenames stay invented, and a kept family name stays as it is. Names the AI says are real get a small "real" mark (the AI can be wrong). With a real-names choice, a real name that is also a word (Rose) stays even when plain words are left out; with "real names only", common AI picks (Luna) are marked instead of avoided
 - **Nicknames** (setting, off by default): each person name also comes with 2–3 nicknames under it. Tap one to copy it
 - How to read each name, next to it: Korean letters in Korean, a stress respelling in English (e.g. KWIL-uh). Can be turned off
 - 1–30 names per search (default 5), each with a short note

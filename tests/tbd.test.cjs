@@ -772,3 +772,47 @@ test('v0.1.22: game favorites and Lovecraft names are marked, not avoided', () =
     assert.match(html, />Lovecraft</);
     assert.match(html, />AI favorite</);
 });
+
+test('v0.1.23: Lovecraftian people are eldritch when invented, old-town folk with real names', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'cosmic', gender: 'any', length: 'any', sound: 'any', mustContain: '', parts: ['given', 'family'], extras: [] };
+    const inv = api.buildMessages({ ...base, realNames: 'invented' }, api.rollSeeds(2, base, seeded(3)), {})[1].content;
+    assert.match(inv, /eldritch/);
+    assert.ok(!/coastal town/.test(inv));
+    const near = { ...base, realNames: 'near' };
+    const folk = api.buildMessages(near, api.rollSeeds(2, near, seeded(3)), {})[1].content;
+    assert.match(folk, /New England coastal town/);
+    assert.ok(!/eldritch/.test(folk));
+    // Family-name seeds follow the same switch.
+    assert.ok(api.rollSeeds(6, near, seeded(4)).every(s => api.FAMILY_STYLES.cosmicFolk.includes(s.family)));
+    assert.ok(api.rollSeeds(6, { ...base, realNames: 'invented' }, seeded(4)).every(s => api.FAMILY_STYLES.cosmic.includes(s.family)));
+});
+
+test('v0.1.23: "real" gets a meaning per vibe; cozy is 포근한', () => {
+    const { api } = load();
+    const rule = vibe => api.realRule({ target: 'person', vibe, realNames: 'only' }).join(' ');
+    assert.match(rule('myth'), /actual myths/);
+    assert.match(rule('weird'), /rare and sound strange/);
+    assert.match(rule('game'), /video game/);
+    assert.ok(!/Here/.test(rule('medieval')));
+    assert.match(api.realPieceRule({ target: 'person', vibe: 'weird', realNames: 'near', parts: ['given'] }, 'given'), /rare and sound strange/);
+    assert.equal(api.STRINGS.ko.v.cozy, '포근한');
+});
+
+test('v0.1.23: less-used conditions fold, and the fold shows what was changed', () => {
+    const { api, extensionSettings } = load({ lang: 'ko' });
+    api.settings();
+    const form = { target: 'person', vibe: 'fantasy', length: 'short', sound: 'hard', mustContain: '', likeText: 'Elric', likeMode: 'sound', realNames: 'mix', parts: ['given'], extras: [] };
+    const fold = api.moreFoldHtml(form);
+    assert.match(fold, /조건 더 보기/);
+    assert.match(fold, /소리 느낌: 단단하게 · 비슷하게: Elric · 실제 이름도 섞기/);
+    const html = api.formHtml(form);
+    assert.match(html, /id="tbd_more" hidden/);
+    // Still in the page (just hidden), so the form keeps reading them.
+    for (const id of ['tbd_sound', 'tbd_must', 'tbd_like', 'tbd_likemode', 'tbd_realnames']) assert.ok(html.includes(`id="${id}"`), id);
+    extensionSettings.tbd_names.moreOpen = true;
+    assert.ok(!/id="tbd_more" hidden/.test(api.formHtml(form)));
+    assert.ok(!/tbd-fold-sum/.test(api.moreFoldHtml(form)), 'open: no summary');
+    // Nothing changed: no summary either.
+    assert.ok(!/tbd-fold-sum/.test(api.moreFoldHtml({ target: 'place', length: 'any', sound: 'any' })));
+});

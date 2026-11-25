@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.22
+// TBD — Name Not Found v0.1.23
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -50,7 +50,7 @@
                 shop: { any: 'Any', restaurant: 'Restaurant', cafe: 'Café / desserts', bakery: 'Bakery', bar: 'Bar / pub', lodging: 'Inn / hotel', store: 'Store / market', clothes: 'Clothing', books: 'Books / stationery', pharmacy: 'Pharmacy / apothecary', repair: 'Repair shop / workshop', electronics: 'Electronics / machines', weapons: 'Weapons / gear', beauty: 'Hair / grooming', florist: 'Florist / plants', antiques: 'Antiques / second-hand', custom: 'Custom…' },
                 item: { any: 'Any', wearable: 'Worn / carried', tool: 'Tool / machine', device: 'Electronics / gadget', vehicle: 'Vehicle', food: 'Food / drink', medicine: 'Medicine / chemical', weapon: 'Weapon', records: 'Book / document / record', furniture: 'Furniture / household', collectible: 'Art / collectible', product: 'Product / brand', custom: 'Custom…' },
             },
-            parts: 'Name parts', extras: 'Extras',
+            parts: 'Name parts', extras: 'Extras', more: 'More options',
             pc: { given: 'Given', middle: 'Middle', family: 'Family' },
             ex: { title: 'Title', particle: 'Noble particle', origin: 'Place of origin', patronymic: "Father's-name surname", epithet: 'Nickname / epithet', religious: 'Religious name', codename: 'Codename', alias: 'Alias / stage name' },
             fixedFamily: 'Keep this family name (optional)', fixedFamilyPh: 'e.g. Holloway',
@@ -108,7 +108,7 @@
             busy: '이미 찾는 중이에요. 기다리거나 먼저 취소해 주세요.',
             noProfileApi: '이 실리태번 버전에선 연결 프로필로 요청할 수 없어요.',
             t: { person: '사람', place: '장소', shop: '가게', item: '아이템', other: '기타' },
-            v: { fantasy: '판타지', medieval: '중세', scifi: 'SF / 사이버', modern: '현대', gothic: '고딕', cozy: '아기자기', myth: '신화·전설', game: '판타지 게임', cosmic: '러브크래프트풍', weird: '기묘한', custom: '직접 쓰기…' },
+            v: { fantasy: '판타지', medieval: '중세', scifi: 'SF / 사이버', modern: '현대', gothic: '고딕', cozy: '포근한', myth: '신화·전설', game: '판타지 게임', cosmic: '러브크래프트풍', weird: '기묘한', custom: '직접 쓰기…' },
             g: { any: '상관없음', feminine: '여성적', masculine: '남성적', neutral: '중성적' },
             l: { any: '상관없음', short: '짧게', medium: '보통', long: '길게' },
             s: { any: '상관없음', soft: '부드럽게', hard: '단단하게', sharp: '날카롭게', bright: '밝게', dark: '어둡게' },
@@ -123,7 +123,7 @@
                 shop: { any: '상관없음', restaurant: '식당', cafe: '카페·디저트', bakery: '빵집', bar: '술집·바', lodging: '숙소(여관·호텔)', store: '마트·잡화점', clothes: '옷가게', books: '서점·문구점', pharmacy: '약국·약방', repair: '수리점·공방', electronics: '전자기기·기계 상점', weapons: '무기·장비점', beauty: '미용실·몸단장', florist: '꽃집·식물', antiques: '골동품·중고', custom: '직접 쓰기…' },
                 item: { any: '상관없음', wearable: '입는 것·지니는 것', tool: '도구·기계', device: '전자기기·장치', vehicle: '탈것', food: '먹을 것·마실 것', medicine: '약·화학품', weapon: '무기', records: '책·문서·기록', furniture: '가구·집 소품', collectible: '예술품·수집품', product: '상품·브랜드', custom: '직접 쓰기…' },
             },
-            parts: '이름 구성', extras: '특수한 이름',
+            parts: '이름 구성', extras: '특수한 이름', more: '조건 더 보기',
             pc: { given: '이름', middle: '미들네임', family: '성' },
             ex: { title: '직함·존칭', particle: '귀족 표시', origin: '출신지', patronymic: '아버지 이름 성', epithet: '별명·칭호', religious: '세례명·수도명', codename: '코드네임', alias: '가명·예명' },
             fixedFamily: '성 고정 (안 써도 됨)', fixedFamilyPh: '예: Holloway',
@@ -294,8 +294,9 @@
         cozy: ['-y', '-ie', '-kin', '-a', '-elle', '-o', '-et', '-ly', '-bee', '-ette', '-ow'],
         myth: ['-os', '-eus', '-a', '-is', '-on', '-ir', '-ra', '-ys', '-und', '-ia', '-ar', '-eth', '-ax', '-ura', '-ne'],
         game: ['-ion', '-ius', '-ra', '-ex', '-yn', '-or', '-ael', '-is', '-ia', '-os', '-iel', '-yx', '-ar', '-en', '-ka'],
-        // Lovecraftian people are plain old-town folk; the alien sounds are for beings and places.
-        cosmic: ['-iah', '-el', '-er', '-ard', '-ith', '-ah', '-ey', '-on', '-us', '-a', '-ence', '-ott', '-ias', '-ine'],
+        // Invented Lovecraftian names are eldritch, even for people. Real-name modes switch to old-town folk
+        // (and get no ending seeds at all), so these only reach invented names.
+        cosmic: ['-oth', '-uun', "'th", '-yeh', '-ath', '-ugg', '-ul', '-thua', '-agg', '-ith', '-ogg', '-urr', '-hu', '-aal'],
         weird: ['-ub', '-ix', '-oom', '-ilk', '-eth', '-uzz', '-ip', '-orm', '-ae', '-ogg', '-elm', '-oe', '-umble', '-iv'],
     };
     const ENDINGS = {
@@ -409,7 +410,8 @@
         const endings = endingsFor(target, opts.vibe);
         const shapes = shapesFor(target, opts.vibe);
         const shape = nameShape(opts);
-        const familyStyles = shape && shape.roles.includes('family') && !shape.fixed ? (FAMILY_STYLES[opts.vibe] || ALL_FAMILY_STYLES) : null;
+        const familyKey = opts.vibe === 'cosmic' && real ? 'cosmicFolk' : opts.vibe;
+        const familyStyles = shape && shape.roles.includes('family') && !shape.fixed ? (FAMILY_STYLES[familyKey] || ALL_FAMILY_STYLES) : null;
         const seeds = [];
         const usedEndings = new Set();
         const usedFamily = new Set();
@@ -515,7 +517,8 @@
         cozy: ['from a plant or food', 'from a craft', 'from a cosy little place', 'soft and homely'],
         myth: ['from an invented hero or ancestor', 'from a sacred place', "a \"son/daughter of\" form", 'from a divine title or gift'],
         game: ['grand and heroic', 'from a clan or guild', 'from an invented kingdom', 'dark and edgy, two syllables'],
-        cosmic: ['an old New England-style surname', 'from a decaying family estate', 'plain and old-fashioned, two syllables', 'from a seaport or marsh town'],
+        cosmic: ['alien and ancient, hard to say', 'with an apostrophe or a hyphen', 'heavy and wet-sounding', "like a forgotten cult's name"],
+        cosmicFolk: ['an old New England-style surname', 'from a decaying family estate', 'plain and old-fashioned, two syllables', 'from a seaport or marsh town'],
         weird: ['from an odd everyday object', 'a sound that is slightly off', 'two mismatched words joined', 'strange but still sayable'],
     };
     const ALL_FAMILY_STYLES = [...new Set(Object.values(FAMILY_STYLES).flat())];
@@ -587,6 +590,7 @@
         showReading: true,
         nicknames: false,
         extrasOpen: false,
+        moreOpen: false,
         wordNames: 'mark',
         form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '' },
     };
@@ -743,11 +747,15 @@
         cozy: 'Cozy people sound warm, simple and friendly; small and cute rather than grand or epic.',
         myth: 'Myth people sound grand and ancient, like gods, heroes or figures from old legends of any culture.',
         game: 'Game people sound bold, flashy and easy to remember, like heroes, villains or party members in a fantasy video game.',
-        cosmic: 'Lovecraftian people sound like plain, old-fashioned folk from a decaying old coastal town about a hundred years ago; never elvish or grand.',
+        cosmic: 'Lovecraftian people get eldritch names, like the ancient beings of those stories: alien, old and hard to say (odd consonant clusters, an apostrophe or hyphen), but still readable. Never like a fantasy orc, dwarf or elf.',
         weird: 'Weird people sound strange or slightly wrong, like someone from a dream.',
     };
+    // With a real-names choice, Lovecraftian people are the plain townsfolk of those stories instead.
+    const COSMIC_FOLK_RULE = 'Lovecraftian people here are plain, old-fashioned folk from a decaying New England coastal town about a hundred years ago (old Biblical or Puritan-style names fit); never elvish or grand.';
     function personVibeRule(form) {
-        return form.target === 'person' ? (PERSON_VIBE_RULES[form.vibe] || '') : '';
+        if (form.target !== 'person') return '';
+        if (form.vibe === 'cosmic' && realMode(form) !== 'invented') return COSMIC_FOLK_RULE;
+        return PERSON_VIBE_RULES[form.vibe] || '';
     }
 
     // What the name has to sound like, so a place doesn't come back as a person's name.
@@ -756,7 +764,7 @@
         if (personVibeRule(form)) out.push(personVibeRule(form));
         // Whole-vibe rules, for every target.
         if (form.vibe === 'cosmic') {
-            if (form.target === 'other') out.push('Ancient beings may sound alien and hard to say (odd consonant clusters, an apostrophe), but stay readable.');
+            if (form.target === 'other' || form.target === 'item') out.push('Names may sound alien and hard to say (odd consonant clusters, an apostrophe), but stay readable.');
             out.push("Don't reuse names from Lovecraft's own stories, or ones only a letter away.");
         }
         if (form.vibe === 'weird') out.push('However strange, it must still be sayable aloud: no random strings of letters.');
@@ -812,6 +820,13 @@
         const words = roles.map(r => ({ given: 'given', middle: 'middle', family: 'family' }[r]));
         return `${words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}` : words[0]} names`;
     }
+    // What "real" means in a vibe where real names would otherwise fight the setting.
+    // (Lovecraftian gets its own person rule for this, COSMIC_FOLK_RULE.)
+    const REAL_VIBE_HINT = {
+        myth: 'Here "real" means names from actual myths and legends.',
+        game: 'Here use real names the way a fantasy video game would, for heroes, villains and party members.',
+        weird: 'Here pick real names that are rare and sound strange or old-fashioned today.',
+    };
     function realRule(form) {
         const roles = realRoles(form);
         if (!roles.length) return [];
@@ -822,6 +837,7 @@
         else if (mode === 'near') out.push(`Base the ${what} on real names people use in this setting, each changed a little so it is new but still feels familiar.`);
         else if (mode === 'mix') out.push(`Mix real ${what} that people use in this setting with invented ones, roughly half and half.`);
         else out.push(`Use real ${what} that people actually use in this setting, not invented ones.${roles.length > 1 ? " Don't put together a famous person's full name." : ''}`);
+        if (mode !== 'invented' && REAL_VIBE_HINT[form.vibe]) out.push(REAL_VIBE_HINT[form.vibe]);
         if (mode !== 'invented') out.push(nameShape(form)
             ? `Add "real": the list of parts (${roles.join(', ')}) that are real names people actually use; an empty list if none.`
             : 'Add "real": true if it is a real name people actually use, otherwise false.');
@@ -1018,6 +1034,10 @@
         if (!realRoles(form).includes(role)) return '';
         const mode = realMode(form);
         if (mode === 'invented') return "Invent it; don't hand back a name that real people commonly have.";
+        const hint = REAL_VIBE_HINT[form.vibe] ? ` ${REAL_VIBE_HINT[form.vibe]}` : '';
+        return realPieceBase(mode) + hint;
+    }
+    function realPieceBase(mode) {
         if (mode === 'near') return 'Base it on a real name people use in this setting, changed a little so it is new but still feels familiar.';
         if (mode === 'mix') return 'It may be a real name people use in this setting or an invented one.';
         return 'Use a real name that people actually use in this setting.';
@@ -1302,13 +1322,16 @@
             <label id="tbd_gender_wrap"${form.target === 'person' ? '' : ' hidden'}>${escapeHtml(L.gender)}${selectHtml('tbd_gender', L.g, form.gender)}</label>
             ${kinds ? `<label id="tbd_kind_wrap">${escapeHtml(L.kind)}${selectHtml('tbd_kind', L.k[form.target], kind)}</label>` : ''}
             <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
+            ${detailLabel ? `<label class="tbd-wide" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
+            ${form.target === 'person' ? personPartsHtml(form) : ''}
+            ${moreFoldHtml(form)}
+            <div class="tbd-more" id="tbd_more"${settings().moreOpen ? '' : ' hidden'}>
             <label>${escapeHtml(L.sound)}${selectHtml('tbd_sound', L.s, form.sound || 'any')}</label>
             <label>${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
             <label>${escapeHtml(L.like)}<input id="tbd_like" class="text_pole" type="text" maxlength="${LIKE_MAX}" placeholder="${escapeHtml(L.likePh)}" value="${escapeHtml(form.likeText || '')}"></label>
             <label>${escapeHtml(L.likeMode)}${selectHtml('tbd_likemode', L.likeModes, form.likeMode === 'feel' ? 'feel' : 'sound')}</label>
             ${form.target === 'person' ? `<label class="tbd-wide" id="tbd_real_wrap">${escapeHtml(L.realNames)}${selectHtml('tbd_realnames', L.realOpts, realMode(form))}</label>` : ''}
-            ${form.target === 'person' ? personPartsHtml(form) : ''}
-            ${detailLabel ? `<label class="tbd-wide" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
+            </div>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
         </div>`;
     }
@@ -1327,6 +1350,20 @@
                 <div class="tbd-chips" id="tbd_extras_chips"${settings().extrasOpen ? '' : ' hidden'}>${NAME_EXTRAS.map(v => chip('extra', v, L.ex[v], extras.includes(v))).join('')}</div>
             </div>
             <label class="tbd-wide" id="tbd_fixed_wrap"${parts.includes('family') ? '' : ' hidden'}>${escapeHtml(L.fixedFamily)}<input id="tbd_fixed" class="text_pole" type="text" maxlength="40" placeholder="${escapeHtml(L.fixedFamilyPh)}" value="${escapeHtml(form.fixedFamily || '')}"></label>`;
+    }
+
+    // Less-used conditions fold away to one line; when folded, the ones that were changed still show.
+    function moreFoldHtml(form) {
+        const L = T();
+        const open = !!settings().moreOpen;
+        const on = [];
+        if (form.sound && form.sound !== 'any') on.push(`${L.sound}: ${L.s[form.sound]}`);
+        if (String(form.mustContain || '').trim()) on.push(`${L.mustContain}: ${String(form.mustContain).trim()}`);
+        const like = likeWords(form);
+        if (like.length) on.push(`${L.like.replace(/\s*\(.*\)\s*$/, '')}: ${like.join(', ')}`);
+        if (form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
+        const sum = !open && on.length ? `<span class="tbd-fold-sum">: ${escapeHtml(on.join(' · '))}</span>` : '';
+        return `<button type="button" id="tbd_more_fold" class="tbd-fold tbd-wide" aria-expanded="${open ? 'true' : 'false'}"><i class="fa-solid fa-chevron-${open ? 'down' : 'right'}" aria-hidden="true"></i><span>${escapeHtml(L.more)}${sum}</span></button>`;
     }
 
     // Extras fold away to one line; when folded, the ones that are on still show.
@@ -1913,7 +1950,19 @@
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
         $doc.on('change', '#tbd_kind', () => readForm());
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
-        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_like, #tbd_likemode, #tbd_realnames, #tbd_kindtext, #tbd_fixed', readForm);
+        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_custom, #tbd_kindtext, #tbd_fixed', readForm);
+        $doc.on('change', '#tbd_sound, #tbd_must, #tbd_like, #tbd_likemode, #tbd_realnames', () => {
+            const form = readForm();
+            $('#tbd_more_fold').replaceWith(moreFoldHtml(form));
+        });
+        $doc.on('click', '#tbd_more_fold', () => {
+            const st = settings();
+            const form = readForm();
+            st.moreOpen = !st.moreOpen;
+            save();
+            $('#tbd_more').prop('hidden', !st.moreOpen);
+            $('#tbd_more_fold').replaceWith(moreFoldHtml(form));
+        });
         $doc.on('click', '#tbd_extras_fold', () => {
             const st = settings();
             const form = readForm();
@@ -1991,7 +2040,7 @@
             tokensFor, settings, historyHtml, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
-            realMode, realRoles, realRule, realPieceRule, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
+            realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             setResults: list => { results = list; },
         };
     } else {
