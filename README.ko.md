@@ -2,7 +2,7 @@
 
 [English](README.md) | **한국어**
 
-> `404 — Name Not Found. 하나 지어 볼까요?`
+> `404 — Name Not Found. Let's make one!`
 
 사람, 장소, 가게, 아이템 이름을 지어 주는 실리태번 확장이에요.
 

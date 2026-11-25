@@ -25,6 +25,7 @@
     --tbd-field-bg: color-mix(in srgb, var(--tbd-fg) 6%, transparent);
     --tbd-btn-bg: var(--tbd-accent);
     --tbd-btn-fg: #fff;
+    --tbd-option-bg: var(--SmartThemeBlurTintColor, #1e1e1e);
     background-color: var(--tbd-bg);
     color: var(--tbd-fg);
     border: 1px solid var(--tbd-line);
@@ -50,15 +51,24 @@
 .tbd-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--tbd-dim); margin: 0; }
 .tbd-form label[hidden] { display: none; }
 .tbd-form .tbd-wide { grid-column: 1 / -1; }
+/* Fields: set background AND text color ourselves (with !important), so a light
+   SillyTavern theme or custom CSS can't leave light text on a white box. */
 #tbd_panel .text_pole {
     margin: 0;
     width: 100%;
-    background-color: var(--tbd-field-bg);
-    color: var(--tbd-fg);
-    border: 1px solid var(--tbd-line);
+    background-color: var(--tbd-field-bg) !important;
+    color: var(--tbd-fg) !important;
+    -webkit-text-fill-color: var(--tbd-fg);
+    border: 1px solid var(--tbd-line) !important;
     font-family: inherit;
+    opacity: 1;
 }
-#tbd_panel select.text_pole option { background: var(--tbd-bg); color: var(--tbd-fg); }
+#tbd_panel select.text_pole option { background: var(--tbd-option-bg) !important; color: var(--tbd-fg) !important; }
+#tbd_panel .text_pole::placeholder {
+    color: var(--tbd-dim) !important;
+    -webkit-text-fill-color: var(--tbd-dim);
+    opacity: .85 !important;
+}
 
 #tbd_panel .tbd-go {
     grid-column: 1 / -1;
@@ -69,9 +79,10 @@
     font-family: inherit;
     font-weight: bold;
     border-radius: 8px;
-    background: var(--tbd-btn-bg);
-    color: var(--tbd-btn-fg);
-    border: 1px solid var(--tbd-btn-bg);
+    background: var(--tbd-btn-bg) !important;
+    color: var(--tbd-btn-fg) !important;
+    border: 1px solid var(--tbd-btn-bg) !important;
+    opacity: 1;
     cursor: pointer;
 }
 #tbd_panel .tbd-go:hover { filter: brightness(1.15); }
@@ -117,30 +128,32 @@
 #tbd_panel.tbd-theme-terminal {
     --tbd-bg: #0b0b0b;
     --tbd-fg: #9fe1cb;
-    --tbd-dim: #1d9e75;
+    --tbd-dim: #4fbf98;
     --tbd-line: #0f6e56;
     --tbd-accent: #5dcaa5;
     --tbd-name: #e1f5ee;
     --tbd-field-bg: #0f1a16;
-    --tbd-btn-bg: transparent;
-    --tbd-btn-fg: #9fe1cb;
+    --tbd-option-bg: #0f1a16;
+    --tbd-btn-bg: #0f1a16;
+    --tbd-btn-fg: #c4f0de;
     backdrop-filter: none;
     background-image: repeating-linear-gradient(0deg, rgba(93, 202, 165, .05) 0 1px, transparent 1px 3px);
     background-attachment: local;
     box-shadow: 0 0 18px rgba(93, 202, 165, .2);
 }
-#tbd_panel.tbd-theme-terminal .tbd-go { border-color: #5dcaa5; }
+#tbd_panel.tbd-theme-terminal .tbd-go { border-color: #5dcaa5 !important; }
 #tbd_panel.tbd-theme-terminal .tbd-name { text-shadow: 0 0 6px rgba(93, 202, 165, .5); }
 
 /* ---------- theme: blue screen ---------- */
 #tbd_panel.tbd-theme-bsod {
     --tbd-bg: #185fa5;
     --tbd-fg: #e6f1fb;
-    --tbd-dim: #b5d4f4;
+    --tbd-dim: #cfe3f8;
     --tbd-line: #378add;
     --tbd-accent: #ffffff;
     --tbd-name: #ffffff;
     --tbd-field-bg: #0c447c;
+    --tbd-option-bg: #0c447c;
     --tbd-btn-bg: #ffffff;
     --tbd-btn-fg: #0c447c;
     backdrop-filter: none;
@@ -157,12 +170,13 @@
 #tbd_panel.tbd-theme-panic {
     --tbd-bg: #0b0b0b;
     --tbd-fg: #f7c1c1;
-    --tbd-dim: #c0504f;
+    --tbd-dim: #e88a8a;
     --tbd-line: #791f1f;
     --tbd-accent: #f09595;
     --tbd-name: #ffffff;
-    --tbd-field-bg: #1a0808;
-    --tbd-btn-bg: #e24b4a;
+    --tbd-field-bg: #2a0c0c;
+    --tbd-option-bg: #2a0c0c;
+    --tbd-btn-bg: #b83232;
     --tbd-btn-fg: #ffffff;
     backdrop-filter: none;
     border: 1.5px solid #e24b4a;
@@ -170,7 +184,7 @@
     background-image: repeating-linear-gradient(0deg, rgba(226, 75, 74, .07) 0 1px, transparent 1px 3px);
     background-attachment: local;
     box-shadow: 0 0 20px rgba(226, 75, 74, .45), inset 0 0 30px rgba(163, 45, 45, .3);
-    animation: tbd-flicker 4s infinite;
+    /* No whole-window flicker: only small parts (the REC dot, the loading cursor) blink. */
 }
 .tbd-panic-bar {
     display: flex;
@@ -190,7 +204,7 @@
     text-shadow: 3px 0 rgba(226, 75, 74, .8), -3px 0 rgba(237, 147, 177, .6);
 }
 #tbd_panel.tbd-theme-panic .tbd-name { text-shadow: 0 0 10px rgba(226, 75, 74, .9); }
-#tbd_panel.tbd-theme-panic .tbd-go { box-shadow: 0 0 14px rgba(226, 75, 74, .7); animation: tbd-pulse 1.6s infinite; }
+#tbd_panel.tbd-theme-panic .tbd-go { box-shadow: 0 0 12px rgba(226, 75, 74, .6); }
 #tbd_panel.tbd-theme-panic .tbd-status-ok { color: #f09595; }
 
 /* ---------- effects ---------- */
@@ -207,8 +221,6 @@
     92% { transform: translate(2px, 0) skewX(6deg); }
     94% { transform: none; }
 }
-@keyframes tbd-flicker { 0%, 96%, 100% { opacity: 1; } 97% { opacity: .6; } 98% { opacity: 1; } 99% { opacity: .75; } }
-@keyframes tbd-pulse { 50% { box-shadow: 0 0 4px rgba(226, 75, 74, .4); } }
 
 /* Effects off: keep the colors and shapes, stop the movement. */
 #tbd_panel.tbd-fx-off,
@@ -222,7 +234,7 @@
 /* Phones: a bit higher on screen, lighter effects. */
 @media (max-width: 600px) {
     #tbd_panel { top: 4vh; max-height: 88vh; }
-    #tbd_panel.tbd-theme-panic { animation: none; box-shadow: 0 0 10px rgba(226, 75, 74, .4); }
+    #tbd_panel.tbd-theme-panic { box-shadow: 0 0 10px rgba(226, 75, 74, .4); }
     #tbd_panel.tbd-theme-terminal { box-shadow: none; }
     .tbd-form { grid-template-columns: minmax(0, 1fr); }
 }
@@ -231,3 +243,13 @@
 .tbd-settings label { display: block; margin-top: 6px; }
 .tbd-settings .checkbox_label { display: flex; }
 .tbd-settings small { display: block; opacity: .7; }
+/* Keep the settings button one line wide (it was squeezing to one letter per line). */
+.tbd-settings .menu_button {
+    display: inline-flex !important;
+    width: auto !important;
+    min-width: max-content;
+    white-space: nowrap;
+    writing-mode: horizontal-tb;
+    padding: 4px 12px;
+    margin: 6px 0 2px;
+}

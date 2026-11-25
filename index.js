@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.0
+// TBD — Name Not Found v0.1.1
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -46,7 +46,7 @@
         },
         ko: {
             menu: 'TBD: 이름 짓기',
-            tagline: 'Name Not Found. 하나 지어 볼까요?',
+            tagline: "Name Not Found. Let's make one!", // kept in English on purpose (part of the 404 look)
             target: '대상', vibe: '분위기', gender: '성별', length: '길이', mustContain: '꼭 들어갈 글자',
             customVibePh: '예: 안개 낀 항구 마을', mustContainPh: '예: ren',
             find: '이름 찾기', cancel: '취소', again: '다시 뽑기',
@@ -611,7 +611,7 @@
             save();
             // Rebuild the drawer and menu so the words switch language.
             $('#tbd_settings').remove();
-            $('#extensions_settings2').append(settingsHtml());
+            settingsSlot().append(settingsHtml());
             bindSettings();
             $('#tbd_menu_label').text(T().menu);
             render();
@@ -628,6 +628,20 @@
     }
 
     // ---------- start ----------
+    // The settings drawer goes in the LEFT column, in a spot taken as soon as this file loads,
+    // so it sits where manifest.json's loading_order puts it (and stays there when rebuilt).
+    function settingsColumn() {
+        return $('#extensions_settings').length ? $('#extensions_settings') : $('#extensions_settings2');
+    }
+    let slot = null;
+    function settingsSlot() {
+        if (!slot || !slot.closest('body').length) {
+            slot = $('#tbd_settings_slot');
+            if (!slot.length) slot = $('<div id="tbd_settings_slot"></div>').appendTo(settingsColumn());
+        }
+        return slot;
+    }
+
     function addMenuItem() {
         if ($('#tbd_menu').length) return true;
         const $menu = $('#extensionsMenu');
@@ -639,7 +653,7 @@
 
     function init() {
         settings();
-        $('#extensions_settings2').append(settingsHtml());
+        settingsSlot().append(settingsHtml());
         bindSettings();
 
         if (!addMenuItem()) {
@@ -679,6 +693,7 @@
             tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES,
         };
     } else {
+        if (typeof $ === 'function' && document.body) settingsSlot();
         jQuery(() => init());
     }
 })();
