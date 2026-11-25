@@ -552,3 +552,23 @@ test('v0.1.14: profile requests pass the preset choice and keep separate thinkin
     await api.requestLLM([], { profileId: 'p1', maxTokens: 100, sendPreset: true });
     assert.equal(calls[2].includePreset, true);
 });
+
+test('v0.1.16: sound-alike words beat the vibe, allow shared endings and say what to keep', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', gender: 'any', length: 'short', sound: 'any', likeText: 'Morvane', likeMode: 'sound', parts: ['given'], extras: [] };
+    const msg = api.buildMessages(form, api.rollSeeds(5, form), { lang: 'en' })[1].content;
+    assert.ok(msg.includes('follow them even if they don\'t match the setting'));
+    assert.ok(!msg.includes('The setting and what is being named come first'));
+    assert.ok(!msg.includes('share the same ending'));
+    assert.ok(msg.includes('same number of syllables and the same stressed syllable'));
+    // Full name: given endings may match, family names still may not repeat.
+    const shaped = { ...form, parts: ['given', 'family'] };
+    const full = api.buildMessages(shaped, api.rollSeeds(3, shaped), { lang: 'en' })[1].content;
+    assert.ok(!full.includes('share the same ending') && full.includes('no two family names may be the same'));
+    // Feel mode keeps the ending rule but the like words still come before the vibe.
+    const feel = api.buildMessages({ ...form, likeMode: 'feel' }, api.rollSeeds(3, { ...form, likeMode: 'feel' }), { lang: 'en' })[1].content;
+    assert.ok(feel.includes('share the same ending') && feel.includes('follow them even if'));
+    // Empty box: unchanged.
+    const plain = api.buildMessages({ ...form, likeText: '' }, api.rollSeeds(3, { ...form, likeText: '' }), { lang: 'en' })[1].content;
+    assert.ok(plain.includes('The setting and what is being named come first') && plain.includes('share the same ending'));
+});

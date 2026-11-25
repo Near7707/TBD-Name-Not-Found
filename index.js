@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.15
+// TBD — Name Not Found v0.1.16
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -631,10 +631,18 @@
             out.push('Never use a plain existing English word on its own as the name (like "Mold" or "Salt").');
         }
         const shape = nameShape(form);
+        // Sound-alike names often share the typed word's ending, so don't forbid that then.
+        const likeSound = likeWords(form).length > 0 && form.likeMode !== 'feel';
         if (shape) {
-            out.push(shape.fixed
-                ? 'Across the batch, no two given names may share the same ending.'
-                : 'Across the batch, no two given names may share the same ending, and no two family names may be the same.');
+            if (likeSound) {
+                if (!shape.fixed && shape.roles.includes('family')) out.push('Across the batch, no two family names may be the same.');
+            } else {
+                out.push(shape.fixed
+                    ? 'Across the batch, no two given names may share the same ending.'
+                    : 'Across the batch, no two given names may share the same ending, and no two family names may be the same.');
+            }
+        } else if (likeSound) {
+            out.push('Across the batch, no two names may be the same or share the same last word.');
         } else {
             out.push('Across the batch, no two names may share the same ending or the same last word (not two "… Array" or two "-ex").');
         }
@@ -695,7 +703,7 @@
         const many = words.length > 1;
         const base = form.likeMode === 'feel'
             ? `Give each ${what} the same feel as ${list}${many ? ' (somewhere between them)' : ''}: the same cultural flavor, era and mood, but the sounds may be quite different.`
-            : `Make each ${what} sound like ${list}${many ? ' (somewhere between them)' : ''}: similar sounds, rhythm and length, so the two feel related.`;
+            : `Make each ${what} sound like ${list}${many ? ' (somewhere between them)' : ''}: the same number of syllables and the same stressed syllable, and keep at least two of its key sounds (vowels or consonants) in the same places, so anyone hearing both would call them alike (e.g. "Morvane" → "Torvale", "Marvine").`;
         return `${base} Never use ${many ? 'those words themselves' : 'that word itself'}, and don't just respell ${many ? 'them' : 'it'}; each one must be a different, new ${what}.`;
     }
 
@@ -722,7 +730,10 @@
         const likeLine = likeRule(form, shape ? (shape.roles.includes('given') ? 'given name' : 'main invented part') : phrase ? 'main word' : 'name');
         if (likeLine) lines.push(likeLine);
         lines.push('');
-        lines.push('The setting and what is being named come first. Each name also has a seed that only adds variety:');
+        // With "like" words, they beat the vibe: a typed word that doesn't fit the setting still wins, the setting only adjusts spelling.
+        lines.push(likeLine
+            ? 'What is being named comes first, then the "like" words: follow them even if they don\'t match the setting. The setting only adjusts spelling and flavor, never at the cost of the likeness. Each name also has a seed that only adds variety:'
+            : 'The setting and what is being named come first. Each name also has a seed that only adds variety:');
         lines.push('follow its sound hints. An inspiration word is only a loose mood: bend it to fit what is being named and the setting, and ignore it if it doesn\'t fit.');
         lines.push('Never put the inspiration object itself into the name or the note when it isn\'t part of what is being named (no "bus stop" in the name of a bread).');
         const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
