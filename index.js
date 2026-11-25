@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.24
+// TBD — Name Not Found v0.2.0
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -62,6 +62,12 @@
             checkGoogle: 'Search Google', checkAsk: 'Ask the AI too', checkAsking: 'Asking…', checkAiTag: 'AI guess', checkAiEmpty: '(no answer)',
             clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
+            method: 'Made with', methods: { ai: 'AI', cache: 'Cache' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
+            roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse' },
+            ck: { common: 'Common name', noble: 'Noble house', religious: 'Monastic / saint' },
+            fragments: 'fragments', cacheTag: 'CACHE', cacheTip: 'Built from name fragments. No AI was used.',
+            foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from cache`,
+            cacheEmpty: 'No new names left in the cache for these choices. Try other roots or conditions.',
             nicks: 'Nicknames', nickCopy: 'Copy this nickname',
             copyPiece: 'Copy this part', rerollPiece: 'Swap just this part', rerollingPiece: 'Swapping one part…', pieceRerolled: '200 OK — part swapped',
             gear: 'Settings', back: 'Back',
@@ -140,6 +146,12 @@
             checkGoogle: '구글에서 보기', checkAsk: 'AI에게도 묻기', checkAsking: '묻는 중…', checkAiTag: 'AI 추정', checkAiEmpty: '(답 없음)',
             clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
+            method: '만드는 방식', methods: { ai: 'AI', cache: 'Cache' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
+            roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽' },
+            ck: { common: '일반 인명', noble: '귀족 가문', religious: '수도원·성인' },
+            fragments: 'fragments', cacheTag: 'CACHE', cacheTip: '이름 조각으로 만든 이름이에요. AI는 안 썼어요.',
+            foundCache: n => `200 OK — 캐시에서 이름 ${n}개 찾음`,
+            cacheEmpty: '이 조건으론 캐시에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
             nicks: '애칭', nickCopy: '이 애칭 복사',
             copyPiece: '이 조각 복사', rerollPiece: '이 조각만 다시 뽑기', rerollingPiece: '조각 하나 바꾸는 중…', pieceRerolled: '200 OK — 조각 바꿈',
             gear: '설정', back: '돌아가기',
@@ -736,6 +748,317 @@
         return r.pieces.filter(p => NAME_ROLES.includes(p.role) && !p.fixed).map(p => p.text);
     }
 
+    // ---------- Cache (names from built-in fragments, no AI) ----------
+    // Each fragment: "Text=English meaning=Korean meaning[=categories]". Only well-known meanings;
+    // an empty meaning means "just an ending". Categories tie place fragments to place kinds.
+    function F(s) {
+        return s.split(';').map(x => x.trim()).filter(Boolean).map(x => {
+            const [t, en = '', ko = '', cats = ''] = x.split('=');
+            const f = { t, en, ko };
+            if (cats) f.cats = cats.split('/');
+            return f;
+        });
+    }
+    const CACHE = {
+        latin: {
+            head: F('Silv=forest=숲;Luc=light=빛;Aur=gold=금;Sever=stern=엄격한;Clar=clear, bright=맑은;Fort=strong=강한;Flor=flower=꽃;Vit=life=생명;Fel=lucky=행운의;Ver=true=참된;Prim=first=첫째;Val=strong, well=굳센;Dom=lord=주인;Pac=peace=평화;Fid=faith=믿음;Sanct=holy=거룩한;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Stell=star=별;Ign=fire=불;Vent=wind=바람;Mar=sea=바다;Terr=earth=땅;Aqu=water=물;Noct=night=밤;Cael=sky=하늘'),
+            masc: F('us==;ius==;ianus=belonging to=~에 속한;inus=like=~ 같은;ian=belonging to=~에 속한'),
+            fem: F('a==;ia==;ina=like=~ 같은;ana=belonging to=~에 속한;illa=little=작은;ella=little=작은'),
+            placeHead: F('Silv=forest=숲=forest;Aqu=water=물=water;Mar=sea=바다=coast;Terr=earth=땅;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Luc=light=빛;Aur=gold=금;Fort=strong=강한=fort;Flor=flower=꽃=field;Vent=wind=바람=hill/coast;Petr=rock=바위=hill;Mont=mountain=산=hill;Lac=lake=호수=water;Port=harbor=항구=coast;Prat=meadow=풀밭=field;Castr=fort=요새=fort;Font=spring=샘=water'),
+            placeTail: F('ia=land of=~의 땅;ium=place of=~의 터=town/fort;um===town;ana=belonging to=~에 속한;etum=grove of=~나무 숲=forest;arium=place for=~ 두는 곳=town/fort;ona===town/coast'),
+            family: 'nomen', noble: 'de', of: 'de', titles: { m: ['Frater', 'Sanctus'], f: ['Soror', 'Sancta'] },
+        },
+        oldenglish: {
+            head: F('Ethel=noble=고귀한;Ed=wealth, fortune=부·행운;Alf=elf=요정;Os=god=신;God=god=신;Leof=dear=사랑하는;Wulf=wolf=늑대;Sig=victory=승리;Cuth=famous=이름난;Here=army=군대;Hild=battle=전투;Wil=will=의지;Beorn=warrior=전사;Ald=old=오래된;Win=friend=벗;Bert=bright=빛나는;Mild=gentle=온화한;Ceol=ship=배;Wig=battle=싸움;Swith=strong=강한'),
+            masc: F('win=friend=벗;ric=ruler=통치자;wulf=wolf=늑대;mund=protection=보호;ward=guardian=지킴이;stan=stone=돌;red=counsel=조언;frith=peace=평화;helm=helmet=투구;bert=bright=빛나는;gar=spear=창'),
+            fem: F('gyth=battle=전투;wyn=joy=기쁨;flaed=beauty=아름다움;burh=fortress=요새;thryth=strength=힘;hild=battle=전투'),
+            placeHead: F('Ash=ash tree=물푸레나무=forest;Brad=broad=넓은;Ald=old=오래된;Brom=broom=금작화=field;Thorn=thorn=가시나무=forest/field;Stan=stone=돌=hill/fort;Hart=stag=수사슴=forest;Lang=long=긴;Sut=south=남쪽;Nor=north=북쪽;Wes=west=서쪽;East=east=동쪽;Cran=crane=두루미=water;Brock=badger=오소리=forest;Fox=fox=여우=forest;Ever=wild boar=멧돼지=forest;Elm=elm=느릅나무=forest;Black=black=검은;Whit=white=흰;Hasel=hazel=개암나무=forest;Salt=salt=소금=coast;Kings=king\'s=왕의=town/fort;Chip=market=장터=town;Mil=mill=방앗간=water/town'),
+            placeTail: F('ton=farmstead=농가 마을=town/field;ham=homestead=마을=town/field;wick=dwelling, trading place=마을·장터=town;ford=river crossing=여울=water;bury=fort=성채=fort/town;ley=woodland clearing=숲속 빈터=forest/field;wood=wood=숲=forest;hurst=wooded hill=숲 언덕=forest/hill;den=valley=골짜기=hill/field;mere=lake=호수=water;well=spring=샘=water/town;stead=place=터=town/field;field=open land=들판=field;combe=valley=골짜기=hill;cliffe=cliff=절벽=hill/coast;don=hill=언덕=hill;worth=enclosure=울타리 친 땅=town/field;bourne=stream=시내=water;holt=wood=숲=forest;mouth=river mouth=하구=coast/water;port=harbor, market town=항구·장터=coast/town;ridge=ridge=산등성이=hill;brook=stream=시내=water;wold=forest upland=숲 고원=forest/hill;hithe=landing place=나루터=water/coast'),
+            family: 'english', noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] },
+        },
+        norman: {
+            head: F('Beau=beautiful=아름다운;Bel=fine=고운;Clair=clear=맑은;Fleur=flower=꽃;Gai=merry=명랑한;Dou=sweet=다정한;Blanc=white=흰;Roy=king=왕;Lys=lily=백합;Aim=loved=사랑받는;Ros=rose=장미;Jol=pretty=예쁜;Hardi=bold=대담한;Sauv=wild=야생의;Gent=noble=고귀한;Fid=faithful=믿음직한'),
+            masc: F('ard=hardy=굳센;ert=bright=빛나는;ault=rule=다스림;in=little=작은;on=little=작은;ier=one who=~하는 사람;et=little=작은'),
+            fem: F('ine=little=작은;elle=little=작은;ette=little=작은;ise==;ienne=of=~의'),
+            placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Riv=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town'),
+            placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pre=meadow=풀밭=field'),
+            family: 'french', noble: 'de', of: 'de', titles: { m: ['Frère', 'Saint'], f: ['Sœur', 'Sainte'] },
+        },
+        germanic: {
+            head: F('Adal=noble=고귀한;Bern=bear=곰;Ger=spear=창;Hild=battle=전투;Rad=counsel=조언;Sieg=victory=승리;Wolf=wolf=늑대;Gott=god=신;Kun=bold=대담한;Lud=famous=이름난;Wil=will=의지;Frid=peace=평화;Ans=god=신;Diet=people=백성;Hart=hardy=굳센;Arn=eagle=독수리;Rein=counsel=조언;Eber=boar=멧돼지;Gund=battle=전투;Irm=great=큰;Walt=rule=다스림;Ot=wealth=부'),
+            masc: F('bert=bright=빛나는;hard=hardy=굳센;mund=protection=보호;wald=rule=다스림;rich=ruler=통치자;win=friend=벗;fried=peace=평화;helm=helmet=투구;bald=bold=대담한;wig=battle=싸움;olf=wolf=늑대;brand=sword, fire=칼·불길;mar=famous=이름난'),
+            fem: F('hild=battle=전투;gard=enclosure=울타리;trud=strength=힘;lind=gentle=부드러운;burg=fortress=요새;run=secret=비밀;heid=nature=됨됨이'),
+            placeHead: F('Stein=stone=돌=hill/fort;Ross=horse=말=field;Eich=oak=참나무=forest;Lind=linden=보리수=forest/town;Wolf=wolf=늑대=forest;Hoh=high=높은=hill/fort;Neu=new=새로운=town;Alt=old=오래된;Schwarz=black=검은=forest;Weiss=white=흰;Rot=red=붉은;Grun=green=푸른=field/forest;Tann=fir=전나무=forest;Birk=birch=자작나무=forest;Fels=rock=바위=hill;Muhl=mill=방앗간=water/town;Kirch=church=교회=town;Hirsch=stag=수사슴=forest;Falk=falcon=매=hill;Sonn=sun=해;Eis=ice=얼음=hill/water;Wald=forest=숲=forest'),
+            placeTail: F('burg=fortress=성채=fort/town;berg=mountain=산=hill;heim=home=집·마을=town;dorf=village=마을=town/field;feld=field=들판=field;wald=forest=숲=forest;bach=stream=시내=water;stein=stone, rock=돌·바위=hill/fort;furt=ford=여울=water;hof=farmstead=농장=field/town;au=water meadow=물가 풀밭=water/field;hausen=houses=집들=town;see=lake=호수=water;bruck=bridge=다리=water/town;tal=valley=골짜기=hill/field;hafen=harbor=항구=coast;hain=grove=작은 숲=forest;horn=peak=봉우리=hill'),
+            family: 'place', noble: 'von', of: 'von', titles: { m: ['Bruder', 'Sankt'], f: ['Schwester', 'Sankt'] },
+        },
+        celtic: {
+            head: F('Bran=raven=큰까마귀;Cad=battle=전투;Gwen=white, blessed=흰·복된;Gwyn=white, fair=흰;Mor=great=큰;Kier=dark=어두운;Finn=fair=흰;Aed=fire=불;Con=hound=사냥개;Duv=black=검은;Bri=high=높은;Mael=follower=따르는 이;Ard=high=높은;Rua=red=붉은;Teg=fair=고운;Llew=light=빛;Bryn=hill=언덕;Fer=man=사내'),
+            masc: F('an=little=작은;in=little=작은;ach==;wyn=white=흰;gal=valor=용맹'),
+            fem: F('wen=white, blessed=흰·복된;een=little=작은;nat=little=작은;ia=='),
+            // Celtic places put the place word first: Aber + glas, Dun + more.
+            placeHead: F('Aber=river mouth=하구=coast/water;Inver=river mouth=하구=coast/water;Llan=church enclosure=교회 마을=town;Kil=church=교회=town;Dun=fort=요새=fort/hill;Caer=fort=성=fort/town;Pen=head, top=꼭대기=hill;Tre=homestead=마을=town/field;Bally=town=마을=town;Glen=valley=골짜기=hill/field;Ard=height=높은 곳=hill;Strath=wide valley=넓은 골짜기=field/hill;Loch=lake=호수=water;Ros=headland, wood=곶·숲=coast/forest;Bryn=hill=언덕=hill;Coed=wood=숲=forest;Nant=stream, valley=시냇골=water/hill;Porth=harbor=항구=coast'),
+            placeTail: F('more=great=큰;beg=small=작은;glas=blue-green=푸른;wen=white=흰;duff=black=검은;ard=high=높은;roe=red=붉은;fin=fair=흰;derry=oak wood=참나무 숲;carrick=rock=바위;lyn=lake=호수;mawr=great=큰;fach=small=작은'),
+            family: 'celtic', noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] },
+        },
+        norse: {
+            head: F('Thor=Thor (thunder god)=토르(천둥신);Ulf=wolf=늑대;Arn=eagle=독수리;Bjarn=bear=곰;Sig=victory=승리;Ragn=counsel of the gods=신들의 뜻;Gunn=battle=전투;Hall=rock=바위;As=god=신;Ing=the god Ing=잉(신);Ketil=cauldron=솥;Stein=stone=돌;Rafn=raven=큰까마귀;Frey=lord=주인;Vig=battle=싸움;Grim=mask=가면;Orm=serpent=뱀;Svan=swan=백조;Har=army=군대'),
+            masc: F('ulf=wolf=늑대;bjorn=bear=곰;mund=protection=보호;stein=stone=돌;kel=cauldron, helmet=솥·투구;vald=ruler=다스림;geir=spear=창;leif=heir=후손;vard=guardian=지킴이;fast=firm=굳은;vid=wood=나무'),
+            fem: F('frid=beautiful=아름다운;hild=battle=전투;dis=goddess=여신;run=secret=비밀;gerd=enclosure=울타리;borg=protection=보호'),
+            placeHead: F('Kirk=church=교회=town;Stain=stone=돌=hill;Ask=ash tree=물푸레나무=forest;Lang=long=긴;Brei=broad=넓은;Sand=sand=모래=coast;Fisk=fish=물고기=water/coast;Hval=whale=고래=coast;Myr=bog=늪=water/field;Hest=horse=말=field;Kald=cold=차가운;Skog=forest=숲=forest;Nor=north=북쪽;Aust=east=동쪽;Hvit=white=흰;Ulf=wolf=늑대=forest;Ravn=raven=큰까마귀;Thor=Thor=토르'),
+            placeTail: F('by=farm, village=마을=town/field;thorpe=outlying farm=외딴 농가=field;thwaite=clearing=빈터=forest/field;toft=homestead=집터=town;dale=valley=골짜기=hill/field;fell=mountain=산=hill;beck=stream=시내=water;holm=islet=작은 섬=coast/water;vik=bay=만=coast;ness=headland=곶=coast;kirk=church=교회=town;gate=street=거리=town;garth=enclosure=울타리=town/field;scar=rock, cliff=바위 절벽=hill/coast;fjord=fjord=피오르=coast;stad=place=터=town;lund=grove=작은 숲=forest;howe=mound=언덕 무덤=hill'),
+            family: 'norse', noble: 'af', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] },
+        },
+    };
+    const CACHE_ROOTS = Object.keys(CACHE);
+    const CACHE_KINDS = ['common', 'noble', 'religious'];
+    // Place kinds → which place fragments fit (none listed = any fragment).
+    const PLACE_CATS = {
+        city: ['town', 'fort'], town: ['town', 'field'], street: ['town'], building: ['town', 'fort'], transit: ['water', 'coast', 'town'],
+        park: ['field', 'town'], mountain: ['hill'], water: ['water'], forest: ['forest'], sea: ['coast', 'water'], fort: ['fort', 'hill'],
+    };
+    function isCache(form = {}) {
+        return form.method === 'cache' && (form.target === 'person' || form.target === 'place');
+    }
+    function cacheRoots(form = {}) {
+        const r = (Array.isArray(form.roots) ? form.roots : []).filter(x => CACHE_ROOTS.includes(x));
+        return r.length ? r : ['oldenglish'];
+    }
+    function cacheKinds(form = {}) {
+        const k = (Array.isArray(form.ckinds) ? form.ckinds : []).filter(x => CACHE_KINDS.includes(x));
+        return k.length ? k : ['common'];
+    }
+    const VOWEL = /[aeiouyæœ]/i;
+    // Glue two fragments: one letter where they'd double up (Wulf + frith → Wulfrith).
+    function glue(a, b) {
+        if (!a) return b;
+        if (!b) return a;
+        const last = a[a.length - 1].toLowerCase();
+        const first = b[0].toLowerCase();
+        if (last === first) return a + b.slice(1);
+        return a + b;
+    }
+    function capFirst(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
+    // Hard to say: four consonants in a row, or the same letter three times.
+    function sayable(s) {
+        const w = String(s).toLowerCase().replace(/[^a-zæœ]/g, '');
+        return !/[^aeiouyæœ]{4,}/.test(w) && !/[aeiouy]{4,}/.test(w) && !/(.)\1\1/.test(w);
+    }
+    function syllableCount(s) {
+        return (String(s).toLowerCase().match(/[aeiouyæœ]+/g) || []).length;
+    }
+    function fitCats(list, cats) {
+        if (!cats) return list;
+        const ok = list.filter(f => !f.cats || f.cats.some(c => cats.includes(c)));
+        return ok.length ? ok : list;
+    }
+    function genderOf(form, rnd) {
+        if (form.gender === 'feminine') return 'f';
+        if (form.gender === 'masculine') return 'm';
+        return rnd() < 0.5 ? 'm' : 'f';
+    }
+    // One given name: head + ending. The two parts never mean the same thing (Wulf + wulf).
+    function cacheGiven(root, g, rnd) {
+        const R = CACHE[root];
+        const tails = g === 'f' ? R.fem : R.masc;
+        for (let i = 0; i < 20; i++) {
+            const h = pick(R.head, rnd);
+            const t = pick(tails, rnd);
+            if (t.en && h.en === t.en) continue;
+            const text = glue(h.t, t.t);
+            if (!sayable(text)) continue;
+            return { text, frags: [h, t], root };
+        }
+        const h = R.head[0], t = tails[0];
+        return { text: glue(h.t, t.t), frags: [h, t], root };
+    }
+    function cachePlace(root, cats, rnd) {
+        const R = CACHE[root];
+        const heads = fitCats(R.placeHead, cats);
+        const tails = fitCats(R.placeTail, cats);
+        for (let i = 0; i < 20; i++) {
+            const h = pick(heads, rnd);
+            const t = pick(tails, rnd);
+            if (t.en && h.en === t.en) continue;
+            if (h.t.toLowerCase() === t.t.toLowerCase()) continue;
+            const text = capFirst(glue(h.t, t.t));
+            if (!sayable(text)) continue;
+            return { text, frags: [h, t], root };
+        }
+        return { text: capFirst(glue(heads[0].t, tails[0].t)), frags: [heads[0], tails[0]], root };
+    }
+    const SON = { t: 'son', en: 'son', ko: '아들' };
+    // A family name the way each root makes one.
+    function cacheFamily(root, g, rnd) {
+        const R = CACHE[root];
+        const place = () => cachePlace(root, null, rnd);
+        switch (R.family) {
+            case 'nomen': { // Roman family name: head + -ius (Silvius)
+                const h = pick(R.head, rnd);
+                return { text: glue(h.t, 'ius'), frags: [h, { t: 'ius', en: 'family of', ko: '~ 집안' }], root };
+            }
+            case 'english': { // a place (Ashford), or father's name + s / son
+                const r = rnd();
+                if (r < 0.5) return place();
+                const f = cacheGiven(root, 'm', rnd);
+                const end = r < 0.75 ? { t: 's', en: "'s (child of)", ko: '~의 (자식)' } : SON;
+                return { text: f.text + end.t, frags: [...f.frags, end], root };
+            }
+            case 'french': { // a place (Beaumont), or Le + a word (Le Blanc)
+                if (rnd() < 0.7) return place();
+                const h = pick(R.head, rnd);
+                return { text: `Le ${h.t}`, frags: [{ t: 'Le', en: 'the', ko: '그' }, h], root };
+            }
+            case 'celtic': { // Mac / O' + a given name
+                const f = cacheGiven(root, 'm', rnd);
+                const pre = rnd() < 0.6 ? { t: 'Mac', en: 'son of', ko: '~의 아들' } : { t: "O'", en: 'descendant of', ko: '~의 후손' };
+                return { text: pre.t === 'Mac' ? `Mac${f.text}` : `O'${f.text}`, frags: [pre, ...f.frags], root };
+            }
+            case 'norse': { // father's name + son (or dottir for a daughter)
+                const f = cacheGiven(root, 'm', rnd);
+                const end = g === 'f' ? { t: 'dottir', en: 'daughter', ko: '딸' } : SON;
+                const s = /s$/i.test(f.text) ? '' : 's';
+                return { text: f.text + s + end.t, frags: [...f.frags, end], root };
+            }
+            default: return place();
+        }
+    }
+    // "de" + a vowel → d'Aubeval.
+    function withParticle(p, place) {
+        if (p === 'de' && /^[aeiouy]/i.test(place)) return { joined: `d'${place}`, particle: '' };
+        return { joined: `${p} ${place}`, particle: p };
+    }
+    // One whole Cache name (one root per name for now).
+    function cacheOne(form, root, kind, rnd = Math.random) {
+        if (form.target === 'place') {
+            const p = cachePlace(root, PLACE_CATS[normalizeKind('place', form.kind)] || null, rnd);
+            return { name: p.text, frags: p.frags, root, cache: true };
+        }
+        const R = CACHE[root];
+        const g = genderOf(form, rnd);
+        const parts = (Array.isArray(form.parts) ? form.parts : ['given']).filter(p => NAME_PARTS.includes(p));
+        const fixed = parts.includes('family') ? cleanPiece(form.fixedFamily) : '';
+        const pieces = [];
+        const given = cacheGiven(root, g, rnd);
+        if (kind === 'religious') pieces.push({ role: 'title', text: pick(R.titles[g], rnd), fixed: true });
+        if (parts.includes('given') || !parts.length) pieces.push({ role: 'given', text: given.text, frags: given.frags });
+        if (parts.includes('middle')) { const m = cacheGiven(root, g, rnd); pieces.push({ role: 'middle', text: m.text, frags: m.frags }); }
+        if (kind === 'religious') {
+            // Monks and saints go by "of a place" instead of a family name.
+            const pl = cachePlace(root, null, rnd);
+            const w = withParticle(R.of, pl.text);
+            pieces.push({ role: 'origin', text: w.joined, frags: pl.frags });
+        } else if (parts.includes('family')) {
+            if (kind === 'noble') {
+                const pl = fixed ? { text: fixed } : cachePlace(root, null, rnd);
+                const w = withParticle(R.noble, pl.text);
+                if (w.particle) {
+                    pieces.push({ role: 'particle', text: w.particle, fixed: true });
+                    pieces.push(fixed ? { role: 'family', text: fixed, fixed: true } : { role: 'family', text: pl.text, frags: pl.frags });
+                } else pieces.push(fixed ? { role: 'family', text: w.joined, fixed: true } : { role: 'family', text: w.joined, frags: pl.frags });
+            } else if (fixed) pieces.push({ role: 'family', text: fixed, fixed: true });
+            else { const f = cacheFamily(root, g, rnd); pieces.push({ role: 'family', text: f.text, frags: f.frags }); }
+        }
+        if (!pieces.some(p => p.role === 'given')) pieces.splice(kind === 'religious' ? 1 : 0, 0, { role: 'given', text: given.text, frags: given.frags });
+        if (pieces.length === 1) return { name: pieces[0].text, frags: pieces[0].frags, root, cache: true };
+        return { name: pieces.map(p => p.text).join(' '), pieces, root, cache: true };
+    }
+    // Sound feel, by letters (no AI here to judge by ear).
+    const SOUND_LETTERS = { soft: /[lrmnwy]|[aeiou]/g, hard: /[ktpdgb]|c(?![eiy])|ck/g, sharp: /sh|th|[szxfv]|c(?=[eiy])/g, bright: /[ie]/g, dark: /[oua]/g };
+    function soundScore(text, sound) {
+        const re = SOUND_LETTERS[sound];
+        if (!re) return 0;
+        const w = String(text).toLowerCase();
+        return (w.match(re) || []).length / Math.max(1, w.replace(/[^a-z]/g, '').length);
+    }
+    // The part that carries length and sound: the given name, or the place name.
+    function cacheCore(n) {
+        return n.pieces ? (n.pieces.find(p => p.role === 'given')?.text || n.name) : n.name;
+    }
+    // Make `count` names: many tries each, keep the ones that fit length, sound and letters, skip the avoid list.
+    function cacheNames(form, count, avoid = [], rnd = Math.random) {
+        const roots = cacheRoots(form);
+        const kinds = cacheKinds(form);
+        const banned = new Set(avoid.map(a => String(a).toLowerCase()));
+        const must = String(form.mustContain || '').trim().toLowerCase();
+        const [lo, hi] = SYLLABLES[form.length] || SYLLABLES.any;
+        const out = [];
+        const seen = new Set();
+        // Each name takes turns through the chosen roots, starting at a random one.
+        const start = Math.floor(rnd() * roots.length);
+        for (let i = 0; i < count; i++) {
+            const root = roots[(start + i) % roots.length];
+            const pool = [];
+            for (let k = 0; k < 60; k++) {
+                const n = cacheOne(form, root, pick(kinds, rnd), rnd);
+                const texts = memoryNames(n).map(t => t.toLowerCase());
+                if (seen.has(n.name.toLowerCase()) || texts.some(t => banned.has(t))) continue;
+                pool.push(n);
+            }
+            if (!pool.length) continue;
+            let best = pool;
+            if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
+            if (form.length && form.length !== 'any') {
+                const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
+                if (m.length) best = m;
+            }
+            if (form.sound && form.sound !== 'any') {
+                best = [...best].sort((a, b) => soundScore(cacheCore(b), form.sound) - soundScore(cacheCore(a), form.sound)).slice(0, 5);
+            }
+            const n = pick(best, rnd);
+            seen.add(n.name.toLowerCase());
+            for (const t of memoryNames(n)) banned.add(t.toLowerCase());
+            out.push(n);
+        }
+        return out;
+    }
+    // Swap one part of a Cache name, the Cache way.
+    function cachePiece(src, k, form, avoid = [], rnd = Math.random) {
+        const p = src.pieces?.[k];
+        if (!p || p.fixed) return null;
+        const root = src.root || cacheRoots(form)[0];
+        const R = CACHE[root];
+        const g = genderOf(form, rnd);
+        const banned = new Set([p.text, ...avoid].map(a => String(a).toLowerCase()));
+        for (let i = 0; i < 40; i++) {
+            let next;
+            if (p.role === 'given' || p.role === 'middle') next = cacheGiven(root, g, rnd);
+            else if (p.role === 'origin') { const pl = cachePlace(root, null, rnd); next = { text: withParticle(R.of, pl.text).joined, frags: pl.frags }; }
+            else if (p.role === 'family' && src.pieces.some(q => q.role === 'particle')) next = cachePlace(root, null, rnd);
+            else if (p.role === 'family') next = cacheFamily(root, g, rnd);
+            else return null;
+            if (banned.has(next.text.toLowerCase()) || banned.has(next.text.replace(/^(de|of|von|af|d')\s?/i, '').toLowerCase())) continue;
+            return { ...p, text: next.text, frags: next.frags };
+        }
+        return null;
+    }
+    // "fragments: Ethel noble + win friend / Ash ash tree + ford river crossing · Old English"
+    function fragsHtml(r) {
+        if (!r.cache) return '';
+        const L = T();
+        const lang = detectLang();
+        const groups = r.pieces ? r.pieces.filter(p => p.frags?.length).map(p => p.frags) : (r.frags ? [r.frags] : []);
+        if (!groups.length) return '';
+        const one = f => {
+            const mean = lang === 'ko' ? f.ko : f.en;
+            return `<span class="tbd-frag"><b>${escapeHtml(f.t)}</b>${mean ? ` ${escapeHtml(mean)}` : ''}</span>`;
+        };
+        const body = groups.map(g => g.map(one).join(' + ')).join('<span class="tbd-nick-dot" aria-hidden="true"> / </span>');
+        const root = r.root && L.roots[r.root] ? ` <span class="tbd-frag-root">· ${escapeHtml(L.roots[r.root])}</span>` : '';
+        return `<div class="tbd-frags"><span class="tbd-nicks-label">${escapeHtml(L.fragments)}:</span> ${body}${root}</div>`;
+    }
+    // ✨ and swapping a variant still use the AI. It gets the roots in place of the hidden vibe,
+    // and a full name goes as one whole name.
+    function aiForm(form, src) {
+        if (!isCache(form)) return form;
+        const roots = cacheRoots(form).map(r => STRINGS.en.roots[r]).join(' and ');
+        const full = form.target === 'person' && /\s/.test(String(src?.name || ''));
+        return {
+            ...form, method: 'ai', vibe: 'custom', customVibe: `built from ${roots} name roots`, realNames: 'invented', likeText: '', extras: [], parts: ['given'],
+            ...(full ? { target: 'other', kind: 'any', kindText: 'a full name for a person; keep the same number of words and any title or "of …" part' } : {}),
+        };
+    }
+
     // ---------- settings ----------
     const DEFAULTS = {
         language: 'auto',
@@ -756,7 +1079,7 @@
         extrasOpen: false,
         moreOpen: false,
         wordNames: 'mark',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '' },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'] },
     };
 
     // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
@@ -784,6 +1107,9 @@
         if (st.wordNames !== 'filter') st.wordNames = 'mark';
         if (!REASONING_LEVELS.includes(st.reasoning)) st.reasoning = 'default';
         if (!REAL_MODES.includes(st.form.realNames)) st.form.realNames = 'invented';
+        if (st.form.method !== 'cache') st.form.method = 'ai';
+        st.form.roots = cacheRoots(st.form);
+        st.form.ckinds = cacheKinds(st.form);
         st.count = clampInt(st.count, 1, 30, 5);
         return st;
     }
@@ -1479,25 +1805,51 @@
         const isOther = form.target === 'other';
         const detailLabel = isOther ? L.otherWhat : (kinds ? L.detail : '');
         const detailPh = isOther ? L.otherPh : (L.detailPh[form.target] || '');
-        return `<div class="tbd-form">
+        // Cache mode hides the AI-only fields (they stay in the page, so the form keeps their values).
+        const cache = isCache(form);
+        const canCache = form.target === 'person' || form.target === 'place';
+        return `<div class="tbd-form${cache ? ' tbd-cache' : ''}">
+            ${canCache ? methodHtml(form) : ''}
             <label>${escapeHtml(L.target)}${selectHtml('tbd_target', L.t, form.target)}</label>
-            <label>${escapeHtml(L.vibe)}${selectHtml('tbd_vibe', L.v, form.vibe)}</label>
-            <label class="tbd-wide" id="tbd_custom_wrap"${form.vibe === 'custom' ? '' : ' hidden'}><input id="tbd_custom" class="text_pole" type="text" maxlength="80" placeholder="${escapeHtml(L.customVibePh)}" value="${escapeHtml(form.customVibe)}"></label>
+            <label class="tbd-ai-only">${escapeHtml(L.vibe)}${selectHtml('tbd_vibe', L.v, form.vibe)}</label>
+            <label class="tbd-wide tbd-ai-only" id="tbd_custom_wrap"${form.vibe === 'custom' ? '' : ' hidden'}><input id="tbd_custom" class="text_pole" type="text" maxlength="80" placeholder="${escapeHtml(L.customVibePh)}" value="${escapeHtml(form.customVibe)}"></label>
             <label id="tbd_gender_wrap"${form.target === 'person' ? '' : ' hidden'}>${escapeHtml(L.gender)}${selectHtml('tbd_gender', L.g, form.gender)}</label>
             ${kinds ? `<label id="tbd_kind_wrap">${escapeHtml(L.kind)}${selectHtml('tbd_kind', L.k[form.target], kind)}</label>` : ''}
             <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
-            ${detailLabel ? `<label class="tbd-wide" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
+            ${detailLabel ? `<label class="tbd-wide tbd-ai-only" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
+            ${cache ? cacheChipsHtml(form) : ''}
             ${form.target === 'person' ? personPartsHtml(form) : ''}
             ${moreFoldHtml(form)}
             <div class="tbd-more" id="tbd_more"${settings().moreOpen ? '' : ' hidden'}>
             <label>${escapeHtml(L.sound)}${selectHtml('tbd_sound', L.s, form.sound || 'any')}</label>
             <label>${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
-            <label>${escapeHtml(L.like)}<input id="tbd_like" class="text_pole" type="text" maxlength="${LIKE_MAX}" placeholder="${escapeHtml(L.likePh)}" value="${escapeHtml(form.likeText || '')}"></label>
-            <label>${escapeHtml(L.likeMode)}${selectHtml('tbd_likemode', L.likeModes, form.likeMode === 'feel' ? 'feel' : 'sound')}</label>
-            ${form.target === 'person' ? `<label class="tbd-wide" id="tbd_real_wrap">${escapeHtml(L.realNames)}${selectHtml('tbd_realnames', L.realOpts, realMode(form))}</label>` : ''}
+            <label class="tbd-ai-only">${escapeHtml(L.like)}<input id="tbd_like" class="text_pole" type="text" maxlength="${LIKE_MAX}" placeholder="${escapeHtml(L.likePh)}" value="${escapeHtml(form.likeText || '')}"></label>
+            <label class="tbd-ai-only">${escapeHtml(L.likeMode)}${selectHtml('tbd_likemode', L.likeModes, form.likeMode === 'feel' ? 'feel' : 'sound')}</label>
+            ${form.target === 'person' ? `<label class="tbd-wide tbd-ai-only" id="tbd_real_wrap">${escapeHtml(L.realNames)}${selectHtml('tbd_realnames', L.realOpts, realMode(form))}</label>` : ''}
             </div>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
         </div>`;
+    }
+
+    function chipHtml(group, v, label, on) {
+        return `<button type="button" class="tbd-chip" data-chip="${group}" data-v="${v}" aria-pressed="${on ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
+    }
+    // AI or Cache (people and places only).
+    function methodHtml(form) {
+        const L = T();
+        const m = isCache(form) ? 'cache' : 'ai';
+        return `<div class="tbd-wide tbd-chipset"><div class="tbd-chips-label">${escapeHtml(L.method)}</div>
+            <div class="tbd-chips">${['ai', 'cache'].map(v => chipHtml('method', v, L.methods[v], m === v)).join('')}</div></div>`;
+    }
+    // Roots (and, for people, kinds of name). Several can be on; the last one stays on.
+    function cacheChipsHtml(form) {
+        const L = T();
+        const roots = cacheRoots(form);
+        const kinds = cacheKinds(form);
+        return `<div class="tbd-wide tbd-chipset"><div class="tbd-chips-label">${escapeHtml(L.rootsLabel)}</div>
+            <div class="tbd-chips">${CACHE_ROOTS.map(v => chipHtml('root', v, L.roots[v], roots.includes(v))).join('')}</div>
+            ${form.target === 'person' ? `<div class="tbd-chips-label">${escapeHtml(L.ckLabel)}</div>
+            <div class="tbd-chips">${CACHE_KINDS.map(v => chipHtml('ckind', v, L.ck[v], kinds.includes(v))).join('')}</div>` : ''}</div>`;
     }
 
     // Toggle buttons for what a person's name is made of, plus the kept family name.
@@ -1511,7 +1863,7 @@
                 <div class="tbd-chips-label">${escapeHtml(L.parts)}</div>
                 <div class="tbd-chips">${NAME_PARTS.map(v => chip('part', v, L.pc[v], parts.includes(v))).join('')}</div>
                 ${extrasFoldHtml(extras)}
-                <div class="tbd-chips" id="tbd_extras_chips"${settings().extrasOpen ? '' : ' hidden'}>${NAME_EXTRAS.map(v => chip('extra', v, L.ex[v], extras.includes(v))).join('')}</div>
+                <div class="tbd-chips tbd-ai-only" id="tbd_extras_chips"${settings().extrasOpen ? '' : ' hidden'}>${NAME_EXTRAS.map(v => chip('extra', v, L.ex[v], extras.includes(v))).join('')}</div>
             </div>
             <label class="tbd-wide" id="tbd_fixed_wrap"${parts.includes('family') ? '' : ' hidden'}>${escapeHtml(L.fixedFamily)}<input id="tbd_fixed" class="text_pole" type="text" maxlength="40" placeholder="${escapeHtml(L.fixedFamilyPh)}" value="${escapeHtml(form.fixedFamily || '')}"></label>`;
     }
@@ -1523,9 +1875,9 @@
         const on = [];
         if (form.sound && form.sound !== 'any') on.push(`${L.sound}: ${L.s[form.sound]}`);
         if (String(form.mustContain || '').trim()) on.push(`${L.mustContain}: ${String(form.mustContain).trim()}`);
-        const like = likeWords(form);
+        const like = isCache(form) ? [] : likeWords(form);
         if (like.length) on.push(`${L.like.replace(/\s*\(.*\)\s*$/, '')}: ${like.join(', ')}`);
-        if (form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
+        if (!isCache(form) && form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
         const sum = !open && on.length ? `<span class="tbd-fold-sum">: ${escapeHtml(on.join(' · '))}</span>` : '';
         return `<button type="button" id="tbd_more_fold" class="tbd-fold tbd-wide" aria-expanded="${open ? 'true' : 'false'}"><i class="fa-solid fa-chevron-${open ? 'down' : 'right'}" aria-hidden="true"></i><span>${escapeHtml(L.more)}${sum}</span></button>`;
     }
@@ -1536,7 +1888,7 @@
         const open = !!settings().extrasOpen;
         const on = NAME_EXTRAS.filter(v => extras.includes(v)).map(v => L.ex[v]);
         const sum = !open && on.length ? `<span class="tbd-fold-sum">: ${escapeHtml(on.join(', '))}</span>` : '';
-        return `<button type="button" id="tbd_extras_fold" class="tbd-fold" aria-expanded="${open ? 'true' : 'false'}"><i class="fa-solid fa-chevron-${open ? 'down' : 'right'}" aria-hidden="true"></i><span>${escapeHtml(L.extras)}${sum}</span></button>`;
+        return `<button type="button" id="tbd_extras_fold" class="tbd-fold tbd-ai-only" aria-expanded="${open ? 'true' : 'false'}"><i class="fa-solid fa-chevron-${open ? 'down' : 'right'}" aria-hidden="true"></i><span>${escapeHtml(L.extras)}${sum}</span></button>`;
     }
 
     // Each part of a full name: tap it to copy, 🔄 to swap just that part.
@@ -1564,6 +1916,7 @@
             const realTag = r.real ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.realTip)}">${escapeHtml(L.realTag)}</span>` : '';
             const clicheTag = clicheHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.clicheTip)}">${escapeHtml(L.clicheTag)}</span>` : '';
             const canonTag = canonHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.canonTip)}">${escapeHtml(L.canonTag)}</span>` : '';
+            const cacheTag = r.cache ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.cacheTip)}">${escapeHtml(L.cacheTag)}</span>` : '';
             const nicks = showNicks && r.nicks?.length ? `<div class="tbd-nicks"><span class="tbd-nicks-label">${escapeHtml(L.nicks)}:</span>${r.nicks.map((n, k) =>
                 `${k ? '<span class="tbd-nick-dot" aria-hidden="true">·</span>' : ''}<button type="button" class="tbd-nick" data-n="${k}" title="${escapeHtml(L.nickCopy)}">${escapeHtml(n)}</button>`).join('')}</div>` : '';
             const menu = menuFor === r ? `<div class="tbd-refine-menu">${REFINE_MODES.map(m =>
@@ -1573,7 +1926,7 @@
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
-                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}${realTag}${wordTag}${clicheTag}${canonTag}</div>${nicks}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
+                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}${cacheTag}${realTag}${wordTag}${clicheTag}${canonTag}</div>${nicks}${fragsHtml(r)}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
@@ -1665,6 +2018,9 @@
             parts: Array.isArray(st.form.parts) ? st.form.parts : ['given'],
             extras: Array.isArray(st.form.extras) ? st.form.extras : [],
             fixedFamily: String($('#tbd_fixed').val() ?? st.form.fixedFamily ?? '').slice(0, 40),
+            method: st.form.method === 'cache' ? 'cache' : 'ai',
+            roots: cacheRoots(st.form),
+            ckinds: cacheKinds(st.form),
         };
         save();
         return st.form;
@@ -1680,6 +2036,7 @@
         const lang = detectLang();
         const count = st.count;
         const avoid = avoidList(st, form);
+        if (isCache(form)) { cacheGenerate(form, count, avoid, st); return; }
         const messages = buildMessages(form, rollSeeds(count, form), { lang, avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
 
         busy = true;
@@ -1719,6 +2076,23 @@
         }
     }
 
+    // Cache names are made right here: no request, no waiting.
+    function cacheGenerate(form, count, avoid, st) {
+        const made = cacheNames(form, count, avoid);
+        rawOpen = false;
+        if (!made.length) {
+            status = { kind: 'error', text: T().err(T().cacheEmpty) };
+        } else {
+            const used = { ...form };
+            results = made.map(n => ({ ...n, form: used }));
+            rememberNames(results.flatMap(memoryNames), st); refreshHistory();
+            save();
+            status = { kind: 'ok', text: T().foundCache(results.length) };
+            autoCheck(results);
+        }
+        renderResultsOnly();
+    }
+
     // ---------- reshape one name ----------
     function stopRefine() {
         if (!refining) return;
@@ -1730,9 +2104,11 @@
         if (busy || refining || !results.includes(src) || !REFINE_DESC[mode]) return;
         const st = settings();
         const L = T();
-        const form = src.form || st.form;
+        // A Cache name goes to the AI as one whole name, with its roots in place of a vibe.
+        const form = aiForm(src.form || st.form, src);
+        const base = src.cache ? { ...src, pieces: undefined } : src;
         const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
-        const messages = buildRefineMessages(src, mode, form, { lang: detectLang(), avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
+        const messages = buildRefineMessages(base, mode, form, { lang: detectLang(), avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, mode, ctl, kind: 'refine' };
         refining = job;
@@ -1740,9 +2116,9 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(3, st, !!base.pieces), signal: ctl?.signal });
             if (refining !== job) return;
-            const parsed = src.pieces ? applyShape(parseNames(raw), form) : parseNames(raw);
+            const parsed = base.pieces ? applyShape(parseNames(raw), form) : parseNames(raw);
             const kept = keepNames(parsed, avoid, form, st).slice(0, 3);
             const at = results.indexOf(src);
             if (!parsed.length) status = { kind: 'error', text: failText(raw, L), raw };
@@ -1777,12 +2153,15 @@
         const st = settings();
         const L = T();
         const lang = detectLang();
-        const form = src.form || st.form;
-        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
         const isVariant = (src.depth || 0) > 0 && src.from && REFINE_DESC[src.tag];
+        // A first-round Cache name is remade from the cache, right away and for free.
+        if (!isVariant && src.cache) { cacheReroll(src, st); return; }
+        const from = isVariant && src.from.cache ? { ...src.from, pieces: undefined } : src.from;
+        const form = aiForm(src.form || st.form, isVariant ? src.from : src);
+        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
         const nicks = nickOn(form, st);
         const messages = isVariant
-            ? buildRefineMessages(src.from, src.tag, form, { lang, avoid, count: 1, reading: !!st.showReading, nicks })
+            ? buildRefineMessages(from, src.tag, form, { lang, avoid, count: 1, reading: !!st.showReading, nicks })
             : buildMessages(form, rollSeeds(1, form), { lang, avoid, reading: !!st.showReading, nicks });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, ctl, kind: 'reroll' };
@@ -1793,7 +2172,7 @@
         try {
             const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
             if (refining !== job) return;
-            const parsed = applyShape(parseNames(raw), form);
+            const parsed = isVariant && !from.pieces ? parseNames(raw) : applyShape(parseNames(raw), form);
             const kept = keepNames(parsed, avoid, form, st);
             const at = results.indexOf(src);
             if (!parsed.length) status = { kind: 'error', text: failText(raw, L), raw };
@@ -1824,11 +2203,51 @@
         }
     }
 
+    function cacheReroll(src, st) {
+        const form = src.form || st.form;
+        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
+        const one = { ...form, roots: [src.root || cacheRoots(form)[0]] };
+        const [n] = cacheNames(one, 1, avoid);
+        const at = results.indexOf(src);
+        if (!n) status = { kind: 'error', text: T().err(T().cacheEmpty) };
+        else if (at !== -1) {
+            const fresh = { ...n, form: src.form };
+            const depth = src.depth || 0;
+            let end = at + 1;
+            while (end < results.length && (results[end].depth || 0) > depth) end++;
+            results.splice(at, end - at, fresh);
+            rememberNames(memoryNames(fresh), st); refreshHistory();
+            save();
+            status = { kind: 'ok', text: T().rerolled };
+            autoCheck([fresh]);
+        }
+        menuFor = null;
+        renderResultsOnly();
+    }
+    function cacheRerollPiece(src, k, st) {
+        const form = src.form || st.form;
+        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
+        const next = cachePiece(src, k, form, avoid);
+        if (!next) status = { kind: 'error', text: T().err(T().cacheEmpty) };
+        else {
+            src.pieces = src.pieces.map((p, j) => (j === k ? next : p));
+            src.name = src.pieces.map(p => p.text).join(' ');
+            delete src.check;
+            if (NAME_ROLES.includes(next.role)) { rememberNames([next.text], st); refreshHistory(); }
+            save();
+            status = { kind: 'ok', text: T().pieceRerolled };
+            autoCheck([src]);
+        }
+        menuFor = null;
+        renderResultsOnly();
+    }
+
     // Swap one part of a full name (keep "Holloway", swap "Mira").
     async function rerollPiece(src, k) {
         if (busy || refining || !results.includes(src)) return;
         const piece = src.pieces?.[k];
         if (!piece || piece.fixed) return;
+        if (src.cache) { cacheRerollPiece(src, k, settings()); return; }
         const st = settings();
         const L = T();
         const form = src.form || st.form;
@@ -2147,7 +2566,26 @@
         });
         $doc.on('click', '#tbd_panel .tbd-chip', function () {
             const form = readForm();
-            const key = $(this).data('chip') === 'part' ? 'parts' : 'extras';
+            const group = String($(this).data('chip'));
+            const v0 = String($(this).data('v'));
+            if (group === 'method') {
+                if (form.method === v0) return;
+                form.method = v0 === 'cache' ? 'cache' : 'ai';
+                save();
+                render();
+                return;
+            }
+            if (group === 'root' || group === 'ckind') {
+                const key = group === 'root' ? 'roots' : 'ckinds';
+                const all = group === 'root' ? CACHE_ROOTS : CACHE_KINDS;
+                const set = new Set(form[key]);
+                if (set.has(v0)) { if (set.size === 1) return; set.delete(v0); } else set.add(v0);
+                form[key] = all.filter(x => set.has(x));
+                $(this).attr('aria-pressed', set.has(v0) ? 'true' : 'false');
+                save();
+                return;
+            }
+            const key = group === 'part' ? 'parts' : 'extras';
             const v = String($(this).data('v'));
             const list = new Set(form[key]);
             if (list.has(v)) list.delete(v); else list.add(v);
@@ -2228,6 +2666,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
+            CACHE, CACHE_ROOTS, isCache, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
         };

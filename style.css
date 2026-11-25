@@ -720,3 +720,9 @@
 }
 .tbd-check-ai { flex-basis: 100%; color: var(--tbd-fg); }
 .tbd-check-ai .tbd-tag { margin-left: 0; }
+
+/* v0.2.0: Cache mode hides the AI-only fields; fragments line under each Cache name */
+.tbd-form.tbd-cache .tbd-ai-only { display: none !important; }
+.tbd-frags { margin: 1px 0 2px; font-size: 12px; color: var(--tbd-dim); line-height: 1.5; }
+.tbd-frag b { color: var(--tbd-fg); font-weight: bold; }
+.tbd-frag-root { white-space: nowrap; }

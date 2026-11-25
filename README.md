@@ -8,9 +8,10 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.24)
+## Features (v0.2.0)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
+- **Made with: AI or Cache** (people and places). **Cache** builds names from fragments kept inside the extension, with no AI and no cost: pick roots (Latin, Old English, Norman / French, Germanic, Celtic, Norse) and, for people, the kind of name (common name, noble house, monastic / saint). Places follow the place kind (forest, lake, mountain…). Each name shows its **fragments** and what they mean, e.g. `Ash ash tree + ford river crossing · Old English`. With several roots, each name takes one root in turn. Length, sound feel and must-contain letters still apply; vibe, "Like this" and real names are hidden in Cache mode. 🔄 and swapping a part stay in the cache; ✨ uses the AI. Cache names have no reading yet
 - Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length. Less-used ones (sound feel, letters the name must contain, "Like this", real names) fold into **More options**; folded, the line still shows what you changed
 - "Like this": type a name or word (Elric, Aldous) and get names that sound like it (similar rhythm, and each name echoes a different part: start, vowels, ending…; it wins over the vibe), or share its feel (same flavor and era, other sounds). The word itself never comes back. For full names it steers the given name
 - Kind for places, shops and items, in everyday groups that fit any setting (street, station, repair shop, florist, vehicle, medicine, gadget…) or your own words
@@ -71,9 +72,8 @@ Find **TBD — Name Not Found** in the Extensions panel, or press ⚙ next to �
 
 ## Planned
 
-- Name pools by root (Latin, Old English, Norman/French, Germanic, Celtic…) × kind (noble houses, monastic/saints, place names, given names)
-- "Mix" mode that blends several roots into one name, with a ratio slider
-- Random-only mode that works without any API
+- Cache + AI: fragments as a skeleton, the AI smooths the sound (with readings and notes)
+- Several roots in one name ("mix"), and My cache for your own name lists
 - Real names from Wikidata, a "dig deeper into this root" button, favorites, and skipping names already in your chat or lorebook
 - More themes
 

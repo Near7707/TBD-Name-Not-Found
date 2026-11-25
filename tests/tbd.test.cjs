@@ -916,3 +916,108 @@ test('v0.1.24: 🔎 button on every name, AI check asks plainly, "real" tooltip 
     assert.match(api.STRINGS.ko.realTip, /🔎/);
     assert.match(api.STRINGS.en.sCheckHint, /not a legal trademark check/);
 });
+
+test('v0.2.0: every Cache root makes sayable people and places, and says what each fragment means', () => {
+    const { api } = load();
+    for (const root of api.CACHE_ROOTS) {
+        const R = api.CACHE[root];
+        for (const k of ['head', 'masc', 'fem', 'placeHead', 'placeTail']) assert.ok(R[k].length >= 4, `${root}.${k}`);
+        for (const f of [...R.head, ...R.placeHead]) assert.ok(f.en && f.ko, `${root}: ${f.t} has a meaning`);
+        // Endings may have no meaning, but then neither language has one (no category slipped into the meaning).
+        for (const f of [...R.masc, ...R.fem, ...R.placeTail]) assert.ok(!!f.en === !!f.ko && !/^(town|water|forest|hill|field|fort|coast)/.test(f.ko), `${root}: ${f.t}`);
+        const people = api.cacheNames({ target: 'person', method: 'cache', roots: [root], parts: ['given'] }, 8, [], seeded(11));
+        const places = api.cacheNames({ target: 'place', method: 'cache', roots: [root] }, 8, [], seeded(12));
+        assert.equal(people.length, 8);
+        assert.equal(places.length, 8);
+        for (const n of [...people, ...places]) {
+            assert.ok(n.cache && n.root === root && n.frags?.length === 2, n.name);
+            assert.ok(api.sayable(n.name), n.name);
+            assert.match(n.name, /^[A-Z]/);
+        }
+        assert.equal(new Set(people.map(n => n.name)).size, 8, 'no repeats in one batch');
+    }
+});
+
+test('v0.2.0: noble houses, monks and saints, family names per root', () => {
+    const { api } = load();
+    const rnd = seeded(21);
+    const noble = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'masculine' }, 'germanic', 'noble', rnd);
+    assert.deepEqual([...noble.pieces.map(p => p.role)], ['given', 'particle', 'family']);
+    assert.equal(noble.pieces[1].text, 'von');
+    assert.ok(noble.pieces[1].fixed, 'the particle has no swap button');
+    const kept = api.cacheOne({ target: 'person', parts: ['given', 'family'], fixedFamily: 'Holloway' }, 'norman', 'noble', rnd);
+    assert.match(kept.name, / de Holloway$/);
+    const monk = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'feminine' }, 'latin', 'religious', rnd);
+    assert.deepEqual([...monk.pieces.map(p => p.role)], ['title', 'given', 'origin']);
+    assert.ok(['Soror', 'Sancta'].includes(monk.pieces[0].text));
+    assert.match(monk.pieces[2].text, /^(de |d')/);
+    // "de" before a vowel becomes d'.
+    for (let i = 0; i < 40; i++) {
+        const n = api.cacheOne({ target: 'person', parts: ['given', 'family'] }, 'norman', 'noble', rnd);
+        assert.ok(!/\bde [AEIOUY]/.test(n.name), n.name);
+    }
+    const daughter = api.cacheFamily('norse', 'f', rnd);
+    assert.match(daughter.text, /dottir$/);
+    assert.match(api.cacheFamily('norse', 'm', rnd).text, /son$/);
+    assert.match(api.cacheFamily('celtic', 'm', rnd).text, /^(Mac|O')/);
+    assert.equal(api.glue('Wulf', 'frith'), 'Wulfrith');
+});
+
+test('v0.2.0: Cache follows place kind, length, sound, letters and the avoid list', () => {
+    const { api } = load();
+    const water = api.cacheNames({ target: 'place', method: 'cache', roots: ['oldenglish'], kind: 'water' }, 10, [], seeded(31));
+    const waterTails = new Set(api.CACHE.oldenglish.placeTail.filter(f => f.cats?.includes('water')).map(f => f.t));
+    for (const n of water) assert.ok(waterTails.has(n.frags[1].t), n.name);
+    const must = api.cacheNames({ target: 'person', method: 'cache', roots: ['oldenglish'], parts: ['given'], mustContain: 'win' }, 5, [], seeded(32));
+    assert.ok(must.every(n => n.name.toLowerCase().includes('win')));
+    const short = api.cacheNames({ target: 'person', method: 'cache', roots: ['norse'], parts: ['given'], length: 'short' }, 5, [], seeded(33));
+    assert.ok(short.every(n => (n.name.toLowerCase().match(/[aeiouy]+/g) || []).length <= 2), short.map(n => n.name).join());
+    const first = api.cacheNames({ target: 'place', method: 'cache', roots: ['celtic'] }, 3, [], seeded(34));
+    const again = api.cacheNames({ target: 'place', method: 'cache', roots: ['celtic'] }, 3, first.map(n => n.name), seeded(34));
+    assert.ok(again.every(n => !first.some(f => f.name === n.name)));
+    // Two roots take turns.
+    const both = api.cacheNames({ target: 'place', method: 'cache', roots: ['latin', 'norse'] }, 4, [], seeded(35));
+    assert.deepEqual([...new Set(both.map(n => n.root))].sort(), ['latin', 'norse']);
+    assert.ok(api.soundScore('Lilwen', 'soft') > api.soundScore('Gattbek', 'soft'));
+});
+
+test('v0.2.0: swapping one part stays in the cache; ✨ gets the roots instead of the hidden vibe', () => {
+    const { api } = load();
+    const form = { target: 'person', method: 'cache', roots: ['oldenglish'], ckinds: ['noble'], parts: ['given', 'family'] };
+    const src = api.cacheOne(form, 'oldenglish', 'noble', seeded(41));
+    const k = src.pieces.findIndex(p => p.role === 'family');
+    const next = api.cachePiece(src, k, form, [], seeded(42));
+    assert.ok(next && next.text !== src.pieces[k].text && next.frags?.length);
+    assert.equal(api.cachePiece(src, src.pieces.findIndex(p => p.role === 'particle'), form), null);
+    const ai = api.aiForm({ ...form, vibe: 'cosmic', realNames: 'only', likeText: 'Elric' }, src);
+    assert.equal(ai.vibe, 'custom');
+    assert.match(ai.customVibe, /Old English name roots/);
+    assert.equal(ai.realNames, 'invented');
+    assert.equal(ai.likeText, '');
+    assert.equal(ai.target, 'other', 'a full name goes as one whole name');
+    assert.equal(api.aiForm({ ...form, parts: ['given'] }, { name: 'Edwin' }).target, 'person');
+    const notCache = { target: 'shop', method: 'cache' };
+    assert.equal(api.isCache(notCache), false);
+    assert.equal(api.aiForm(notCache, {}), notCache);
+});
+
+test('v0.2.0: the form shows AI / Cache for people and places, roots and kinds in Cache mode, and the fragments line', () => {
+    const { api } = load({ lang: 'ko' });
+    api.settings();
+    const cache = api.formHtml({ target: 'person', method: 'cache', roots: ['latin'], ckinds: ['common'], parts: ['given'], extras: [] });
+    assert.match(cache, /tbd-form tbd-cache/);
+    assert.match(cache, /data-chip="method" data-v="cache" aria-pressed="true"/);
+    assert.match(cache, /data-chip="root" data-v="latin" aria-pressed="true"/);
+    assert.match(cache, /수도원·성인/);
+    assert.match(cache, /class="tbd-ai-only">분위기/);
+    const place = api.formHtml({ target: 'place', method: 'cache', roots: ['latin'] });
+    assert.ok(!/data-chip="ckind"/.test(place), 'places use the kind select instead');
+    const shop = api.formHtml({ target: 'shop', method: 'cache' });
+    assert.ok(!/data-chip="method"/.test(shop) && !/tbd-cache/.test(shop));
+    const n = api.cacheNames({ target: 'place', method: 'cache', roots: ['oldenglish'] }, 1, [], seeded(51))[0];
+    const line = api.fragsHtml(n).replace(/<[^>]+>/g, '');
+    assert.match(line, /^fragments: \S+ .+ \+ \S+ .+ · 옛 영어$/);
+    api.setResults([{ ...n, form: { target: 'place', method: 'cache' } }]);
+    assert.match(api.resultsHtml(), /CACHE/);
+    assert.equal(api.fragsHtml({ name: 'X' }), '');
+});
