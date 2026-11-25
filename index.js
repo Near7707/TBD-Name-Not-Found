@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.13
+// TBD — Name Not Found v0.1.14
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -24,6 +24,9 @@
             found: n => `200 OK — ${n} name${n === 1 ? '' : 's'} found`,
             foundCut: n => `206 — the answer was cut off; ${n} name${n === 1 ? '' : 's'} saved. Raise "Max response tokens" in settings.`,
             cutFail: 'The answer was cut off. Raise "Max response tokens" in settings and try again.',
+            emptyFail: 'The AI only thought and wrote no answer. Raise "Max response tokens" in settings (thinking models may need 6000+).',
+            showRaw: 'See the answer', hideRaw: 'Hide the answer', rawEmpty: '(empty — nothing came back but the thinking, if any)',
+            sPreset: "Send the connection profile's preset too", sPresetHint: 'Turn off if a roleplay preset makes the AI answer in character instead of listing names.',
             err: m => `500 — ${m}`,
             cancelled: '499 — cancelled',
             busy: 'Already searching. Wait or cancel first.',
@@ -85,6 +88,9 @@
             found: n => `200 OK — 이름 ${n}개 찾음`,
             foundCut: n => `206 — 답이 중간에 잘려서 ${n}개만 건졌어요. 설정에서 최대 응답 토큰을 늘려 보세요.`,
             cutFail: '답이 중간에 잘렸어요. 설정에서 최대 응답 토큰을 늘리고 다시 해 보세요.',
+            emptyFail: 'AI가 생각만 하고 답을 안 썼어요. 설정에서 최대 응답 토큰을 늘려 보세요(생각하는 모델은 6000 이상 필요할 수 있어요).',
+            showRaw: '받은 답 보기', hideRaw: '받은 답 접기', rawEmpty: '(비어 있음 — 생각 말고는 아무것도 안 왔어요)',
+            sPreset: '연결 프로필의 프리셋도 같이 보내기', sPresetHint: '롤플레이 프리셋 때문에 AI가 이름 대신 롤플레이로 답하면 꺼 보세요.',
             err: m => `500 — ${m}`,
             cancelled: '499 — 취소함',
             busy: '이미 찾는 중이에요. 기다리거나 먼저 취소해 주세요.',
@@ -446,6 +452,7 @@
         theme: 'st',
         effects: true,
         rememberHistory: true,
+        sendPreset: true,
         historySize: 200,
         history: [],
         banList: '',
@@ -832,6 +839,15 @@
         try { JSON.parse(text.slice(start, text.lastIndexOf(']') + 1)); return false; } catch { return true; }
     }
 
+    // Nothing left once the thinking is gone (also an unclosed <think> that ate all the tokens).
+    function answerEmpty(raw) {
+        return !stripThinking(raw).replace(/<think(?:ing)?>[\s\S]*$/i, '').replace(/```(?:json)?/gi, '').trim();
+    }
+    // Which "couldn't read it" message fits this answer.
+    function failText(raw, L = T()) {
+        return L.err(answerEmpty(raw) ? L.emptyFail : answerCut(raw) ? L.cutFail : L.parseFail);
+    }
+
     function parseNames(raw) {
         const text = stripThinking(raw).replace(/```(?:json)?/gi, '');
         const out = [];
@@ -888,16 +904,23 @@
         return ctx().extensionSettings?.connectionManager?.profiles || [];
     }
 
-    async function requestLLM(messages, { profileId, maxTokens, signal } = {}) {
+    async function requestLLM(messages, { profileId, maxTokens, signal, sendPreset = true } = {}) {
         const c = ctx();
         signal?.throwIfAborted();
-        const content = res => typeof res === 'string' ? res : (res?.content ?? '');
+        // Thinking that came back separately is kept (as <think>…</think>) so "See the answer" can show it.
+        // It is stripped before reading names, so it never turns into a name.
+        const content = res => {
+            if (typeof res === 'string') return res;
+            const text = String(res?.content ?? '');
+            const thought = String(res?.reasoning ?? res?.reasoning_content ?? '').trim();
+            return thought && !/<think/i.test(text) ? `<think>${thought}</think>\n${text}` : text;
+        };
 
         if (profileId) {
             const svc = c.ConnectionManagerRequestService;
             if (!svc) throw new Error(T().noProfileApi);
             const res = await svc.sendRequest(profileId, messages, maxTokens, {
-                stream: false, signal, extractData: true, includePreset: true, includeInstruct: true,
+                stream: false, signal, extractData: true, includePreset: !!sendPreset, includeInstruct: true,
             });
             return content(res);
         }
@@ -946,6 +969,7 @@
     let controller = null;
     let results = [];
     let status = { kind: 'idle', text: '' };
+    let rawOpen = false; // "see the answer" box, closed again on each new request
     let loadingTimer = null;
     let menuFor = null;   // the result whose reshape menu is open
     let refining = null;  // { src, mode, ctl } while a reshape request runs
@@ -1082,7 +1106,11 @@
     function footerHtml() {
         const L = T();
         const again = results.length && !busy && !refining ? `<button id="tbd_again" class="tbd-small-btn"><i class="fa-solid fa-rotate"></i> ${escapeHtml(L.again)}</button>` : '';
-        return `<span class="tbd-status tbd-status-${status.kind}">${escapeHtml(status.text)}</span>${again}`;
+        // When an answer couldn't be used, let the user see what actually came back.
+        const hasRaw = status.kind === 'error' && typeof status.raw === 'string';
+        const rawBtn = hasRaw ? `<button id="tbd_raw_btn" class="tbd-small-btn" aria-expanded="${rawOpen}">${escapeHtml(rawOpen ? L.hideRaw : L.showRaw)}</button>` : '';
+        const rawBox = hasRaw && rawOpen ? `<pre class="tbd-raw">${escapeHtml(status.raw.trim() ? status.raw.slice(0, 20000) : L.rawEmpty)}</pre>` : '';
+        return `<span class="tbd-status tbd-status-${status.kind}">${escapeHtml(status.text)}</span>${rawBtn}${again}${rawBox}`;
     }
 
     function panelClasses(st = settings()) {
@@ -1176,19 +1204,19 @@
         busy = true;
         controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const myController = controller;
-        status = { kind: 'busy', text: '' };
+        status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(count, st, !!nameShape(form)), signal: myController?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: st.sendPreset !== false, maxTokens: tokensFor(count, st, !!nameShape(form)), signal: myController?.signal });
             if (myController && myController.signal.aborted) return;
             if (controller !== myController) return;
             const parsed = applyShape(parseNames(raw), form);
             const kept = keepNames(parsed, avoid, form, st);
             const cut = answerCut(raw);
             if (!parsed.length) {
-                status = { kind: 'error', text: T().err(cut ? T().cutFail : T().parseFail) };
+                status = { kind: 'error', text: failText(raw), raw };
             } else if (!kept.length) {
-                status = { kind: 'error', text: T().err(T().allFiltered) };
+                status = { kind: 'error', text: T().err(T().allFiltered), raw };
             } else {
                 const used = { ...form };
                 results = kept.slice(0, count).map(k => ({ ...k, form: used }));
@@ -1227,16 +1255,16 @@
         const job = { src, mode, ctl, kind: 'refine' };
         refining = job;
         menuFor = null;
-        status = { kind: 'busy', text: '' };
+        status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: st.sendPreset !== false, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = src.pieces ? applyShape(parseNames(raw), form) : parseNames(raw);
             const kept = keepNames(parsed, avoid, form, st).slice(0, 3);
             const at = results.indexOf(src);
-            if (!parsed.length) status = { kind: 'error', text: L.err(answerCut(raw) ? L.cutFail : L.parseFail) };
-            else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
+            if (!parsed.length) status = { kind: 'error', text: failText(raw, L), raw };
+            else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered), raw };
             else if (at !== -1) {
                 // Put the variants under their source, after any variants it already has.
                 const depth = src.depth || 0;
@@ -1276,16 +1304,16 @@
         const job = { src, ctl, kind: 'reroll' };
         refining = job;
         menuFor = null;
-        status = { kind: 'busy', text: '' };
+        status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: st.sendPreset !== false, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = applyShape(parseNames(raw), form);
             const kept = keepNames(parsed, avoid, form, st);
             const at = results.indexOf(src);
-            if (!parsed.length) status = { kind: 'error', text: L.err(answerCut(raw) ? L.cutFail : L.parseFail) };
-            else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
+            if (!parsed.length) status = { kind: 'error', text: failText(raw, L), raw };
+            else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered), raw };
             else if (at !== -1) {
                 const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces };
                 if (!fresh.pieces) delete fresh.pieces;
@@ -1325,15 +1353,15 @@
         const job = { src, ctl, kind: 'piece' };
         refining = job;
         menuFor = null;
-        status = { kind: 'busy', text: '' };
+        status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(1, st), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: st.sendPreset !== false, maxTokens: tokensFor(1, st), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = parseNames(raw);
             const text = cleanPiece(parsed[0]?.name);
             const banned = new Set(avoid.map(a => a.toLowerCase()));
-            if (!text) status = { kind: 'error', text: L.err(answerCut(raw) ? L.cutFail : L.parseFail) };
+            if (!text) status = { kind: 'error', text: failText(raw, L), raw };
             else if (text.toLowerCase() === piece.text.toLowerCase() || (NAME_ROLES.includes(piece.role) && banned.has(text.toLowerCase()))
                 || likeWords(form).some(w => w.toLowerCase() === text.toLowerCase())
                 || (st.wordNames === 'filter' && WORD_CHECK_ROLES.includes(piece.role) && WORD_NAMES.has(text.toLowerCase()))) {
@@ -1429,6 +1457,8 @@
             <label class="checkbox_label"><input id="${id('fx')}" type="checkbox" data-tbd-set="fx"><span>${escapeHtml(L.sEffects)}</span></label>
             <label class="checkbox_label"><input id="${id('reading')}" type="checkbox" data-tbd-set="reading"><span>${escapeHtml(L.sReading)}</span></label>
             <label for="${id('words')}">${escapeHtml(L.sWords)}</label>${sel('words', optionList(L.sWordOpts, st.wordNames))}
+            <label class="checkbox_label"><input id="${id('preset')}" type="checkbox" data-tbd-set="preset"><span>${escapeHtml(L.sPreset)}</span></label>
+            <small>${escapeHtml(L.sPresetHint)}</small>
             <label class="checkbox_label"><input id="${id('hist')}" type="checkbox" data-tbd-set="hist"><span>${escapeHtml(L.sHistory)}</span></label>
             <details class="tbd-hist"><summary>${escapeHtml(L.sHistoryShow.replace('{n}', String(st.history.length)))}</summary><div class="tbd-hist-list"></div></details>
             <div><button type="button" class="${inPanel ? 'tbd-small-btn' : 'menu_button'} tbd-hist-clear">${escapeHtml(L.sHistoryClear)}</button></div>
@@ -1455,7 +1485,7 @@
         const values = {
             lang: st.language, profile: st.profileId, words: st.wordNames, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
         };
-        const checks = { fx: !!st.effects, reading: !!st.showReading, hist: !!st.rememberHistory };
+        const checks = { fx: !!st.effects, reading: !!st.showReading, hist: !!st.rememberHistory, preset: st.sendPreset !== false };
         $('[data-tbd-set]').each(function () {
             if (this === except) return;
             const key = this.getAttribute('data-tbd-set');
@@ -1511,6 +1541,7 @@
             case 'reading': st.showReading = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
             case 'words': st.wordNames = $el.val() === 'filter' ? 'filter' : 'mark'; save(); renderResultsOnly(); syncSettingFields(); return;
             case 'hist': st.rememberHistory = !!$el.prop('checked'); break;
+            case 'preset': st.sendPreset = !!$el.prop('checked'); break;
             case 'ban': st.banList = String($el.val() || ''); break;
             default: return;
         }
@@ -1575,6 +1606,7 @@
             save();
             refreshHistory();
         });
+        $doc.on('click', '#tbd_raw_btn', () => { rawOpen = !rawOpen; $('#tbd_foot').html(footerHtml()); });
         $doc.on('click', '#tbd_go', generate);
         $doc.on('click', '#tbd_again', generate);
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
@@ -1650,7 +1682,7 @@
             rollSeeds, buildMessages, buildRefineMessages, REFINE_MODES, parseNames, filterNames, avoidList, rememberNames, detectLang,
             tokensFor, settings, historyHtml, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
-            wordHits, keepNames, WORD_NAMES, answerCut, looksLikeName, likeWords, likeRule, isLikeCopy,
+            wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
         };
     } else {
         if (typeof $ === 'function' && document.body) settingsSlot();

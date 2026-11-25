@@ -500,3 +500,46 @@ test('v0.1.13: "like this" words steer the prompt, drop random nudges, and never
         assert.ok(L.like && L.likePh && L.likeMode && L.likeModes.sound && L.likeModes.feel);
     }
 });
+
+test('v0.1.14: empty answers get their own message, and the preset can stay home', async () => {
+    const { api, extensionSettings } = load();
+    const L = api.STRINGS.ko;
+    assert.equal(api.answerEmpty(''), true);
+    assert.equal(api.answerEmpty('<think>long thought</think>\n  '), true);
+    assert.equal(api.answerEmpty('<think>thinking that never ended'), true);
+    assert.equal(api.answerEmpty('Sure! Here are some names.'), false);
+    assert.ok(api.failText('<think>x</think>', L).includes(L.emptyFail));
+    assert.ok(api.failText('[{"name": "Ab', L).includes(L.cutFail));
+    assert.ok(api.failText('I can help with that.', L).includes(L.parseFail));
+    for (const lang of ['en', 'ko']) {
+        const S = api.STRINGS[lang];
+        assert.ok(S.emptyFail && S.showRaw && S.hideRaw && S.rawEmpty && S.sPreset && S.sPresetHint);
+    }
+    assert.equal(api.settings().sendPreset, true);
+});
+
+test('v0.1.14: profile requests pass the preset choice and keep separate thinking for "see the answer"', async () => {
+    const calls = [];
+    const hook = {};
+    const ctxObj = {
+        extensionSettings: {},
+        saveSettingsDebounced() {},
+        ConnectionManagerRequestService: { sendRequest: async (id, msgs, max, o) => { calls.push(o); return { content: '', reasoning: 'hmm, names…' }; } },
+    };
+    const sandbox = {
+        __TBD_TEST__: hook, SillyTavern: { getContext: () => ctxObj },
+        localStorage: { getItem: () => null }, navigator: { language: 'en-US' },
+        document: { getElementById: () => null }, jQuery: () => { throw new Error('no init'); },
+    };
+    sandbox.globalThis = sandbox;
+    vm.runInNewContext(source, sandbox);
+    const api = hook.api;
+    const raw = await api.requestLLM([], { profileId: 'p1', maxTokens: 100, sendPreset: false });
+    assert.equal(calls[0].includePreset, false);
+    assert.equal(calls[0].includeInstruct, true);
+    assert.ok(raw.includes('hmm, names'));
+    assert.equal(api.answerEmpty(raw), true);
+    assert.equal(api.parseNames(raw).length, 0);
+    await api.requestLLM([], { profileId: 'p1', maxTokens: 100 });
+    assert.equal(calls[1].includePreset, true);
+});
