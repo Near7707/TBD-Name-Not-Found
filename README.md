@@ -8,10 +8,11 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.12)
+## Features (v0.1.13)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
 - Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length, sound feel, letters the name must contain
+- "Like this": type a name or word (Elric, Aldous) and get names that sound like it, or share its feel (same flavor and era, other sounds). The word itself never comes back. For full names it steers the given name
 - Kind for places, shops and items, in everyday groups that fit any setting (street, station, repair shop, florist, vehicle, medicine, gadget…) or your own words
 - Full names for people: pick the parts (given / middle / family) and extras (title, noble particle, place of origin, father's-name surname, nickname, religious name, codename, alias). Family names follow the vibe. Keep one family name to name a whole family. Extras fold into one line and show which ones are on
 - Each part of a full name shows below it: tap to copy just that part, 🔄 to swap just that part
@@ -30,6 +31,7 @@ AI models tend to give the same few names no matter which one you use. TBD rolls
 - If an answer gets cut off, the finished names are still kept and the status line says to raise max response tokens
 - Avoid list: common AI clichés + your own list + names you got before (can be turned off or cleared). See past names in settings and forget them one by one
 - Themes: Follow SillyTavern (default), Terminal, Blue screen, Kernel panic, Glass (dark), Glass (clear), Old error box, Warning tape, Neon glitch
+- The top bar (⚙ and ✕) stays in place while you scroll
 - Moving effects can be turned off; they're lighter on phones and respect "reduce motion"
 - English and Korean interface
 

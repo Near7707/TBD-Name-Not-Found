@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.12
+// TBD — Name Not Found v0.1.13
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -14,6 +14,7 @@
             tagline: "Name Not Found. Let's make one!",
             target: 'Target', vibe: 'Vibe', gender: 'Gender', length: 'Length', sound: 'Sound', mustContain: 'Must contain',
             customVibePh: 'e.g. foggy harbor town', mustContainPh: 'e.g. ren',
+            like: 'Like this (optional)', likePh: 'e.g. Elric, Aldous', likeMode: 'Alike in', likeModes: { sound: 'Sound', feel: 'Feel' },
             find: 'Find names', cancel: 'Cancel', again: 'Roll again',
             copy: 'Copy', close: 'Close',
             copied: 'Copied', copyFail: "Couldn't copy. Select the text and copy it yourself.",
@@ -74,6 +75,7 @@
             tagline: "Name Not Found. Let's make one!", // kept in English on purpose (part of the 404 look)
             target: '대상', vibe: '분위기', gender: '성별', length: '길이', sound: '소리 느낌', mustContain: '꼭 들어갈 글자',
             customVibePh: '예: 안개 낀 항구 마을', mustContainPh: '예: ren',
+            like: '비슷하게 (안 써도 됨)', likePh: '예: Elric, Aldous', likeMode: '어떻게 비슷하게', likeModes: { sound: '소리', feel: '느낌' },
             find: '이름 찾기', cancel: '취소', again: '다시 뽑기',
             copy: '복사', close: '닫기',
             copied: '복사했어요', copyFail: '복사가 안 됐어요. 글자를 직접 골라서 복사해 주세요.',
@@ -189,9 +191,21 @@
         else return [];
         return texts.map(t => String(t).trim().toLowerCase()).filter(t => WORD_NAMES.has(t)).map(w => ({ word: w, ko: WORD_NAMES.get(w) }));
     }
-    // Avoid list + repeats, then real words too when the user chose to filter them.
+    // "Like this" words: up to 5, split on commas or new lines.
+    const LIKE_MAX = 60;
+    function likeWords(form = {}) {
+        return [...new Set(String(form.likeText || '').slice(0, LIKE_MAX).split(/[,，、\n]+/).map(w => w.trim()).filter(Boolean))].slice(0, 5);
+    }
+    // The typed word itself coming back is no help, so drop exact copies (the whole name, or any invented part).
+    function isLikeCopy(n, form) {
+        const words = new Set(likeWords(form).map(w => w.toLowerCase()));
+        if (!words.size) return false;
+        const texts = n.pieces ? n.pieces.filter(p => !p.fixed).map(p => p.text) : [n.name];
+        return texts.some(t => words.has(String(t).trim().toLowerCase()));
+    }
+    // Avoid list + repeats + copies of the "like this" words, then real words too when the user chose to filter them.
     function keepNames(list, avoid, form, st = settings()) {
-        const out = filterNames(list, avoid);
+        const out = filterNames(list, avoid).filter(n => !isLikeCopy(n, form || {}));
         return st.wordNames === 'filter' ? out.filter(n => !wordHits(n, form).length) : out;
     }
 
@@ -279,7 +293,10 @@
         // No inspiration word when the user typed a vibe or details: their words already set the direction,
         // and a random word ("bus stop") pulled names away from what was typed ("bread").
         const typedDetail = target !== 'person' && String(opts.kindText || '').trim();
-        const sparks = opts.vibe === 'custom' || typedDetail ? null : (SPARKS[opts.vibe] || ALL_SPARKS);
+        // "Like this" words set the direction too, and they replace the random start, ending and sound nudges
+        // (a forced "starts with K" can't sound like "Elric").
+        const like = likeWords(opts).length ? (opts.likeMode === 'feel' ? 'feel' : 'sound') : null;
+        const sparks = opts.vibe === 'custom' || typedDetail || like ? null : (SPARKS[opts.vibe] || ALL_SPARKS);
         const textures = texturesFor(opts.vibe);
         const endings = endingsFor(target, opts.vibe);
         const shapes = shapesFor(target, opts.vibe);
@@ -290,10 +307,10 @@
         const usedFamily = new Set();
         const usedSparks = new Set();
         for (let i = 0; i < count; i++) {
-            const seed = {
-                syllables: lo + Math.floor(rnd() * (hi - lo + 1)),
-                texture: pick(textures, rnd),
-            };
+            const seed = {};
+            // Sound-alike keeps the typed word's rhythm, so no random syllable count then.
+            if (like !== 'sound') seed.syllables = lo + Math.floor(rnd() * (hi - lo + 1));
+            if (!like) seed.texture = pick(textures, rnd);
             // Like endings, no inspiration word twice in one batch (three "neon" names looked samey).
             if (sparks) {
                 const fresh = sparks.filter(s => !usedSparks.has(s));
@@ -301,10 +318,10 @@
                 usedSparks.add(seed.spark);
             }
             // A forced start letter would fight "must contain", so skip it then.
-            if (!opts.mustContain) seed.start = pick(START_LETTERS, rnd);
+            if (!opts.mustContain && !like) seed.start = pick(START_LETTERS, rnd);
             // Only nudge the ending about half the time; always forcing it sounds samey too.
             // Don't hand the same ending to two names in one batch (two "… Array" looked samey).
-            if (endings && rnd() < 0.5) {
+            if (endings && !like && rnd() < 0.5) {
                 const fresh = endings.filter(e => !usedEndings.has(e));
                 seed.ending = pick(fresh.length ? fresh : endings, rnd);
                 usedEndings.add(seed.ending);
@@ -435,7 +452,7 @@
         showReading: true,
         extrasOpen: false,
         wordNames: 'mark',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', parts: ['given'], extras: [], fixedFamily: '' },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', parts: ['given'], extras: [], fixedFamily: '' },
     };
 
     function settings() {
@@ -658,6 +675,18 @@
         return form.vibe === 'custom' ? (String(form.customVibe || '').trim() || 'any') : (VIBE_DESC[form.vibe] || 'any');
     }
 
+    // "Like this": sound = same sounds and rhythm, feel = same flavor and era even with other sounds. Never the word itself.
+    function likeRule(form, what) {
+        const words = likeWords(form);
+        if (!words.length) return '';
+        const list = words.map(w => `"${w}"`).join(', ');
+        const many = words.length > 1;
+        const base = form.likeMode === 'feel'
+            ? `Give each ${what} the same feel as ${list}${many ? ' (somewhere between them)' : ''}: the same cultural flavor, era and mood, but the sounds may be quite different.`
+            : `Make each ${what} sound like ${list}${many ? ' (somewhere between them)' : ''}: similar sounds, rhythm and length, so the two feel related.`;
+        return `${base} Never use ${many ? 'those words themselves' : 'that word itself'}, and don't just respell ${many ? 'them' : 'it'}; each one must be a different, new ${what}.`;
+    }
+
     function buildMessages(form, seeds, opts = {}) {
         const lang = opts.lang || 'en';
         const avoid = opts.avoid || [];
@@ -678,6 +707,8 @@
         if (form.target === 'person' && form.gender && form.gender !== 'any') lines.push(shape ? `Gender feel (for the given and middle names and any title): ${form.gender}.` : `Gender feel: ${form.gender}.`);
         if (sound) lines.push(`Sound: ${sound}. ${SOUND_RULE}`);
         if (form.mustContain) lines.push(`Every ${shape ? 'full ' : ''}name must contain the letters "${String(form.mustContain).trim()}" (any position).`);
+        const likeLine = likeRule(form, shape ? (shape.roles.includes('given') ? 'given name' : 'main invented part') : phrase ? 'main word' : 'name');
+        if (likeLine) lines.push(likeLine);
         lines.push('');
         lines.push('The setting and what is being named come first. Each name also has a seed that only adds variety:');
         lines.push('follow its sound hints. An inspiration word is only a loose mood: bend it to fit what is being named and the setting, and ignore it if it doesn\'t fit.');
@@ -687,9 +718,10 @@
             const parts = [];
             if (s.shape) parts.push(`shape: ${s.shape}`);
             if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
-            parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
+            if (s.syllables) parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
             if (s.ending) parts.push(`ends with "${s.ending}"`);
-            if (!sound) parts.push(`${s.texture} sound`);
+            if (!sound && s.texture) parts.push(`${s.texture} sound`);
+            if (!parts.length) parts.push('follow the "like" words above');
             if (s.spark) parts.push(`inspiration: "${s.spark}"`);
             lines.push(`${i + 1}. ${main}${parts.join(', ')}${s.family ? `; family name: ${s.family}` : ''}`);
         });
@@ -756,6 +788,7 @@
         if (vibeRule) lines.push(vibeRule);
         lines.push('It must fit the rest of the name and the setting, and be clearly different from the current one. Keep Western, English-readable spelling.');
         if (form.gender && form.gender !== 'any' && ['given', 'middle', 'title', 'religious'].includes(role)) lines.push(`Gender feel: ${form.gender}.`);
+        if (role === 'given') { const likeLine = likeRule(form, 'given name'); if (likeLine) lines.push(likeLine); }
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         lines.push('');
         if (opts.reading) lines.push(`Also add ${readingRule(lang, true)} — the whole name with the new part.`);
@@ -924,7 +957,10 @@
             `<option value="${escapeHtml(k)}"${k === current ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('');
     }
 
-    function headerHtml(theme) {
+    // The whole top stays put while the panel scrolls, so ⚙ and ✕ are always in reach.
+    function headerHtml(theme) { return `<div class="tbd-top">${headerInner(theme)}</div>`; }
+
+    function headerInner(theme) {
         const tt = THEME_TEXT[theme] || THEME_TEXT.st;
         const L = T();
         const closeBtn = `<span class="tbd-head-btns"><button id="tbd_gear" class="tbd-icon-btn${view === 'settings' ? ' tbd-on' : ''}" title="${escapeHtml(L.gear)}" aria-label="${escapeHtml(L.gear)}"><i class="fa-solid fa-gear"></i></button><button id="tbd_close" class="tbd-icon-btn" title="${escapeHtml(L.close)}" aria-label="${escapeHtml(L.close)}"><i class="fa-solid fa-xmark"></i></button></span>`;
@@ -973,6 +1009,8 @@
             <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
             <label>${escapeHtml(L.sound)}${selectHtml('tbd_sound', L.s, form.sound || 'any')}</label>
             <label>${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
+            <label>${escapeHtml(L.like)}<input id="tbd_like" class="text_pole" type="text" maxlength="${LIKE_MAX}" placeholder="${escapeHtml(L.likePh)}" value="${escapeHtml(form.likeText || '')}"></label>
+            <label>${escapeHtml(L.likeMode)}${selectHtml('tbd_likemode', L.likeModes, form.likeMode === 'feel' ? 'feel' : 'sound')}</label>
             ${form.target === 'person' ? personPartsHtml(form) : ''}
             ${detailLabel ? `<label class="tbd-wide" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
@@ -1113,6 +1151,8 @@
             length: $('#tbd_length').val() || 'any',
             sound: $('#tbd_sound').val() || 'any',
             mustContain: String($('#tbd_must').val() || '').trim().slice(0, 20),
+            likeText: String($('#tbd_like').val() || '').slice(0, LIKE_MAX),
+            likeMode: $('#tbd_likemode').val() === 'feel' ? 'feel' : 'sound',
             parts: Array.isArray(st.form.parts) ? st.form.parts : ['given'],
             extras: Array.isArray(st.form.extras) ? st.form.extras : [],
             fixedFamily: String($('#tbd_fixed').val() ?? st.form.fixedFamily ?? '').slice(0, 40),
@@ -1295,6 +1335,7 @@
             const banned = new Set(avoid.map(a => a.toLowerCase()));
             if (!text) status = { kind: 'error', text: L.err(answerCut(raw) ? L.cutFail : L.parseFail) };
             else if (text.toLowerCase() === piece.text.toLowerCase() || (NAME_ROLES.includes(piece.role) && banned.has(text.toLowerCase()))
+                || likeWords(form).some(w => w.toLowerCase() === text.toLowerCase())
                 || (st.wordNames === 'filter' && WORD_CHECK_ROLES.includes(piece.role) && WORD_NAMES.has(text.toLowerCase()))) {
                 status = { kind: 'error', text: L.err(L.allFiltered) };
             } else if (results.includes(src) && src.pieces[k] === piece) {
@@ -1539,7 +1580,7 @@
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
         $doc.on('change', '#tbd_kind', () => readForm());
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
-        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_kindtext, #tbd_fixed', readForm);
+        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_like, #tbd_likemode, #tbd_kindtext, #tbd_fixed', readForm);
         $doc.on('click', '#tbd_extras_fold', () => {
             const st = settings();
             const form = readForm();
@@ -1593,7 +1634,7 @@
             status = { kind: 'error', text: T().cancelled };
             renderResultsOnly();
         });
-        $doc.on('keydown', '#tbd_must, #tbd_custom, #tbd_kindtext, #tbd_fixed', (e) => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
+        $doc.on('keydown', '#tbd_must, #tbd_like, #tbd_custom, #tbd_kindtext, #tbd_fixed', (e) => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
         $doc.on('keydown', (e) => { if (e.key === 'Escape' && $('#tbd_panel').is(':visible')) closePanel(); });
         $doc.on('click', '#tbd_panel .tbd-copy', async function () {
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
@@ -1609,7 +1650,7 @@
             rollSeeds, buildMessages, buildRefineMessages, REFINE_MODES, parseNames, filterNames, avoidList, rememberNames, detectLang,
             tokensFor, settings, historyHtml, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
-            wordHits, keepNames, WORD_NAMES, answerCut, looksLikeName,
+            wordHits, keepNames, WORD_NAMES, answerCut, looksLikeName, likeWords, likeRule, isLikeCopy,
         };
     } else {
         if (typeof $ === 'function' && document.body) settingsSlot();

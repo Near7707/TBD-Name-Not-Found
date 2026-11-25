@@ -563,6 +563,18 @@
     #tbd_panel, #tbd_panel *, #tbd_panel *::after { animation: none !important; }
 }
 
+/* Sticky top: ⚙ and ✕ stay at the top while the panel scrolls.
+   The theme color is laid twice so a see-through tint (SillyTavern, glass) gets solid enough
+   that text scrolling under it doesn't show through. */
+#tbd_panel .tbd-top {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: linear-gradient(var(--tbd-bg), var(--tbd-bg)), linear-gradient(var(--tbd-bg), var(--tbd-bg)), var(--tbd-bg);
+}
+#tbd_panel.tbd-theme-glass .tbd-top { background: rgb(14, 20, 40); }
+#tbd_panel.tbd-theme-glasslight .tbd-top { background: rgb(214, 228, 247); }
+
 /* Phones: a bit higher on screen, lighter effects. */
 @media (max-width: 600px) {
     #tbd_panel { top: 4vh; max-height: 88vh; }
@@ -572,6 +584,9 @@
     #tbd_panel.tbd-theme-glass { --tbd-bg: rgba(12, 18, 38, .9); }
     #tbd_panel.tbd-theme-glasslight { --tbd-bg: rgba(210, 226, 247, .78); }
     .tbd-form { grid-template-columns: minmax(0, 1fr); }
+    /* Thinner top on phones, since it now stays on screen. */
+    #tbd_panel .tbd-head { padding-top: 8px; padding-bottom: 8px; }
+    #tbd_panel .tbd-tape-url { display: none; }
     /* 16px stops iPhone from zooming in when a field is tapped. */
     #tbd_panel .text_pole { font-size: 16px; }
     #tbd_panel.tbd-theme-tape { animation: none; }

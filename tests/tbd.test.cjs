@@ -471,3 +471,32 @@ test('v0.1.12: past names list shows newest first, escaped, and the insert butto
     }
     assert.equal(api.insertAtCursor, undefined);
 });
+
+test('v0.1.13: "like this" words steer the prompt, drop random nudges, and never come back as the name', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'fantasy', length: 'any', sound: 'any', likeText: 'Elric, Aldous ,, Elric', likeMode: 'sound', parts: ['given'], extras: [] };
+    assert.deepEqual([...api.likeWords(form)], ['Elric', 'Aldous']);
+    const seeds = api.rollSeeds(5, form);
+    for (const s of seeds) assert.ok(!s.start && !s.ending && !s.texture && !s.spark && !s.syllables);
+    const feelSeeds = api.rollSeeds(5, { ...form, likeMode: 'feel' });
+    for (const s of feelSeeds) assert.ok(!s.start && !s.ending && !s.spark && s.syllables);
+    const msg = api.buildMessages(form, seeds, { lang: 'en' })[1].content;
+    assert.ok(msg.includes('sound like "Elric", "Aldous"') && msg.includes('Never use those words themselves'));
+    assert.ok(!msg.includes('Do NOT use these names or close variants: Elric'));
+    const feel = api.buildMessages({ ...form, likeMode: 'feel' }, feelSeeds, { lang: 'en' })[1].content;
+    assert.ok(feel.includes('same feel as'));
+    // Empty box: nothing changes.
+    const plain = { ...form, likeText: '  ' };
+    assert.equal(api.likeRule(plain, 'name'), '');
+    assert.ok(api.rollSeeds(3, plain).every(s => s.start && s.syllables));
+    // Exact copies are dropped, near ones kept.
+    const kept = api.keepNames([{ name: 'elric' }, { name: 'Elrin' }, { name: 'Bran Elric', pieces: [{ role: 'given', text: 'Elric' }, { role: 'family', text: 'Bran' }] }], [], form);
+    assert.deepEqual([...kept.map(n => n.name)], ['Elrin']);
+    // Full names: the rule is about the given name.
+    const shaped = { ...form, parts: ['given', 'family'] };
+    assert.ok(api.buildMessages(shaped, api.rollSeeds(2, shaped), { lang: 'en' })[1].content.includes('Make each given name sound like'));
+    for (const lang of ['en', 'ko']) {
+        const L = api.STRINGS[lang];
+        assert.ok(L.like && L.likePh && L.likeMode && L.likeModes.sound && L.likeModes.feel);
+    }
+});
