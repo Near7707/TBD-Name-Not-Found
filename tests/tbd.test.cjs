@@ -572,3 +572,17 @@ test('v0.1.16: sound-alike words beat the vibe, allow shared endings and say wha
     const plain = api.buildMessages({ ...form, likeText: '' }, api.rollSeeds(3, { ...form, likeText: '' }), { lang: 'en' })[1].content;
     assert.ok(plain.includes('The setting and what is being named come first') && plain.includes('share the same ending'));
 });
+
+test('v0.1.17: with only the given name on, no family name is asked for', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', gender: 'any', length: 'any', sound: 'any', parts: ['given'], extras: [] };
+    const msg = api.buildMessages(form, api.rollSeeds(3, form), { lang: 'en' })[1].content;
+    assert.ok(!msg.includes('optionally with a family name'));
+    assert.ok(msg.includes('Give only the given name, with no family name after it.'));
+    // Family on: the full-name rules take over, no "given only" line.
+    const full = api.buildMessages({ ...form, parts: ['given', 'family'] }, api.rollSeeds(3, { ...form, parts: ['given', 'family'] }), { lang: 'en' })[1].content;
+    assert.ok(!full.includes('Give only the given name'));
+    // Places are untouched.
+    const place = api.buildMessages({ ...form, target: 'place' }, api.rollSeeds(3, { ...form, target: 'place' }), { lang: 'en' })[1].content;
+    assert.ok(!place.includes('Give only the given name'));
+});

@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.16
+// TBD — Name Not Found v0.1.17
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -525,7 +525,7 @@
 
     // ---------- prompt ----------
     const TARGET_DESC = {
-        person: 'a person (given name, optionally with a family name)',
+        person: 'a person (a given name only, no family name)',
         place: 'a place',
         shop: 'a shop or business',
         item: 'an item or object',
@@ -630,6 +630,8 @@
         } else if (form.target === 'person' || form.target === 'other') {
             out.push('Never use a plain existing English word on its own as the name (like "Mold" or "Salt").');
         }
+        // Only "given" picked: the family-name button is off, so no surname tagging along.
+        if (form.target === 'person' && !nameShape(form)) out.push('Give only the given name, with no family name after it.');
         const shape = nameShape(form);
         // Sound-alike names often share the typed word's ending, so don't forbid that then.
         const likeSound = likeWords(form).length > 0 && form.likeMode !== 'feel';
