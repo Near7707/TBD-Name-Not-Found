@@ -8,11 +8,11 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.17)
+## Features (v0.1.18)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
 - Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length, sound feel, letters the name must contain
-- "Like this": type a name or word (Elric, Aldous) and get names that sound like it (same syllable count and stress, shared key sounds; it wins over the vibe), or share its feel (same flavor and era, other sounds). The word itself never comes back. For full names it steers the given name
+- "Like this": type a name or word (Elric, Aldous) and get names that sound like it (similar rhythm, and each name echoes a different part: start, vowels, ending…; it wins over the vibe), or share its feel (same flavor and era, other sounds). The word itself never comes back. For full names it steers the given name
 - Kind for places, shops and items, in everyday groups that fit any setting (street, station, repair shop, florist, vehicle, medicine, gadget…) or your own words
 - Full names for people: pick the parts (given / middle / family) and extras (title, noble particle, place of origin, father's-name surname, nickname, religious name, codename, alias). Family names follow the vibe. Keep one family name to name a whole family. Extras fold into one line and show which ones are on. With only the given name on, no family name comes back
 - Each part of a full name shows below it: tap to copy just that part, 🔄 to swap just that part
@@ -52,6 +52,7 @@ Find **TBD — Name Not Found** in the Extensions panel, or press ⚙ next to �
 |---|---|
 | Language | Follow SillyTavern, English, or Korean |
 | Connection profile | Which API to ask. Empty = the one you're using now |
+| Thinking effort | For thinking models. Default sends nothing; pick Low if a thinking model answers empty or slowly (it may spend every token on thinking) |
 | Send the profile's preset too | Off by default. A roleplay preset can make the AI answer empty or in character; turn on only if your model needs it |
 | Names per search | 1–30 |
 | Max response tokens | Default 2000, raised automatically for big batches. Thinking models may need more; lower it for a very small local model |

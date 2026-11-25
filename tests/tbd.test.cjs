@@ -560,7 +560,7 @@ test('v0.1.16: sound-alike words beat the vibe, allow shared endings and say wha
     assert.ok(msg.includes('follow them even if they don\'t match the setting'));
     assert.ok(!msg.includes('The setting and what is being named come first'));
     assert.ok(!msg.includes('share the same ending'));
-    assert.ok(msg.includes('same number of syllables and the same stressed syllable'));
+    assert.ok(msg.includes('Go by ear') && !msg.includes('e.g. "'));
     // Full name: given endings may match, family names still may not repeat.
     const shaped = { ...form, parts: ['given', 'family'] };
     const full = api.buildMessages(shaped, api.rollSeeds(3, shaped), { lang: 'en' })[1].content;
@@ -585,4 +585,37 @@ test('v0.1.17: with only the given name on, no family name is asked for', () => 
     // Places are untouched.
     const place = api.buildMessages({ ...form, target: 'place' }, api.rollSeeds(3, { ...form, target: 'place' }), { lang: 'en' })[1].content;
     assert.ok(!place.includes('Give only the given name'));
+});
+
+test('v0.1.18: thinking effort is sent only when picked, and sound-alike asks less', async () => {
+    const calls = [];
+    const hook = {};
+    const ctxObj = {
+        extensionSettings: {}, saveSettingsDebounced() {},
+        ConnectionManagerRequestService: { sendRequest: async (...a) => { calls.push(a); return { content: '[]' }; } },
+    };
+    const sb = { __TBD_TEST__: hook, SillyTavern: { getContext: () => ctxObj }, localStorage: { getItem: () => null }, navigator: { language: 'en' }, Event: class {}, document: { getElementById: () => null }, jQuery: () => { throw new Error('no init'); } };
+    sb.globalThis = sb;
+    vm.runInNewContext(source, sb);
+    const api = hook.api;
+    assert.equal(api.settings().reasoning, 'default');
+    await api.requestLLM([{ role: 'user', content: 'x' }], { profileId: 'p', maxTokens: 100 });
+    assert.deepEqual({ ...calls[0][4] }, {});
+    await api.requestLLM([{ role: 'user', content: 'x' }], { profileId: 'p', maxTokens: 100, reasoning: 'low' });
+    assert.equal(calls[1][4].reasoning_effort, 'low');
+    // A bad saved value falls back to default.
+    ctxObj.extensionSettings.tbd_names.reasoning = 'banana';
+    assert.equal(api.settings().reasoning, 'default');
+    // Each sound-alike name gets its own part to echo; no inspiration rules or same-idea rule then.
+    const form = { target: 'person', vibe: 'medieval', gender: 'any', length: 'any', sound: 'any', likeText: 'Morvane', likeMode: 'sound', parts: ['given'], extras: [] };
+    const seeds = api.rollSeeds(5, form);
+    assert.equal(new Set(seeds.map(x => x.likeFocus)).size, 5);
+    const msg = api.buildMessages(form, seeds, { lang: 'en' })[1].content;
+    assert.ok(msg.includes('mostly in its ending') && !msg.includes('inspiration') && !msg.includes('same idea or image') && !msg.includes('same last word'));
+    // Feel mode: no focus line.
+    assert.ok(api.rollSeeds(3, { ...form, likeMode: 'feel' }).every(x => !x.likeFocus));
+    for (const lang of ['en', 'ko']) {
+        const L = api.STRINGS[lang];
+        assert.ok(L.sThink && L.sThinkHint && Object.keys(L.sThinkOpts).length === 5);
+    }
 });

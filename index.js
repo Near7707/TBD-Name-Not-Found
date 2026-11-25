@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.17
+// TBD — Name Not Found v0.1.18
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -24,9 +24,11 @@
             found: n => `200 OK — ${n} name${n === 1 ? '' : 's'} found`,
             foundCut: n => `206 — the answer was cut off; ${n} name${n === 1 ? '' : 's'} saved. Raise "Max response tokens" in settings.`,
             cutFail: 'The answer was cut off. Raise "Max response tokens" in settings and try again.',
-            thinkFail: 'The AI only thought and wrote no answer. Raise "Max response tokens" in settings (thinking models may need 6000+).',
-            emptyFail: 'The AI sent back an empty answer. If you use a connection profile, turn off "Send the connection profile\'s preset too" in settings.',
-            showRaw: 'See the answer', hideRaw: 'Hide the answer', rawEmpty: '(empty — nothing came back but the thinking, if any)',
+            thinkFail: 'The AI only thought and wrote no answer. Set "Thinking effort" to Low in settings, or raise "Max response tokens".',
+            emptyFail: 'The AI sent back an empty answer. A thinking model may have spent every token on thinking: set "Thinking effort" to Low or raise "Max response tokens". With a connection profile, also keep "Send the connection profile\'s preset too" off.',
+            showRaw: 'See the answer', hideRaw: 'Hide the answer', rawEmpty: '(empty — no thinking and no answer came back)',
+            sThink: 'Thinking effort (thinking models)', sThinkOpts: { default: "Default (don't send)", min: 'Minimal', low: 'Low', medium: 'Medium', high: 'High' },
+            sThinkHint: 'Naming needs little thinking. If a thinking model answers empty or slowly, pick Low. Leave on Default for other models.',
             sPreset: "Send the connection profile's preset too", sPresetHint: 'Off by default. A roleplay preset can make the AI answer empty or in character. Turn on only if your model needs its preset.',
             err: m => `500 — ${m}`,
             cancelled: '499 — cancelled',
@@ -89,9 +91,11 @@
             found: n => `200 OK — 이름 ${n}개 찾음`,
             foundCut: n => `206 — 답이 중간에 잘려서 ${n}개만 건졌어요. 설정에서 최대 응답 토큰을 늘려 보세요.`,
             cutFail: '답이 중간에 잘렸어요. 설정에서 최대 응답 토큰을 늘리고 다시 해 보세요.',
-            thinkFail: 'AI가 생각만 하고 답을 안 썼어요. 설정에서 최대 응답 토큰을 늘려 보세요(생각하는 모델은 6000 이상 필요할 수 있어요).',
-            emptyFail: 'AI가 빈 답을 보냈어요. 연결 프로필을 쓰면 설정에서 "연결 프로필의 프리셋도 같이 보내기"를 꺼 보세요.',
-            showRaw: '받은 답 보기', hideRaw: '받은 답 접기', rawEmpty: '(비어 있음 — 생각 말고는 아무것도 안 왔어요)',
+            thinkFail: 'AI가 생각만 하고 답을 안 썼어요. 설정에서 "생각 정도"를 낮게로 바꾸거나 최대 응답 토큰을 늘려 보세요.',
+            emptyFail: 'AI가 빈 답을 보냈어요. 생각하는 모델이 토큰을 생각에 다 썼을 수 있어요. 설정에서 "생각 정도"를 낮게로 바꾸거나 최대 응답 토큰을 늘려 보세요. 연결 프로필을 쓰면 "연결 프로필의 프리셋도 같이 보내기"는 꺼 두세요.',
+            showRaw: '받은 답 보기', hideRaw: '받은 답 접기', rawEmpty: '(비어 있음 — 생각도 답도 안 왔어요)',
+            sThink: '생각 정도 (생각하는 모델용)', sThinkOpts: { default: '기본 (안 보냄)', min: '최소', low: '낮게', medium: '보통', high: '높게' },
+            sThinkHint: '이름 짓기는 길게 생각할 필요가 없어요. 생각하는 모델이 빈 답을 보내거나 느리면 "낮게"로 두세요. 다른 모델은 기본 그대로 두면 돼요.',
             sPreset: '연결 프로필의 프리셋도 같이 보내기', sPresetHint: '기본은 꺼짐이에요. 롤플레이 프리셋을 같이 보내면 AI가 빈 답이나 롤플레이로 답할 수 있어요. 모델에 프리셋이 꼭 필요할 때만 켜세요.',
             err: m => `500 — ${m}`,
             cancelled: '499 — 취소함',
@@ -292,6 +296,8 @@
     const ALL_SPARKS = [...new Set(Object.values(SPARKS).flat())];
     const SYLLABLES = { short: [1, 2], medium: [2, 3], long: [3, 4], any: [1, 4] };
 
+    const LIKE_FOCUS = ['its opening sound', 'its vowels', 'its ending', 'its rhythm', 'its consonants'];
+
     function pick(arr, rnd = Math.random) { return arr[Math.floor(rnd() * arr.length)]; }
 
     // One seed per name. Each name gets its own nudge so the batch spreads out.
@@ -314,11 +320,14 @@
         const usedEndings = new Set();
         const usedFamily = new Set();
         const usedSparks = new Set();
+        // Sound-alike: each name copies a different part of the typed word, so the batch doesn't all copy its start.
+        const focusStart = Math.floor(rnd() * LIKE_FOCUS.length);
         for (let i = 0; i < count; i++) {
             const seed = {};
             // Sound-alike keeps the typed word's rhythm, so no random syllable count then.
             if (like !== 'sound') seed.syllables = lo + Math.floor(rnd() * (hi - lo + 1));
             if (!like) seed.texture = pick(textures, rnd);
+            if (like === 'sound') seed.likeFocus = LIKE_FOCUS[(focusStart + i) % LIKE_FOCUS.length];
             // Like endings, no inspiration word twice in one batch (three "neon" names looked samey).
             if (sparks) {
                 const fresh = sparks.filter(s => !usedSparks.has(s));
@@ -455,6 +464,7 @@
         effects: true,
         rememberHistory: true,
         sendPreset: false,
+        reasoning: 'default',
         historySize: 200,
         history: [],
         banList: '',
@@ -463,6 +473,9 @@
         wordNames: 'mark',
         form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', parts: ['given'], extras: [], fixedFamily: '' },
     };
+
+    // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
+    const REASONING_LEVELS = ['default', 'min', 'low', 'medium', 'high'];
 
     function settings() {
         const all = ctx().extensionSettings;
@@ -482,6 +495,7 @@
         if (st.history.some(n => !looksLikeName(n))) st.history = st.history.filter(looksLikeName);
         if (!THEMES.includes(st.theme)) st.theme = 'st';
         if (st.wordNames !== 'filter') st.wordNames = 'mark';
+        if (!REASONING_LEVELS.includes(st.reasoning)) st.reasoning = 'default';
         st.count = clampInt(st.count, 1, 30, 5);
         return st;
     }
@@ -644,7 +658,8 @@
                     : 'Across the batch, no two given names may share the same ending, and no two family names may be the same.');
             }
         } else if (likeSound) {
-            out.push('Across the batch, no two names may be the same or share the same last word.');
+            // A person's name is one word, so "same last word" only matters for places, shops and items.
+            if (form.target !== 'person' && form.target !== 'other') out.push('Across the batch, no two names may share the same last word.');
         } else {
             out.push('Across the batch, no two names may share the same ending or the same last word (not two "… Array" or two "-ex").');
         }
@@ -705,7 +720,7 @@
         const many = words.length > 1;
         const base = form.likeMode === 'feel'
             ? `Give each ${what} the same feel as ${list}${many ? ' (somewhere between them)' : ''}: the same cultural flavor, era and mood, but the sounds may be quite different.`
-            : `Make each ${what} sound like ${list}${many ? ' (somewhere between them)' : ''}: the same number of syllables and the same stressed syllable, and keep at least two of its key sounds (vowels or consonants) in the same places, so anyone hearing both would call them alike (e.g. "Morvane" → "Torvale", "Marvine").`;
+            : `Make each ${what} sound like ${list}${many ? ' (somewhere between them)' : ''}: about the same rhythm (syllable count and stress) with some of its sounds carried over, so the two sound related. Go by ear; don't count or check letter by letter.`;
         return `${base} Never use ${many ? 'those words themselves' : 'that word itself'}, and don't just respell ${many ? 'them' : 'it'}; each one must be a different, new ${what}.`;
     }
 
@@ -736,8 +751,14 @@
         lines.push(likeLine
             ? 'What is being named comes first, then the "like" words: follow them even if they don\'t match the setting. The setting only adjusts spelling and flavor, never at the cost of the likeness. Each name also has a seed that only adds variety:'
             : 'The setting and what is being named come first. Each name also has a seed that only adds variety:');
-        lines.push('follow its sound hints. An inspiration word is only a loose mood: bend it to fit what is being named and the setting, and ignore it if it doesn\'t fit.');
-        lines.push('Never put the inspiration object itself into the name or the note when it isn\'t part of what is being named (no "bus stop" in the name of a bread).');
+        // Sound-alike seeds carry only a part to echo; skipping rules that don't apply means less overthinking.
+        const echoOnly = seeds.length > 0 && seeds.every(s => s.likeFocus && !s.spark);
+        if (!echoOnly) {
+            lines.push('follow its sound hints. An inspiration word is only a loose mood: bend it to fit what is being named and the setting, and ignore it if it doesn\'t fit.');
+            lines.push('Never put the inspiration object itself into the name or the note when it isn\'t part of what is being named (no "bus stop" in the name of a bread).');
+        } else {
+            lines.push('follow its hint.');
+        }
         const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
         seeds.forEach((s, i) => {
             const parts = [];
@@ -746,11 +767,12 @@
             if (s.syllables) parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
             if (s.ending) parts.push(`ends with "${s.ending}"`);
             if (!sound && s.texture) parts.push(`${s.texture} sound`);
+            if (s.likeFocus) parts.push(`echo the "like" word${likeWords(form).length > 1 ? 's' : ''} mostly in ${s.likeFocus}`);
             if (!parts.length) parts.push('follow the "like" words above');
             if (s.spark) parts.push(`inspiration: "${s.spark}"`);
             lines.push(`${i + 1}. ${main}${parts.join(', ')}${s.family ? `; family name: ${s.family}` : ''}`);
         });
-        if (seeds.length > 1) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
+        if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
         if (avoid.length) {
             lines.push('');
             lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
@@ -923,7 +945,7 @@
         return ctx().extensionSettings?.connectionManager?.profiles || [];
     }
 
-    async function requestLLM(messages, { profileId, maxTokens, signal, sendPreset = false } = {}) {
+    async function requestLLM(messages, { profileId, maxTokens, signal, sendPreset = false, reasoning = 'default' } = {}) {
         const c = ctx();
         signal?.throwIfAborted();
         // Thinking that came back separately is kept (as <think>…</think>) so "See the answer" can show it.
@@ -935,12 +957,15 @@
             return thought && !/<think/i.test(text) ? `<think>${thought}</think>\n${text}` : text;
         };
 
+        // Without the preset, nothing told a thinking model how long to think, so it could spend every token on it.
+        const effort = reasoning && reasoning !== 'default' ? { reasoning_effort: reasoning } : {};
+
         if (profileId) {
             const svc = c.ConnectionManagerRequestService;
             if (!svc) throw new Error(T().noProfileApi);
             const res = await svc.sendRequest(profileId, messages, maxTokens, {
                 stream: false, signal, extractData: true, includePreset: !!sendPreset, includeInstruct: true,
-            });
+            }, effort);
             return content(res);
         }
 
@@ -952,6 +977,7 @@
                 max_tokens: maxTokens,
                 model: c.getChatCompletionModel(),
                 chat_completion_source: c.chatCompletionSettings.chat_completion_source,
+                ...effort,
             });
             signal?.throwIfAborted();
             return content(await cc.sendRequest(payload, true, signal));
@@ -1226,7 +1252,7 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, maxTokens: tokensFor(count, st, !!nameShape(form)), signal: myController?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(count, st, !!nameShape(form)), signal: myController?.signal });
             if (myController && myController.signal.aborted) return;
             if (controller !== myController) return;
             const parsed = applyShape(parseNames(raw), form);
@@ -1277,7 +1303,7 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = src.pieces ? applyShape(parseNames(raw), form) : parseNames(raw);
             const kept = keepNames(parsed, avoid, form, st).slice(0, 3);
@@ -1326,7 +1352,7 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = applyShape(parseNames(raw), form);
             const kept = keepNames(parsed, avoid, form, st);
@@ -1375,7 +1401,7 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, maxTokens: tokensFor(1, st), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(1, st), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = parseNames(raw);
             const text = cleanPiece(parsed[0]?.name);
@@ -1476,6 +1502,8 @@
             <label class="checkbox_label"><input id="${id('fx')}" type="checkbox" data-tbd-set="fx"><span>${escapeHtml(L.sEffects)}</span></label>
             <label class="checkbox_label"><input id="${id('reading')}" type="checkbox" data-tbd-set="reading"><span>${escapeHtml(L.sReading)}</span></label>
             <label for="${id('words')}">${escapeHtml(L.sWords)}</label>${sel('words', optionList(L.sWordOpts, st.wordNames))}
+            <label for="${id('think')}">${escapeHtml(L.sThink)}</label>${sel('think', optionList(L.sThinkOpts, st.reasoning))}
+            <small>${escapeHtml(L.sThinkHint)}</small>
             <label class="checkbox_label"><input id="${id('preset')}" type="checkbox" data-tbd-set="preset"><span>${escapeHtml(L.sPreset)}</span></label>
             <small>${escapeHtml(L.sPresetHint)}</small>
             <label class="checkbox_label"><input id="${id('hist')}" type="checkbox" data-tbd-set="hist"><span>${escapeHtml(L.sHistory)}</span></label>
@@ -1502,7 +1530,7 @@
     function syncSettingFields(except = null) {
         const st = settings();
         const values = {
-            lang: st.language, profile: st.profileId, words: st.wordNames, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
+            lang: st.language, profile: st.profileId, words: st.wordNames, think: st.reasoning, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
         };
         const checks = { fx: !!st.effects, reading: !!st.showReading, hist: !!st.rememberHistory, preset: !!st.sendPreset };
         $('[data-tbd-set]').each(function () {
@@ -1561,6 +1589,7 @@
             case 'words': st.wordNames = $el.val() === 'filter' ? 'filter' : 'mark'; save(); renderResultsOnly(); syncSettingFields(); return;
             case 'hist': st.rememberHistory = !!$el.prop('checked'); break;
             case 'preset': st.sendPreset = !!$el.prop('checked'); break;
+            case 'think': st.reasoning = REASONING_LEVELS.includes($el.val()) ? $el.val() : 'default'; break;
             case 'ban': st.banList = String($el.val() || ''); break;
             default: return;
         }
