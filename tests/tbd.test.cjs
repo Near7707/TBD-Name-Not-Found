@@ -421,3 +421,34 @@ test('v0.1.10: plain-word names are marked, and left out only when asked', () =>
         assert.ok(L.wordTag([{ word: 'wren', ko: '굴뚝새' }]).length);
     }
 });
+
+test('v0.1.11: a cut-off answer keeps its finished names and never shows JSON as a name', () => {
+    const { api } = load();
+    const raw = '<think>hmm</think>[{"parts": {"given": "Parith", "family": "Marlfield"}, "read": "페리스 말필드", "note": "토속적인 {이름}."}, {"parts": {"given": "Delvor", "family": "Chandler"}, "read": "델보르 챈들러", "note": "a \\"quoted\\" note"}, {"parts": {"given": "Joth';
+    assert.equal(api.answerCut(raw), true);
+    const form = { target: 'person', parts: ['given', 'family'], extras: [] };
+    const names = api.applyShape(api.parseNames(raw), form);
+    assert.deepEqual([...names.map(n => n.name)], ['Parith Marlfield', 'Delvor Chandler']);
+    assert.equal(names[0].note, '토속적인 {이름}.');
+    // Even with no finished object, no JSON bit becomes a name.
+    assert.equal(api.parseNames('[{"parts": {"given": "Jo').length, 0);
+    assert.equal(api.answerCut('[{"name":"Aren","note":"x"}]'), false);
+    assert.equal(api.answerCut('1. Aren — x'), false);
+    assert.equal(api.parseNames('1. Aren — soft').length, 1, 'plain line answers still work');
+    assert.ok(!api.looksLikeName('[{"parts') && api.looksLikeName('Aren'));
+});
+
+test('v0.1.11: max tokens default 2000, old default moves once, junk history is cleaned', () => {
+    const fresh = load();
+    assert.equal(fresh.api.settings().maxTokens, 2000);
+    const old = load({ extensionSettings: { tbd_names: { maxTokens: 1000, history: ['Aren', '[{"parts', 'Mira'] } } });
+    const st = old.api.settings();
+    assert.equal(st.maxTokens, 2000);
+    assert.deepEqual([...st.history], ['Aren', 'Mira']);
+    st.maxTokens = 1000; // chosen again by the user after the move: stays
+    assert.equal(old.api.settings().maxTokens, 1000);
+    const own = load({ extensionSettings: { tbd_names: { maxTokens: 1500 } } });
+    assert.equal(own.api.settings().maxTokens, 1500, 'a typed number stays');
+    old.api.rememberNames(['{bad', 'Voreth'], st);
+    assert.ok(!st.history.includes('{bad') && st.history.includes('Voreth'));
+});

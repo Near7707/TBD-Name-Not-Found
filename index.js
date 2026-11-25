@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.10
+// TBD — Name Not Found v0.1.11
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -22,6 +22,8 @@
             parseFail: "The AI's answer couldn't be read. Try again.",
             allFiltered: 'Every name was on the avoid list. Try again.',
             found: n => `200 OK — ${n} name${n === 1 ? '' : 's'} found`,
+            foundCut: n => `206 — the answer was cut off; ${n} name${n === 1 ? '' : 's'} saved. Raise "Max response tokens" in settings.`,
+            cutFail: 'The answer was cut off. Raise "Max response tokens" in settings and try again.',
             err: m => `500 — ${m}`,
             cancelled: '499 — cancelled',
             busy: 'Already searching. Wait or cancel first.',
@@ -54,7 +56,7 @@
             sProfile: 'Connection profile', sProfileCurrent: '(Use current API)', sProfileMissing: '⚠️ Profile not found — pick again',
             sCount: 'Names per search (1–30)',
             sTokens: 'Max response tokens',
-            sTokensHint: 'Raised automatically for big batches. Thinking models may need more.',
+            sTokensHint: 'Raised automatically for big batches. Thinking models may need more; lower it for a very small local model.',
             sTheme: 'Theme', sEffects: 'Moving effects (glitch, flicker, scanlines)',
             sReading: 'Show how to read each name',
             sWords: 'Names that are plain English words (Wren, Ox)',
@@ -80,6 +82,8 @@
             parseFail: 'AI 답을 읽지 못했어요. 다시 해 보세요.',
             allFiltered: '나온 이름이 전부 피할 목록에 있었어요. 다시 해 보세요.',
             found: n => `200 OK — 이름 ${n}개 찾음`,
+            foundCut: n => `206 — 답이 중간에 잘려서 ${n}개만 건졌어요. 설정에서 최대 응답 토큰을 늘려 보세요.`,
+            cutFail: '답이 중간에 잘렸어요. 설정에서 최대 응답 토큰을 늘리고 다시 해 보세요.',
             err: m => `500 — ${m}`,
             cancelled: '499 — 취소함',
             busy: '이미 찾는 중이에요. 기다리거나 먼저 취소해 주세요.',
@@ -111,7 +115,7 @@
             sProfile: '연결 프로필', sProfileCurrent: '(현재 연결된 API 사용)', sProfileMissing: '⚠️ 찾을 수 없는 프로필 — 다시 골라 주세요',
             sCount: '한 번에 뽑을 이름 수 (1~30)',
             sTokens: '최대 응답 토큰',
-            sTokensHint: '많이 뽑을 땐 자동으로 늘어나요. 생각하는 모델은 더 필요할 수 있어요.',
+            sTokensHint: '많이 뽑을 땐 자동으로 늘어나요. 생각하는 모델은 더 필요할 수 있고, 아주 작은 로컬 모델이면 줄이세요.',
             sTheme: '테마', sEffects: '움직이는 효과 (글리치, 깜빡임, 스캔라인)',
             sReading: '이름 읽는 법 보기',
             sWords: '평범한 영어 낱말인 이름 (Wren, Ox)',
@@ -421,7 +425,7 @@
         language: 'auto',
         profileId: '',
         count: 5,
-        maxTokens: 1000,
+        maxTokens: 2000,
         theme: 'st',
         effects: true,
         rememberHistory: true,
@@ -443,6 +447,10 @@
         }
         for (const [k, v] of Object.entries(DEFAULTS.form)) if (st.form[k] === undefined) st.form[k] = Array.isArray(v) ? [...v] : v;
         if (!Array.isArray(st.history)) st.history = [];
+        // v0.1.11: the old default (1000) cut off answers, so it moves to the new one once. A number the user typed stays.
+        if (!st.tokensV2) { if (Number(st.maxTokens) === 1000) st.maxTokens = DEFAULTS.maxTokens; st.tokensV2 = true; }
+        // Bits of a cut-off JSON answer once got saved as names; drop them.
+        if (st.history.some(n => !looksLikeName(n))) st.history = st.history.filter(looksLikeName);
         if (!THEMES.includes(st.theme)) st.theme = 'st';
         if (st.wordNames !== 'filter') st.wordNames = 'mark';
         st.count = clampInt(st.count, 1, 30, 5);
@@ -481,7 +489,7 @@
     function rememberNames(names, st = settings()) {
         if (!st.rememberHistory || !names.length) return;
         const seen = new Set(st.history.map(n => n.toLowerCase()));
-        for (const n of names) if (!seen.has(n.toLowerCase())) { st.history.push(n); seen.add(n.toLowerCase()); }
+        for (const n of names) if (looksLikeName(n) && !seen.has(n.toLowerCase())) { st.history.push(n); seen.add(n.toLowerCase()); }
         const max = clampInt(st.historySize, 10, 2000, 200);
         if (st.history.length > max) st.history.splice(0, st.history.length - max);
     }
@@ -764,28 +772,56 @@
         return String(text || '').replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, '').trim();
     }
 
+    // A real name never has JSON bits in it (a cut-off answer once showed up as the name '[{"parts').
+    function looksLikeName(n) {
+        return typeof n === 'string' && n.trim() !== '' && !/[{}\[\]]|":/.test(n);
+    }
+    // Each complete {...} at the top of the array, so a cut-off answer still gives its finished names.
+    function salvageObjects(text) {
+        const found = [];
+        let depth = 0, inStr = false, esc = false, begin = -1;
+        for (let i = text.indexOf('[') + 1; i > 0 && i < text.length; i++) {
+            const ch = text[i];
+            if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue; }
+            if (ch === '"') inStr = true;
+            else if (ch === '{') { if (depth++ === 0) begin = i; }
+            else if (ch === '}' && depth > 0 && --depth === 0) {
+                try { found.push(JSON.parse(text.slice(begin, i + 1))); } catch { /* skip a broken one */ }
+            }
+        }
+        return found;
+    }
+    // True when the answer started a JSON array but never finished it.
+    function answerCut(raw) {
+        const text = stripThinking(raw).replace(/```(?:json)?/gi, '').trim();
+        const start = text.indexOf('[');
+        if (start === -1) return false;
+        try { JSON.parse(text.slice(start, text.lastIndexOf(']') + 1)); return false; } catch { return true; }
+    }
+
     function parseNames(raw) {
         const text = stripThinking(raw).replace(/```(?:json)?/gi, '');
         const out = [];
         const start = text.indexOf('[');
         const end = text.lastIndexOf(']');
+        let arr = null;
         if (start !== -1 && end > start) {
-            try {
-                const arr = JSON.parse(text.slice(start, end + 1));
-                if (Array.isArray(arr)) {
-                    for (const it of arr) {
-                        if (typeof it === 'string') out.push({ name: it, note: '' });
-                        else if (it && typeof it === 'object') {
-                            const parts = it.parts && typeof it.parts === 'object' && !Array.isArray(it.parts) ? it.parts : null;
-                            out.push({ name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? ''), read: String(it.read ?? it.reading ?? it.pronunciation ?? ''), ...(parts ? { parts } : {}) });
-                        }
-                    }
+            try { arr = JSON.parse(text.slice(start, end + 1)); } catch { /* try the pieces below */ }
+        }
+        if (!Array.isArray(arr) && start !== -1) arr = salvageObjects(text);
+        if (Array.isArray(arr)) {
+            for (const it of arr) {
+                if (typeof it === 'string') out.push({ name: it, note: '' });
+                else if (it && typeof it === 'object') {
+                    const parts = it.parts && typeof it.parts === 'object' && !Array.isArray(it.parts) ? it.parts : null;
+                    out.push({ name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? ''), read: String(it.read ?? it.reading ?? it.pronunciation ?? ''), ...(parts ? { parts } : {}) });
                 }
-            } catch { /* fall back to lines */ }
+            }
         }
         if (!out.length) {
-            // "1. Name — note" / "- **Name**: note"
+            // "1. Name — note" / "- **Name**: note". Lines of broken JSON are not names.
             for (const line of text.split('\n')) {
+                if (/[{\[]|":/.test(line)) continue;
                 const m = line.match(/^\s*(?:[-*•]|\d+[.)])?\s*\**\s*([^\s—–:*][^—–:*]{0,38}?)\s*\**\s*(?:[—–:]|\s-\s)\s*(.+)$/);
                 if (m) out.push({ name: m[1], note: m[2] });
             }
@@ -799,7 +835,7 @@
                 if (m) { name = m[1].trim(); if (!read) read = m[2].trim(); }
                 return { name, note: n.note.trim(), read: read.slice(0, 80), ...(n.parts ? { parts: n.parts } : {}) };
             })
-            .filter(n => n.parts || (n.name && n.name.length <= 40));
+            .filter(n => n.parts || (n.name && n.name.length <= 40 && looksLikeName(n.name)));
     }
 
     function filterNames(list, avoid) {
@@ -869,7 +905,7 @@
     }
 
     function tokensFor(count, st = settings(), heavy = false) {
-        return Math.max(clampInt(st.maxTokens, 200, 16000, 1000), 300 + count * (heavy ? 160 : 100));
+        return Math.max(clampInt(st.maxTokens, 200, 16000, DEFAULTS.maxTokens), 300 + count * (heavy ? 160 : 100));
     }
 
     // ---------- state ----------
@@ -1109,8 +1145,9 @@
             if (controller !== myController) return;
             const parsed = applyShape(parseNames(raw), form);
             const kept = keepNames(parsed, avoid, form, st);
+            const cut = answerCut(raw);
             if (!parsed.length) {
-                status = { kind: 'error', text: T().err(T().parseFail) };
+                status = { kind: 'error', text: T().err(cut ? T().cutFail : T().parseFail) };
             } else if (!kept.length) {
                 status = { kind: 'error', text: T().err(T().allFiltered) };
             } else {
@@ -1118,7 +1155,7 @@
                 results = kept.slice(0, count).map(k => ({ ...k, form: used }));
                 rememberNames(results.flatMap(memoryNames), st);
                 save();
-                status = { kind: 'ok', text: T().found(results.length) };
+                status = cut ? { kind: 'error', text: T().foundCut(results.length) } : { kind: 'ok', text: T().found(results.length) };
             }
         } catch (e) {
             if (controller !== myController) return;
@@ -1159,7 +1196,7 @@
             const parsed = src.pieces ? applyShape(parseNames(raw), form) : parseNames(raw);
             const kept = keepNames(parsed, avoid, form, st).slice(0, 3);
             const at = results.indexOf(src);
-            if (!parsed.length) status = { kind: 'error', text: L.err(L.parseFail) };
+            if (!parsed.length) status = { kind: 'error', text: L.err(answerCut(raw) ? L.cutFail : L.parseFail) };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
             else if (at !== -1) {
                 // Put the variants under their source, after any variants it already has.
@@ -1208,7 +1245,7 @@
             const parsed = applyShape(parseNames(raw), form);
             const kept = keepNames(parsed, avoid, form, st);
             const at = results.indexOf(src);
-            if (!parsed.length) status = { kind: 'error', text: L.err(L.parseFail) };
+            if (!parsed.length) status = { kind: 'error', text: L.err(answerCut(raw) ? L.cutFail : L.parseFail) };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
             else if (at !== -1) {
                 const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces };
@@ -1257,7 +1294,7 @@
             const parsed = parseNames(raw);
             const text = cleanPiece(parsed[0]?.name);
             const banned = new Set(avoid.map(a => a.toLowerCase()));
-            if (!text) status = { kind: 'error', text: L.err(L.parseFail) };
+            if (!text) status = { kind: 'error', text: L.err(answerCut(raw) ? L.cutFail : L.parseFail) };
             else if (text.toLowerCase() === piece.text.toLowerCase() || (NAME_ROLES.includes(piece.role) && banned.has(text.toLowerCase()))
                 || (st.wordNames === 'filter' && WORD_CHECK_ROLES.includes(piece.role) && WORD_NAMES.has(text.toLowerCase()))) {
                 status = { kind: 'error', text: L.err(L.allFiltered) };
@@ -1421,7 +1458,7 @@
                 return;
             case 'profile': st.profileId = String($el.val() || ''); break;
             case 'count': st.count = clampInt($el.val(), 1, 30, 5); $el.val(st.count); break;
-            case 'tokens': st.maxTokens = clampInt($el.val(), 200, 16000, 1000); $el.val(st.maxTokens); break;
+            case 'tokens': st.maxTokens = clampInt($el.val(), 200, 16000, DEFAULTS.maxTokens); $el.val(st.maxTokens); break;
             case 'theme': st.theme = THEMES.includes($el.val()) ? $el.val() : 'st'; save(); render(); syncSettingFields(); return;
             case 'fx': st.effects = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
             case 'reading': st.showReading = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
@@ -1560,7 +1597,7 @@
             rollSeeds, buildMessages, buildRefineMessages, REFINE_MODES, parseNames, filterNames, avoidList, rememberNames, detectLang,
             tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
-            wordHits, keepNames, WORD_NAMES,
+            wordHits, keepNames, WORD_NAMES, answerCut, looksLikeName,
         };
     } else {
         if (typeof $ === 'function' && document.body) settingsSlot();
