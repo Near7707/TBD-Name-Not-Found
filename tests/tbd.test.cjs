@@ -142,7 +142,7 @@ test('token budget grows with big batches', () => {
     const st = api.settings();
     st.maxTokens = 1000;
     assert.equal(api.tokensFor(5, st), 1000);
-    assert.equal(api.tokensFor(30, st), 300 + 30 * 80);
+    assert.equal(api.tokensFor(30, st), 300 + 30 * 100);
 });
 
 test('sound choice goes in the prompt and replaces the random texture', () => {
@@ -178,4 +178,61 @@ test('reshape prompt asks for real sound changes and can ask for just one', () =
     assert.match(user, /easy to pronounce/);
     assert.match(user, /pull the other way/);
     assert.match(user, /well-known real or mythological name/);
+});
+
+test('places get place rules, kind and setting-fitting seeds', () => {
+    const { api } = load();
+    const form = { target: 'place', vibe: 'scifi', kind: 'planet', kindText: '', gender: 'any', length: 'any', sound: 'any', mustContain: '' };
+    const seeds = api.rollSeeds(20, form, seeded(4));
+    for (const s of seeds) assert.ok(api.SPARKS.scifi.includes(s.spark), `sci-fi seed should be sci-fi: ${s.spark}`);
+    assert.ok(!seeds.some(s => ['-wyn', '-ia', '-el'].includes(s.ending)), 'places never get person endings');
+    const user = api.buildMessages(form, seeds.slice(0, 3), {})[1].content;
+    assert.match(user, /specifically a planet, moon or space station/);
+    assert.match(user, /not like a person's first name/);
+    assert.match(user, /tech or corporate roots/);
+    assert.match(user, /setting and what is being named come first/);
+    assert.match(user, /plain existing English word/);
+});
+
+test('custom kind and "other" use the typed text', () => {
+    const { api } = load();
+    assert.match(api.targetText({ target: 'place', kind: 'custom', kindText: 'a lake where a dragon sleeps' }), /specifically: "a lake where a dragon sleeps"/);
+    assert.match(api.targetText({ target: 'other', kindText: 'a pirate ship' }), /"a pirate ship"/);
+    assert.equal(api.targetText({ target: 'shop', kind: 'nope' }), 'a shop or business');
+});
+
+test('shops and items get a shape and may use real words', () => {
+    const { api } = load();
+    const form = { target: 'shop', vibe: 'cozy', kind: 'bakery', gender: 'any', length: 'any', sound: 'any', mustContain: '' };
+    const seeds = api.rollSeeds(5, form, seeded(6));
+    assert.ok(seeds.every(s => s.shape && !s.ending));
+    const user = api.buildMessages(form, seeds, {})[1].content;
+    assert.match(user, /shape: /);
+    assert.match(user, /main word starts with/);
+    assert.match(user, /may use real words/);
+    assert.doesNotMatch(user, /plain existing English word/);
+});
+
+test('reading is asked for only when on, and is read back', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'fantasy', gender: 'any', length: 'any', sound: 'any', mustContain: '' };
+    const seeds = api.rollSeeds(2, form, seeded(1));
+    assert.match(api.buildMessages(form, seeds, { lang: 'ko', reading: true })[1].content, /Korean Hangul/);
+    assert.match(api.buildMessages(form, seeds, { lang: 'en', reading: true })[1].content, /stressed syllable in capitals/);
+    assert.doesNotMatch(api.buildMessages(form, seeds, { lang: 'ko' })[1].content, /"read"/);
+    assert.match(api.buildRefineMessages({ name: 'Quilla' }, 'soft', form, { lang: 'ko', reading: true })[1].content, /"read"/);
+    const out = api.parseNames('[{"name":"Quilla","read":"퀼라","note":"x"},{"name":"Aren","note":"y"}]');
+    assert.equal(out[0].read, '퀼라');
+    assert.equal(out[1].read, '');
+    const lines = api.parseNames('1. Quilla (KWIL-uh) — soft');
+    assert.equal(lines[0].name, 'Quilla');
+    assert.equal(lines[0].read, 'KWIL-uh');
+    assert.ok(api.settings().showReading, 'reading is on by default');
+});
+
+test('kind labels exist in both languages for every kind', () => {
+    const { api } = load();
+    for (const [target, keys] of Object.entries(api.KINDS)) {
+        for (const lang of ['en', 'ko']) assert.deepEqual(Object.keys(api.STRINGS[lang].k[target]).sort(), [...keys].sort(), `${lang} ${target}`);
+    }
 });

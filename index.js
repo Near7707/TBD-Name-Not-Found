@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.4
+// TBD — Name Not Found v0.1.5
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -35,6 +35,13 @@
             rerollBtn: 'Swap just this name', rerolling: 'Finding another…', rerolled: '200 OK — name swapped',
             r: { soft: 'Softer', hard: 'Harder', sharp: 'Sharper', bright: 'Brighter', dark: 'Darker', shorter: 'Shorter', longer: 'Longer' },
             variants: n => `200 OK — ${n} variant${n === 1 ? '' : 's'} found`,
+            kind: 'Kind', kindPh: 'e.g. a lake where a dragon sleeps', otherWhat: 'Name for what?', otherPh: 'e.g. a pirate ship, a guild',
+            k: {
+                place: { any: 'Any', country: 'Country / kingdom', city: 'City', village: 'Village', mountain: 'Mountain / hill', water: 'River / lake', forest: 'Forest', sea: 'Sea / island', castle: 'Castle / fort', ruin: 'Dungeon / ruin', planet: 'Planet / station', custom: 'Custom…' },
+                shop: { any: 'Any', restaurant: 'Restaurant', cafe: 'Café / desserts', tavern: 'Tavern / inn', bakery: 'Bakery', smithy: 'Smithy / weapons', clothes: 'Clothing', apothecary: 'Apothecary / magic shop', books: 'Bookshop', general: 'General store', custom: 'Custom…' },
+                item: { any: 'Any', weapon: 'Sword / weapon', armor: 'Shield / armor', jewelry: 'Ring / jewelry', potion: 'Potion', book: 'Book / scroll', gem: 'Gem / stone', staff: 'Staff / wand', device: 'Machine / device', custom: 'Custom…' },
+            },
+            gear: 'Settings', back: 'Back',
             // settings
             sTitle: 'TBD — Name Not Found',
             sLang: 'Language', sLangAuto: 'Follow SillyTavern',
@@ -43,6 +50,7 @@
             sTokens: 'Max response tokens',
             sTokensHint: 'Raised automatically for big batches. Thinking models may need more.',
             sTheme: 'Theme', sEffects: 'Moving effects (glitch, flicker, scanlines)',
+            sReading: 'Show how to read each name',
             sHistory: 'Avoid names I already got',
             sHistoryClear: 'Forget past names', sHistoryCleared: 'Past names forgotten',
             sBan: 'Names to always avoid (comma or new line)',
@@ -75,6 +83,13 @@
             rerollBtn: '이 이름만 다시 뽑기', rerolling: '다른 이름 찾는 중…', rerolled: '200 OK — 이름 바꿈',
             r: { soft: '더 부드럽게', hard: '더 단단하게', sharp: '더 날카롭게', bright: '더 밝게', dark: '더 어둡게', shorter: '더 짧게', longer: '더 길게' },
             variants: n => `200 OK — 변형 ${n}개 찾음`,
+            kind: '종류', kindPh: '예: 용이 잠든 호수', otherWhat: '무엇의 이름?', otherPh: '예: 해적선, 길드',
+            k: {
+                place: { any: '상관없음', country: '나라·왕국', city: '도시', village: '마을', mountain: '산·언덕', water: '강·호수', forest: '숲', sea: '바다·섬', castle: '성·요새', ruin: '던전·유적', planet: '행성·우주정거장', custom: '직접 쓰기…' },
+                shop: { any: '상관없음', restaurant: '식당', cafe: '카페·디저트', tavern: '술집·여관', bakery: '빵집', smithy: '대장간·무기점', clothes: '옷가게', apothecary: '약방·마법상점', books: '서점', general: '잡화점', custom: '직접 쓰기…' },
+                item: { any: '상관없음', weapon: '검·무기', armor: '방패·갑옷', jewelry: '반지·장신구', potion: '물약', book: '책·두루마리', gem: '보석·돌', staff: '지팡이', device: '기계·장치', custom: '직접 쓰기…' },
+            },
+            gear: '설정', back: '돌아가기',
             sTitle: 'TBD — Name Not Found',
             sLang: '언어', sLangAuto: '실리태번 따라가기',
             sProfile: '연결 프로필', sProfileCurrent: '(현재 연결된 API 사용)', sProfileMissing: '⚠️ 찾을 수 없는 프로필 — 다시 골라 주세요',
@@ -82,6 +97,7 @@
             sTokens: '최대 응답 토큰',
             sTokensHint: '많이 뽑을 땐 자동으로 늘어나요. 생각하는 모델은 더 필요할 수 있어요.',
             sTheme: '테마', sEffects: '움직이는 효과 (글리치, 깜빡임, 스캔라인)',
+            sReading: '이름 읽는 법 보기',
             sHistory: '이미 나온 이름은 피하기',
             sHistoryClear: '지난 이름 잊기', sHistoryCleared: '지난 이름을 잊었어요',
             sBan: '항상 피할 이름 (쉼표나 줄바꿈으로 구분)',
@@ -115,15 +131,54 @@
 
     // ---------- random seeds ----------
     const START_LETTERS = 'BCDFGHJKLMNPRSTVWAEIOU'.split('');
-    const ENDINGS = ['-an', '-el', '-ick', '-or', '-wyn', '-ard', '-is', '-et', '-um', '-ow', '-ane', '-ith', '-ock', '-ess', '-ry', '-ay', '-ond', '-ix', '-ler', '-ia'];
+    // Endings depend on what is being named: person endings on a place made places sound like people.
+    const ENDINGS = {
+        person: ['-an', '-el', '-ick', '-or', '-wyn', '-ard', '-is', '-et', '-um', '-ow', '-ane', '-ith', '-ock', '-ess', '-ry', '-ay', '-ond', '-ix', '-ler', '-ia'],
+        placeOld: ['-holm', '-mere', '-wick', '-ford', '-by', '-thorpe', '-moor', '-crag', '-ley', '-stead', '-gate', '-combe', '-den', '-wold', '-fell', '-bury'],
+        placeTech: ['-ex', '-ion', '-ax', '-on', '-ar', '-is', ' Station', ' Array', ' Prime', ' Hub', ' Sector', '-7', '-IX', ' Spire'],
+        placeModern: ['-ton', '-field', '-ville', ' Heights', ' Park', ' Bay', ' Point', '-burg', '-dale', ' Junction', ' Cross', '-side'],
+    };
+    function endingsFor(target, vibe) {
+        if (target === 'person') return ENDINGS.person;
+        if (target !== 'place') return null;
+        if (vibe === 'scifi') return ENDINGS.placeTech;
+        if (vibe === 'modern') return ENDINGS.placeModern;
+        if (vibe === 'custom') return [...ENDINGS.placeOld, ...ENDINGS.placeModern];
+        return ENDINGS.placeOld;
+    }
+    // Shops and items are often phrases, so they get a shape instead of an ending.
+    const SHAPES = {
+        shop: ['one invented word', 'The + adjective + noun', "an invented owner's name + 's", 'a short pun on the trade', 'noun & noun', 'an invented word + the kind of shop'],
+        item: ['one invented word', 'an invented word + an object noun', '"the … of …"', "an invented maker's name + 's + object", 'a title-like epithet'],
+        itemTech: ['a model name with letters or numbers', 'a brand-like invented word', 'an invented word + a tech noun'],
+    };
+    function shapesFor(target, vibe) {
+        if (target === 'shop') return SHAPES.shop;
+        if (target === 'item') return vibe === 'scifi' ? [...SHAPES.item, ...SHAPES.itemTech] : SHAPES.item;
+        return null;
+    }
     const TEXTURES = ['soft', 'sharp', 'earthy', 'airy', 'heavy', 'bright', 'old-fashioned', 'clipped', 'rolling', 'rough', 'playful', 'stern'];
-    const SPARKS = [
-        'moss', 'rusted bell', 'night train', 'salt', 'lantern', 'thistle', 'flint', 'river ford', 'wool', 'copper',
-        'chalk', 'hearth', 'ash', 'frost', 'bramble', 'ledger', 'kiln', 'harbor', 'owl', 'rye', 'slate', 'tallow',
-        'quill', 'cistern', 'orchard', 'gravel', 'ember', 'marsh', 'loom', 'anvil', 'cider', 'bell tower', 'ferry',
-        'wax seal', 'shale', 'heron', 'nettle', 'millstone', 'pewter', 'compass', 'clover', 'tidepool', 'sundial',
-        'barley', 'iron gate', 'static', 'neon sign', 'fuse box', 'radio tower', 'chess clock',
-    ];
+    // Inspiration words per vibe. One shared rural list pulled every vibe toward the countryside.
+    const SPARKS = {
+        fantasy: ['moonlit spring', 'dragon bone', 'rune stone', 'silver birch', 'wyvern nest', 'enchanted mirror', 'crystal cave', 'elder oak',
+            'phoenix ash', 'fairy ring', 'storm crown', 'sunken temple', 'griffin feather', 'spell ink', 'glass tower', 'amber', 'starlit pool',
+            'troll bridge', 'sea serpent', 'hollow hill', 'gold leaf', 'mist bell', 'runed shield', 'wild hunt', 'giant\'s stair'],
+        medieval: ['moss', 'rusted bell', 'salt', 'lantern', 'thistle', 'flint', 'river ford', 'wool', 'copper', 'chalk', 'hearth', 'bramble',
+            'ledger', 'kiln', 'harbor', 'owl', 'rye', 'slate', 'tallow', 'quill', 'cistern', 'orchard', 'marsh', 'loom', 'anvil', 'cider',
+            'bell tower', 'ferry', 'wax seal', 'heron', 'nettle', 'millstone', 'pewter', 'sundial', 'barley', 'iron gate'],
+        scifi: ['orbital relay', 'neon sign', 'server farm', 'ion drive', 'drone swarm', 'hull plating', 'data vault', 'cryo pod', 'signal static',
+            'chrome arm', 'fusion core', 'satellite dish', 'circuit board', 'holo ad', 'acid rain', 'maglev line', 'firewall', 'quantum chip',
+            'cargo container', 'radiation badge', 'synth leather', 'laser grid', 'black market', 'dead pixel', 'vending machine', 'airlock'],
+        modern: ['subway', 'coffee shop', 'parking garage', 'text message', 'rooftop', 'laundromat', 'skate park', 'office tower', 'food truck',
+            'highway', 'vinyl record', 'gym', 'bus stop', 'convenience store', 'billboard', 'suburb', 'taxi', 'farmers market', 'loft', 'arcade',
+            'bridge', 'studio', 'stadium', 'radio station', 'campus'],
+        gothic: ['crypt', 'raven', 'candle wax', 'iron gate', 'cathedral', 'bell tower', 'mourning veil', 'gargoyle', 'fog', 'graveyard',
+            'stained glass', 'old blood', 'thorn', 'organ pipe', 'locket', 'wolf', 'moor', 'chapel', 'bone', 'velvet', 'storm', 'ruin',
+            'hunger', 'midnight', 'silver mirror'],
+        cozy: ['teapot', 'honey', 'mitten', 'cinnamon', 'acorn', 'button', 'quilt', 'muffin', 'fireplace', 'kitten', 'jam jar', 'pinecone',
+            'tea cozy', 'marshmallow', 'bumblebee', 'clover', 'biscuit', 'snail', 'window box', 'yarn', 'pancake', 'meadow', 'pudding', 'mushroom'],
+    };
+    const ALL_SPARKS = [...new Set(Object.values(SPARKS).flat())];
     const SYLLABLES = { short: [1, 2], medium: [2, 3], long: [3, 4], any: [1, 4] };
 
     function pick(arr, rnd = Math.random) { return arr[Math.floor(rnd() * arr.length)]; }
@@ -131,17 +186,22 @@
     // One seed per name. Each name gets its own nudge so the batch spreads out.
     function rollSeeds(count, opts = {}, rnd = Math.random) {
         const [lo, hi] = SYLLABLES[opts.length] || SYLLABLES.any;
+        const sparks = SPARKS[opts.vibe] || ALL_SPARKS;
+        const target = opts.target || 'person';
+        const endings = endingsFor(target, opts.vibe);
+        const shapes = shapesFor(target, opts.vibe);
         const seeds = [];
         for (let i = 0; i < count; i++) {
             const seed = {
                 syllables: lo + Math.floor(rnd() * (hi - lo + 1)),
                 texture: pick(TEXTURES, rnd),
-                spark: pick(SPARKS, rnd),
+                spark: pick(sparks, rnd),
             };
             // A forced start letter would fight "must contain", so skip it then.
             if (!opts.mustContain) seed.start = pick(START_LETTERS, rnd);
             // Only nudge the ending about half the time; always forcing it sounds samey too.
-            if (rnd() < 0.5) seed.ending = pick(ENDINGS, rnd);
+            if (endings && rnd() < 0.5) seed.ending = pick(endings, rnd);
+            if (shapes) seed.shape = pick(shapes, rnd);
             seeds.push(seed);
         }
         return seeds;
@@ -159,7 +219,8 @@
         historySize: 200,
         history: [],
         banList: '',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', length: 'any', sound: 'any', mustContain: '' },
+        showReading: true,
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '' },
     };
 
     function settings() {
@@ -216,15 +277,76 @@
     // ---------- prompt ----------
     const TARGET_DESC = {
         person: 'a person (given name, optionally with a family name)',
-        place: 'a place (town, region, landmark or street)',
-        shop: 'a shop, inn, tavern or business',
-        item: 'an item, artifact, weapon, potion or tool',
+        place: 'a place',
+        shop: 'a shop or business',
+        item: 'an item or object',
         other: 'something in a story (group, ship, creature, event…)',
     };
-    const VIBE_DESC = {
-        fantasy: 'fantasy', medieval: 'grounded medieval European', scifi: 'sci-fi / cyberpunk',
-        modern: 'modern-day', gothic: 'gothic, dark and old', cozy: 'cozy, whimsical and warm',
+    // "Kind" narrows the target (a city, a bakery, a ring…).
+    const KIND_DESC = {
+        place: {
+            country: 'a country or kingdom', city: 'a city', village: 'a village or small town', mountain: 'a mountain or hill',
+            water: 'a river or lake', forest: 'a forest', sea: 'a sea or island', castle: 'a castle or fortress',
+            ruin: 'a dungeon or ruin', planet: 'a planet, moon or space station',
+        },
+        shop: {
+            restaurant: 'a restaurant', cafe: 'a café or dessert shop', tavern: 'a tavern or inn', bakery: 'a bakery',
+            smithy: 'a blacksmith or weapon shop', clothes: 'a clothing shop', apothecary: 'an apothecary or magic shop',
+            books: 'a bookshop', general: 'a general store',
+        },
+        item: {
+            weapon: 'a sword or other weapon', armor: 'a shield or piece of armor', jewelry: 'a ring or piece of jewelry',
+            potion: 'a potion', book: 'a book or scroll', gem: 'a gem or stone', staff: 'a staff or wand', device: 'a machine or device',
+        },
     };
+    const KINDS = Object.fromEntries(Object.entries(KIND_DESC).map(([t, m]) => [t, ['any', ...Object.keys(m), 'custom']]));
+
+    function targetText(form) {
+        const target = TARGET_DESC[form.target] ? form.target : 'other';
+        const own = String(form.kindText || '').trim().slice(0, 80);
+        if (target === 'other') return own ? `something in a story: "${own}"` : TARGET_DESC.other;
+        if (target === 'person') return TARGET_DESC.person;
+        if (form.kind === 'custom' && own) return `${TARGET_DESC[target]}, specifically: "${own}"`;
+        const kind = KIND_DESC[target]?.[form.kind];
+        return kind ? `${TARGET_DESC[target]}, specifically ${kind}` : TARGET_DESC[target];
+    }
+
+    const VIBE_DESC = {
+        fantasy: 'fantasy (magic, myth, old kingdoms)',
+        medieval: 'grounded medieval European (villages, trades, churches, no magic)',
+        scifi: 'sci-fi / cyberpunk (technology, corporations, space, neon, code, chrome)',
+        modern: 'modern-day (real-world today)',
+        gothic: 'gothic, dark and old (decay, nobility, churches, night)',
+        cozy: 'cozy, whimsical and warm (small, cute, homely)',
+    };
+
+    // What the name has to sound like, so a place doesn't come back as a person's name.
+    function shapeRules(form) {
+        const out = [];
+        if (form.target === 'place') {
+            out.push("It must sound like a place, not like a person's first name.");
+            if (form.vibe === 'scifi') out.push('Sci-fi places can use tech or corporate roots, designations and numbers (a station, array, sector, hub, a "-7" suffix).');
+            else if (form.vibe === 'modern') out.push('Modern places can sound like real towns, streets or districts (-ton, -field, Heights, Bay, Park…).');
+            else if (form.vibe !== 'custom') out.push('Old-world places often use landscape endings (-holm, -mere, -wick, -ford, -by, -moor…). Mix them; don\'t put the same ending on every name.');
+        } else if (form.target === 'shop') {
+            out.push('It must sound like a shop sign, not like a person. Shop names may use real words or a short phrase, as long as the whole name is fresh.');
+        } else if (form.target === 'item') {
+            out.push('It must sound like the name of an object, not of a person. A short phrase is fine.');
+        } else if (form.target === 'other') {
+            out.push('It must fit what is being named.');
+        }
+        if (form.target === 'person' || form.target === 'place' || form.target === 'other') {
+            out.push('Never use a plain existing English word on its own as the name (like "Mold" or "Salt").');
+        }
+        return out;
+    }
+
+    // How to show the reading: Korean letters for Korean, a stress respelling for English.
+    function readingRule(lang) {
+        return lang === 'ko'
+            ? '"read": how to say it, written in Korean Hangul using standard Korean loanword spelling (e.g. Quilla → 퀼라)'
+            : '"read": a simple respelling with the stressed syllable in capitals (e.g. Quilla → KWIL-uh)';
+    }
 
     // Sound groups follow phonetics: sonorants, stops, fricatives, front vs back vowels.
     const SOUND_RULE = 'Judge by how it sounds, not by the letters (a "c" in "Cal" is hard, in "Ced" it is sharp).';
@@ -251,22 +373,26 @@
         const avoid = opts.avoid || [];
         const vibe = vibeText(form);
         const sound = SOUND_DESC[form.sound];
+        const phrase = form.target === 'shop' || form.target === 'item';
         const lines = [];
-        lines.push(`Invent ${seeds.length} original name${seeds.length === 1 ? '' : 's'} for ${TARGET_DESC[form.target] || TARGET_DESC.other}.`);
+        lines.push(`Invent ${seeds.length} original name${seeds.length === 1 ? '' : 's'} for ${targetText(form)}.`);
         lines.push(`Setting / vibe: ${vibe}.`);
         lines.push('Style: Western, English-readable spelling.');
+        lines.push(...shapeRules(form));
         if (form.target === 'person' && form.gender && form.gender !== 'any') lines.push(`Gender feel: ${form.gender}.`);
         if (sound) lines.push(`Sound: ${sound}. ${SOUND_RULE}`);
         if (form.mustContain) lines.push(`Every name must contain the letters "${String(form.mustContain).trim()}" (any position).`);
         lines.push('');
-        lines.push('Each name has its own seed. Follow the seed closely; it is there to keep the names varied.');
+        lines.push('The setting and what is being named come first. Each name also has a seed that only adds variety:');
+        lines.push('follow its sound hints, but bend the inspiration word to fit the setting (never let it pull the name out of the setting).');
         seeds.forEach((s, i) => {
             const parts = [];
-            if (s.start) parts.push(`starts with "${s.start}"`);
-            parts.push(`${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
-            if (s.ending) parts.push(`ends with a "${s.ending}" sound`);
+            if (s.shape) parts.push(`shape: ${s.shape}`);
+            if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
+            parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
+            if (s.ending) parts.push(`ends with "${s.ending}"`);
             if (!sound) parts.push(`${s.texture} sound`);
-            parts.push(`loosely inspired by "${s.spark}"`);
+            parts.push(`inspiration: "${s.spark}"`);
             lines.push(`${i + 1}. ${parts.join(', ')}`);
         });
         if (avoid.length) {
@@ -274,9 +400,10 @@
             lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         }
         lines.push('');
-        lines.push(`For each name add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about its feel or made-up roots. Don't claim a real meaning unless you are sure.`);
+        lines.push(`For each name add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about how it fits this setting. Don't claim a real meaning unless you are sure.`);
+        if (opts.reading) lines.push(`Also add ${readingRule(lang)}.`);
         lines.push('Reply with ONLY a JSON array, nothing else:');
-        lines.push('[{"name": "...", "note": "..."}]');
+        lines.push(opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused fantasy clichés.' },
             { role: 'user', content: lines.join('\n') },
@@ -289,19 +416,21 @@
         const avoid = opts.avoid || [];
         const count = opts.count || 3;
         const lines = [];
-        lines.push(`Here is a name for ${TARGET_DESC[form.target] || TARGET_DESC.other}: "${src.name}".`);
+        lines.push(`Here is a name for ${targetText(form)}: "${src.name}".`);
         lines.push(`Setting / vibe: ${vibeText(form)}.`);
         lines.push(`Make ${count} new variant${count === 1 ? '' : 's'} that keep its overall feel and rough shape, but change it to be ${REFINE_DESC[mode] || REFINE_DESC.soft}.`);
         lines.push(SOUND_RULE);
         lines.push('Each variant must be clearly different from the original and from each other. Keep Western, English-readable spelling.');
+        lines.push(...shapeRules(form));
         lines.push('Change the sounds inside the name, not just by gluing a letter on the end. Every variant must be easy to pronounce (no clusters like "-etd").');
         lines.push('Also cut sounds that pull the other way (for "sharper", drop soft r/l/m endings; for "softer", drop hard k/t/g stops).');
         lines.push('Avoid anything only a letter or two away from a well-known real or mythological name (like Bridget or Thor).');
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         lines.push('');
         lines.push(`For each variant add a short note (under 10 words) in ${lang === 'ko' ? 'Korean' : 'English'} about what changed in the sound.`);
+        if (opts.reading) lines.push(`Also add ${readingRule(lang)}.`);
         lines.push('Reply with ONLY a JSON array, nothing else:');
-        lines.push('[{"name": "...", "note": "..."}]');
+        lines.push(opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers who understands phonetics and how sounds feel.' },
             { role: 'user', content: lines.join('\n') },
@@ -324,7 +453,9 @@
                 if (Array.isArray(arr)) {
                     for (const it of arr) {
                         if (typeof it === 'string') out.push({ name: it, note: '' });
-                        else if (it && typeof it === 'object') out.push({ name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? '') });
+                        else if (it && typeof it === 'object') {
+                            out.push({ name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? ''), read: String(it.read ?? it.reading ?? it.pronunciation ?? '') });
+                        }
                     }
                 }
             } catch { /* fall back to lines */ }
@@ -337,7 +468,14 @@
             }
         }
         return out
-            .map(n => ({ name: n.name.replace(/^["'*\s]+|["'*\s]+$/g, '').trim(), note: n.note.trim() }))
+            .map(n => {
+                let name = n.name.replace(/^["'*\s]+|["'*\s]+$/g, '').trim();
+                let read = String(n.read || '').trim();
+                // Line answers may put the reading in brackets: "Quilla (퀼라)".
+                const m = name.match(/^(.+?)\s*[([]([^()[\]]+)[)\]]$/);
+                if (m) { name = m[1].trim(); if (!read) read = m[2].trim(); }
+                return { name, note: n.note.trim(), read: read.slice(0, 40) };
+            })
             .filter(n => n.name && n.name.length <= 40);
     }
 
@@ -407,7 +545,7 @@
     }
 
     function tokensFor(count, st = settings()) {
-        return Math.max(clampInt(st.maxTokens, 200, 16000, 1000), 300 + count * 80);
+        return Math.max(clampInt(st.maxTokens, 200, 16000, 1000), 300 + count * 100);
     }
 
     // ---------- state ----------
@@ -418,6 +556,7 @@
     let loadingTimer = null;
     let menuFor = null;   // the result whose reshape menu is open
     let refining = null;  // { src, mode, ctl } while a reshape request runs
+    let view = 'form';    // 'form' or 'settings' (the ⚙ page inside the window)
 
     // ---------- the panel ----------
     function optionList(map, current) {
@@ -428,7 +567,7 @@
     function headerHtml(theme) {
         const tt = THEME_TEXT[theme] || THEME_TEXT.st;
         const L = T();
-        const closeBtn = `<button id="tbd_close" class="tbd-icon-btn" title="${escapeHtml(L.close)}" aria-label="${escapeHtml(L.close)}"><i class="fa-solid fa-xmark"></i></button>`;
+        const closeBtn = `<span class="tbd-head-btns"><button id="tbd_gear" class="tbd-icon-btn${view === 'settings' ? ' tbd-on' : ''}" title="${escapeHtml(L.gear)}" aria-label="${escapeHtml(L.gear)}"><i class="fa-solid fa-gear"></i></button><button id="tbd_close" class="tbd-icon-btn" title="${escapeHtml(L.close)}" aria-label="${escapeHtml(L.close)}"><i class="fa-solid fa-xmark"></i></button></span>`;
         if (theme === 'oldwin') {
             return `<div class="tbd-win-bar"><span>${escapeHtml(tt.title)}</span>${closeBtn}</div>
                 <div class="tbd-head tbd-head-row"><div class="tbd-win-icon" aria-hidden="true">✕</div>
@@ -460,13 +599,18 @@
 
     function formHtml(form) {
         const L = T();
+        const kinds = KINDS[form.target];
+        const kind = kinds && kinds.includes(form.kind) ? form.kind : 'any';
+        const isOther = form.target === 'other';
         return `<div class="tbd-form">
             <label>${escapeHtml(L.target)}${selectHtml('tbd_target', L.t, form.target)}</label>
             <label>${escapeHtml(L.vibe)}${selectHtml('tbd_vibe', L.v, form.vibe)}</label>
             <label class="tbd-wide" id="tbd_custom_wrap"${form.vibe === 'custom' ? '' : ' hidden'}><input id="tbd_custom" class="text_pole" type="text" maxlength="80" placeholder="${escapeHtml(L.customVibePh)}" value="${escapeHtml(form.customVibe)}"></label>
             <label id="tbd_gender_wrap"${form.target === 'person' ? '' : ' hidden'}>${escapeHtml(L.gender)}${selectHtml('tbd_gender', L.g, form.gender)}</label>
+            ${kinds ? `<label id="tbd_kind_wrap">${escapeHtml(L.kind)}${selectHtml('tbd_kind', L.k[form.target], kind)}</label>` : ''}
             <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
             <label>${escapeHtml(L.sound)}${selectHtml('tbd_sound', L.s, form.sound || 'any')}</label>
+            <label class="tbd-wide" id="tbd_kindtext_wrap"${isOther || kind === 'custom' ? '' : ' hidden'}>${isOther ? escapeHtml(L.otherWhat) : ''}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="80" placeholder="${escapeHtml(isOther ? L.otherPh : L.kindPh)}" value="${escapeHtml(form.kindText || '')}"></label>
             <label class="tbd-wide">${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
         </div>`;
@@ -476,6 +620,7 @@
         const L = T();
         if (busy) return `<div class="tbd-log" id="tbd_log"></div>`;
         if (!results.length) return `<div class="tbd-empty">${escapeHtml(L.empty)}</div>`;
+        const reading = !!settings().showReading;
         return results.map((r, i) => {
             const depth = r.depth || 0;
             const tag = r.tag && L.r[r.tag] ? `<span class="tbd-tag">${escapeHtml(L.r[r.tag])}</span>` : '';
@@ -486,7 +631,7 @@
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
-                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${tag}</div>${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
+                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}</div>${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
@@ -511,6 +656,13 @@
         const $p = $('#tbd_panel');
         if (!$p.length) return;
         $p.attr('class', panelClasses(st));
+        if (view === 'settings') {
+            $p.html(`${headerHtml(st.theme)}<div class="tbd-psettings">${settingsFieldsHtml('p')}
+                <button id="tbd_back" class="tbd-go"><i class="fa-solid fa-arrow-left"></i> ${escapeHtml(T().back)}</button></div>`);
+            syncSettingFields();
+            fillProfileSelects();
+            return;
+        }
         $p.html(`${headerHtml(st.theme)}${formHtml(st.form)}
             <div class="tbd-results" id="tbd_results">${resultsHtml()}</div>
             <div class="tbd-foot" id="tbd_foot">${footerHtml()}</div>`);
@@ -540,6 +692,7 @@
 
     function openPanel() {
         if (!$('#tbd_panel').length) $('body').append('<div id="tbd_panel" role="dialog" aria-modal="false"></div>');
+        view = 'form';
         render();
         $('#tbd_panel').show();
     }
@@ -547,8 +700,14 @@
 
     function readForm() {
         const st = settings();
+        if (!$('#tbd_target').length) return st.form; // the ⚙ page is showing
+        const target = $('#tbd_target').val() || 'person';
+        const kinds = KINDS[target];
+        const kindVal = $('#tbd_kind').length ? $('#tbd_kind').val() : st.form.kind;
         st.form = {
-            target: $('#tbd_target').val() || 'person',
+            target,
+            kind: kinds && kinds.includes(kindVal) ? kindVal : 'any',
+            kindText: String($('#tbd_kindtext').val() ?? st.form.kindText ?? '').slice(0, 80),
             vibe: $('#tbd_vibe').val() || 'fantasy',
             customVibe: String($('#tbd_custom').val() || '').slice(0, 80),
             gender: $('#tbd_gender').val() || 'any',
@@ -570,7 +729,7 @@
         const lang = detectLang();
         const count = st.count;
         const avoid = avoidList(st);
-        const messages = buildMessages(form, rollSeeds(count, form), { lang, avoid });
+        const messages = buildMessages(form, rollSeeds(count, form), { lang, avoid, reading: !!st.showReading });
 
         busy = true;
         controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -619,7 +778,7 @@
         const st = settings();
         const L = T();
         const avoid = [...new Set([...avoidList(st), ...results.map(r => r.name)])];
-        const messages = buildRefineMessages(src, mode, src.form || st.form, { lang: detectLang(), avoid });
+        const messages = buildRefineMessages(src, mode, src.form || st.form, { lang: detectLang(), avoid, reading: !!st.showReading });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, mode, ctl, kind: 'refine' };
         refining = job;
@@ -667,8 +826,8 @@
         const avoid = [...new Set([...avoidList(st), ...results.map(r => r.name)])];
         const isVariant = (src.depth || 0) > 0 && src.from && REFINE_DESC[src.tag];
         const messages = isVariant
-            ? buildRefineMessages(src.from, src.tag, form, { lang, avoid, count: 1 })
-            : buildMessages(form, rollSeeds(1, form), { lang, avoid });
+            ? buildRefineMessages(src.from, src.tag, form, { lang, avoid, count: 1, reading: !!st.showReading })
+            : buildMessages(form, rollSeeds(1, form), { lang, avoid, reading: !!st.showReading });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, ctl, kind: 'reroll' };
         refining = job;
@@ -684,7 +843,7 @@
             if (!parsed.length) status = { kind: 'error', text: L.err(L.parseFail) };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
             else if (at !== -1) {
-                const fresh = { ...src, name: kept[0].name, note: kept[0].note };
+                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read };
                 // Variants hanging under the old name no longer fit, so they go with it.
                 const depth = src.depth || 0;
                 let end = at + 1;
@@ -750,80 +909,112 @@
         return true;
     }
 
-    // ---------- settings drawer ----------
-    function settingsHtml() {
+    // ---------- settings (left drawer and the ⚙ page share the same fields) ----------
+    function settingsFieldsHtml(prefix) {
         const L = T();
         const st = settings();
-        const themeOpts = optionList(L.th, st.theme);
+        const inPanel = prefix === 'p';
+        const id = k => `tbd_${prefix}_${k}`;
+        const sel = (k, inner) => {
+            const el = `<select id="${id(k)}" class="text_pole" data-tbd-set="${k}">${inner}</select>`;
+            return inPanel ? `<span class="tbd-select">${el}</span>` : el;
+        };
+        const langOpts = `<option value="auto">${escapeHtml(L.sLangAuto)}</option><option value="en">English</option><option value="ko">한국어</option>`;
+        return `<label for="${id('lang')}">${escapeHtml(L.sLang)}</label>${sel('lang', langOpts)}
+            <label for="${id('profile')}">${escapeHtml(L.sProfile)}</label>${sel('profile', '')}
+            <label for="${id('count')}">${escapeHtml(L.sCount)}</label>
+            <input id="${id('count')}" class="text_pole" type="number" min="1" max="30" step="1" data-tbd-set="count">
+            <label for="${id('tokens')}">${escapeHtml(L.sTokens)}</label>
+            <input id="${id('tokens')}" class="text_pole" type="number" min="200" max="16000" step="100" data-tbd-set="tokens">
+            <small>${escapeHtml(L.sTokensHint)}</small>
+            <label for="${id('theme')}">${escapeHtml(L.sTheme)}</label>${sel('theme', optionList(L.th, st.theme))}
+            <label class="checkbox_label"><input id="${id('fx')}" type="checkbox" data-tbd-set="fx"><span>${escapeHtml(L.sEffects)}</span></label>
+            <label class="checkbox_label"><input id="${id('reading')}" type="checkbox" data-tbd-set="reading"><span>${escapeHtml(L.sReading)}</span></label>
+            <label class="checkbox_label"><input id="${id('hist')}" type="checkbox" data-tbd-set="hist"><span>${escapeHtml(L.sHistory)}</span></label>
+            <div><button type="button" class="${inPanel ? 'tbd-small-btn' : 'menu_button'} tbd-hist-clear">${escapeHtml(L.sHistoryClear)}</button></div>
+            <label for="${id('ban')}">${escapeHtml(L.sBan)}</label>
+            <textarea id="${id('ban')}" class="text_pole" rows="3" data-tbd-set="ban"></textarea>
+            <small>${escapeHtml(L.sBanHint)}</small>`;
+    }
+
+    function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <b>${escapeHtml(L.sTitle)}</b>
+                    <b>${escapeHtml(T().sTitle)}</b>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
-                <div class="inline-drawer-content">
-                    <label for="tbd_s_lang">${escapeHtml(L.sLang)}</label>
-                    <select id="tbd_s_lang" class="text_pole">
-                        <option value="auto">${escapeHtml(L.sLangAuto)}</option>
-                        <option value="en">English</option>
-                        <option value="ko">한국어</option>
-                    </select>
-                    <label for="tbd_s_profile">${escapeHtml(L.sProfile)}</label>
-                    <select id="tbd_s_profile" class="text_pole"></select>
-                    <label for="tbd_s_count">${escapeHtml(L.sCount)}</label>
-                    <input id="tbd_s_count" class="text_pole" type="number" min="1" max="30" step="1">
-                    <label for="tbd_s_tokens">${escapeHtml(L.sTokens)}</label>
-                    <input id="tbd_s_tokens" class="text_pole" type="number" min="200" max="16000" step="100">
-                    <small>${escapeHtml(L.sTokensHint)}</small>
-                    <label for="tbd_s_theme">${escapeHtml(L.sTheme)}</label>
-                    <select id="tbd_s_theme" class="text_pole">${themeOpts}</select>
-                    <label class="checkbox_label"><input id="tbd_s_fx" type="checkbox"><span>${escapeHtml(L.sEffects)}</span></label>
-                    <label class="checkbox_label"><input id="tbd_s_hist" type="checkbox"><span>${escapeHtml(L.sHistory)}</span></label>
-                    <div><button id="tbd_s_hist_clear" class="menu_button">${escapeHtml(L.sHistoryClear)}</button></div>
-                    <label for="tbd_s_ban">${escapeHtml(L.sBan)}</label>
-                    <textarea id="tbd_s_ban" class="text_pole" rows="3"></textarea>
-                    <small>${escapeHtml(L.sBanHint)}</small>
-                </div>
+                <div class="inline-drawer-content">${settingsFieldsHtml('s')}</div>
             </div>
         </div>`;
     }
 
-    function fillProfileSelect() {
+    // Put the saved values into every copy of the fields (drawer and ⚙ page), except the one being typed in.
+    function syncSettingFields(except = null) {
         const st = settings();
-        const L = T();
-        const $sel = $('#tbd_s_profile');
-        $sel.empty();
-        $sel.append(`<option value="">${escapeHtml(L.sProfileCurrent)}</option>`);
-        const profiles = getProfiles();
-        for (const p of profiles) $sel.append(`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`);
-        // Keep the saved choice even if the list is empty right now.
-        if (st.profileId && !profiles.some(p => p.id === st.profileId)) {
-            $sel.append(`<option value="${escapeHtml(st.profileId)}">${escapeHtml(L.sProfileMissing)}</option>`);
-        }
-        $sel.val(st.profileId);
+        const values = {
+            lang: st.language, profile: st.profileId, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
+        };
+        const checks = { fx: !!st.effects, reading: !!st.showReading, hist: !!st.rememberHistory };
+        $('[data-tbd-set]').each(function () {
+            if (this === except) return;
+            const key = this.getAttribute('data-tbd-set');
+            if (key in checks) $(this).prop('checked', checks[key]);
+            else if (key !== 'profile' && key in values) $(this).val(values[key]);
+        });
     }
 
-    function bindSettings() {
+    function fillProfileSelects() {
         const st = settings();
-        $('#tbd_s_lang').val(st.language).on('change', function () {
-            st.language = $(this).val();
-            save();
-            // Rebuild the drawer and menu so the words switch language.
-            $('#tbd_settings').remove();
-            settingsSlot().append(settingsHtml());
-            bindSettings();
-            $('#tbd_menu_label').text(T().menu);
-            render();
+        const L = T();
+        const profiles = getProfiles();
+        $('[data-tbd-set="profile"]').each(function () {
+            const $sel = $(this);
+            $sel.empty();
+            $sel.append(`<option value="">${escapeHtml(L.sProfileCurrent)}</option>`);
+            for (const p of profiles) $sel.append(`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`);
+            // Keep the saved choice even if the list is empty right now.
+            if (st.profileId && !profiles.some(p => p.id === st.profileId)) {
+                $sel.append(`<option value="${escapeHtml(st.profileId)}">${escapeHtml(L.sProfileMissing)}</option>`);
+            }
+            $sel.val(st.profileId);
         });
-        fillProfileSelect();
-        $('#tbd_s_profile').on('focus', fillProfileSelect).on('change', function () { st.profileId = $(this).val(); save(); });
-        $('#tbd_s_count').val(st.count).on('change', function () { st.count = clampInt($(this).val(), 1, 30, 5); $(this).val(st.count); save(); });
-        $('#tbd_s_tokens').val(st.maxTokens).on('change', function () { st.maxTokens = clampInt($(this).val(), 200, 16000, 1000); $(this).val(st.maxTokens); save(); });
-        $('#tbd_s_theme').val(st.theme).on('change', function () { st.theme = THEMES.includes($(this).val()) ? $(this).val() : 'st'; save(); render(); });
-        $('#tbd_s_fx').prop('checked', !!st.effects).on('change', function () { st.effects = !!$(this).prop('checked'); save(); render(); });
-        $('#tbd_s_hist').prop('checked', !!st.rememberHistory).on('change', function () { st.rememberHistory = !!$(this).prop('checked'); save(); });
-        $('#tbd_s_hist_clear').on('click', () => { st.history = []; save(); toastr.info(T().sHistoryCleared, 'TBD'); });
-        $('#tbd_s_ban').val(st.banList).on('input', function () { st.banList = String($(this).val() || ''); save(); });
+    }
+
+    function rebuildDrawer() {
+        $('#tbd_settings').remove();
+        settingsSlot().append(settingsHtml());
+        syncSettingFields();
+        fillProfileSelects();
+    }
+
+    function applySetting(el, type) {
+        const st = settings();
+        const key = el.getAttribute('data-tbd-set');
+        // Text box saves while typing; everything else on change (selects fire both events).
+        if ((type === 'input') !== (key === 'ban')) return;
+        const $el = $(el);
+        switch (key) {
+            case 'lang':
+                st.language = $el.val();
+                save();
+                rebuildDrawer();
+                $('#tbd_menu_label').text(T().menu);
+                render();
+                return;
+            case 'profile': st.profileId = String($el.val() || ''); break;
+            case 'count': st.count = clampInt($el.val(), 1, 30, 5); $el.val(st.count); break;
+            case 'tokens': st.maxTokens = clampInt($el.val(), 200, 16000, 1000); $el.val(st.maxTokens); break;
+            case 'theme': st.theme = THEMES.includes($el.val()) ? $el.val() : 'st'; save(); render(); syncSettingFields(); return;
+            case 'fx': st.effects = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
+            case 'reading': st.showReading = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
+            case 'hist': st.rememberHistory = !!$el.prop('checked'); break;
+            case 'ban': st.banList = String($el.val() || ''); break;
+            default: return;
+        }
+        save();
+        if (key === 'profile') fillProfileSelects();
+        syncSettingFields(el);
     }
 
     // ---------- start ----------
@@ -853,7 +1044,8 @@
     function init() {
         settings();
         settingsSlot().append(settingsHtml());
-        bindSettings();
+        syncSettingFields();
+        fillProfileSelects();
 
         if (!addMenuItem()) {
             // The wand menu can appear a little later on slow loads.
@@ -864,11 +1056,17 @@
         const $doc = $(document);
         $doc.on('click', '#tbd_menu', () => openPanel());
         $doc.on('click', '#tbd_close', closePanel);
+        $doc.on('click', '#tbd_gear', () => { readForm(); view = view === 'settings' ? 'form' : 'settings'; render(); });
+        $doc.on('click', '#tbd_back', () => { view = 'form'; render(); });
+        $doc.on('change input', '[data-tbd-set]', function (e) { applySetting(this, e.type); });
+        $doc.on('focusin', '[data-tbd-set="profile"]', function () { if (!this.options || this.options.length <= 1) fillProfileSelects(); });
+        $doc.on('click', '.tbd-hist-clear', () => { settings().history = []; save(); toastr.info(T().sHistoryCleared, 'TBD'); });
         $doc.on('click', '#tbd_go', generate);
         $doc.on('click', '#tbd_again', generate);
-        $doc.on('change', '#tbd_target', function () { $('#tbd_gender_wrap').prop('hidden', $(this).val() !== 'person'); readForm(); });
+        $doc.on('change', '#tbd_target', () => { readForm(); render(); });
+        $doc.on('change', '#tbd_kind', function () { $('#tbd_kindtext_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
-        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must', readForm);
+        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_kindtext', readForm);
         $doc.on('click', '#tbd_panel .tbd-refine', function () {
             if (refining) return;
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
@@ -889,7 +1087,7 @@
             status = { kind: 'error', text: T().cancelled };
             renderResultsOnly();
         });
-        $doc.on('keydown', '#tbd_must, #tbd_custom', (e) => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
+        $doc.on('keydown', '#tbd_must, #tbd_custom, #tbd_kindtext', (e) => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
         $doc.on('keydown', (e) => { if (e.key === 'Escape' && $('#tbd_panel').is(':visible')) closePanel(); });
         $doc.on('click', '#tbd_panel .tbd-copy', async function () {
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
@@ -909,7 +1107,7 @@
     if (globalThis.__TBD_TEST__) {
         globalThis.__TBD_TEST__.api = {
             rollSeeds, buildMessages, buildRefineMessages, REFINE_MODES, parseNames, filterNames, avoidList, rememberNames, detectLang,
-            tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES,
+            tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS,
         };
     } else {
         if (typeof $ === 'function' && document.body) settingsSlot();
