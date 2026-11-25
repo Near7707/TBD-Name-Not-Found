@@ -8,7 +8,7 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.14)
+## Features (v0.1.15)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
 - Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length, sound feel, letters the name must contain
@@ -28,7 +28,7 @@ AI models tend to give the same few names no matter which one you use. TBD rolls
 - Swap just one name (🔄 next to it): a variant is remade the same way it was made; a first-round name is remade with the search it came from
 - Sound groups follow phonetics: soft = l, r, m, n, w, y and vowels; hard = k, t, p, d, g, b; sharp = s, z, x, f, v, sh, th; bright = i, e; dark = o, u, a. The AI judges by sound, not spelling
 - Uses the current API or a connection profile you pick
-- If an answer gets cut off, the finished names are still kept and the status line says to raise max response tokens. If a thinking model uses up all its tokens on thinking, the status line says so
+- If an answer gets cut off, the finished names are still kept and the status line says to raise max response tokens. If a thinking model uses up all its tokens on thinking, or the answer comes back empty, the status line says what to try
 - When an answer can't be used, **See the answer** shows exactly what the AI sent back
 - Avoid list: common AI clichés + your own list + names you got before (can be turned off or cleared). See past names in settings and forget them one by one
 - Themes: Follow SillyTavern (default), Terminal, Blue screen, Kernel panic, Glass (dark), Glass (clear), Old error box, Warning tape, Neon glitch
@@ -52,7 +52,7 @@ Find **TBD — Name Not Found** in the Extensions panel, or press ⚙ next to �
 |---|---|
 | Language | Follow SillyTavern, English, or Korean |
 | Connection profile | Which API to ask. Empty = the one you're using now |
-| Send the profile's preset too | On by default. Turn off if a roleplay preset makes the AI answer in character |
+| Send the profile's preset too | Off by default. A roleplay preset can make the AI answer empty or in character; turn on only if your model needs it |
 | Names per search | 1–30 |
 | Max response tokens | Default 2000, raised automatically for big batches. Thinking models may need more; lower it for a very small local model |
 | Theme / Moving effects | Look of the window |

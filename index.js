@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.14
+// TBD — Name Not Found v0.1.15
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -24,9 +24,10 @@
             found: n => `200 OK — ${n} name${n === 1 ? '' : 's'} found`,
             foundCut: n => `206 — the answer was cut off; ${n} name${n === 1 ? '' : 's'} saved. Raise "Max response tokens" in settings.`,
             cutFail: 'The answer was cut off. Raise "Max response tokens" in settings and try again.',
-            emptyFail: 'The AI only thought and wrote no answer. Raise "Max response tokens" in settings (thinking models may need 6000+).',
+            thinkFail: 'The AI only thought and wrote no answer. Raise "Max response tokens" in settings (thinking models may need 6000+).',
+            emptyFail: 'The AI sent back an empty answer. If you use a connection profile, turn off "Send the connection profile\'s preset too" in settings.',
             showRaw: 'See the answer', hideRaw: 'Hide the answer', rawEmpty: '(empty — nothing came back but the thinking, if any)',
-            sPreset: "Send the connection profile's preset too", sPresetHint: 'Turn off if a roleplay preset makes the AI answer in character instead of listing names.',
+            sPreset: "Send the connection profile's preset too", sPresetHint: 'Off by default. A roleplay preset can make the AI answer empty or in character. Turn on only if your model needs its preset.',
             err: m => `500 — ${m}`,
             cancelled: '499 — cancelled',
             busy: 'Already searching. Wait or cancel first.',
@@ -88,9 +89,10 @@
             found: n => `200 OK — 이름 ${n}개 찾음`,
             foundCut: n => `206 — 답이 중간에 잘려서 ${n}개만 건졌어요. 설정에서 최대 응답 토큰을 늘려 보세요.`,
             cutFail: '답이 중간에 잘렸어요. 설정에서 최대 응답 토큰을 늘리고 다시 해 보세요.',
-            emptyFail: 'AI가 생각만 하고 답을 안 썼어요. 설정에서 최대 응답 토큰을 늘려 보세요(생각하는 모델은 6000 이상 필요할 수 있어요).',
+            thinkFail: 'AI가 생각만 하고 답을 안 썼어요. 설정에서 최대 응답 토큰을 늘려 보세요(생각하는 모델은 6000 이상 필요할 수 있어요).',
+            emptyFail: 'AI가 빈 답을 보냈어요. 연결 프로필을 쓰면 설정에서 "연결 프로필의 프리셋도 같이 보내기"를 꺼 보세요.',
             showRaw: '받은 답 보기', hideRaw: '받은 답 접기', rawEmpty: '(비어 있음 — 생각 말고는 아무것도 안 왔어요)',
-            sPreset: '연결 프로필의 프리셋도 같이 보내기', sPresetHint: '롤플레이 프리셋 때문에 AI가 이름 대신 롤플레이로 답하면 꺼 보세요.',
+            sPreset: '연결 프로필의 프리셋도 같이 보내기', sPresetHint: '기본은 꺼짐이에요. 롤플레이 프리셋을 같이 보내면 AI가 빈 답이나 롤플레이로 답할 수 있어요. 모델에 프리셋이 꼭 필요할 때만 켜세요.',
             err: m => `500 — ${m}`,
             cancelled: '499 — 취소함',
             busy: '이미 찾는 중이에요. 기다리거나 먼저 취소해 주세요.',
@@ -452,7 +454,7 @@
         theme: 'st',
         effects: true,
         rememberHistory: true,
-        sendPreset: true,
+        sendPreset: false,
         historySize: 200,
         history: [],
         banList: '',
@@ -472,6 +474,9 @@
         for (const [k, v] of Object.entries(DEFAULTS.form)) if (st.form[k] === undefined) st.form[k] = Array.isArray(v) ? [...v] : v;
         if (!Array.isArray(st.history)) st.history = [];
         // v0.1.11: the old default (1000) cut off answers, so it moves to the new one once. A number the user typed stays.
+        // v0.1.15: a roleplay preset sent along made some models answer empty, so the preset now stays home by default.
+        // v0.1.14 (on) was out for minutes, so move everyone once; a later choice stays.
+        if (!st.presetV2) { st.sendPreset = false; st.presetV2 = true; }
         if (!st.tokensV2) { if (Number(st.maxTokens) === 1000) st.maxTokens = DEFAULTS.maxTokens; st.tokensV2 = true; }
         // Bits of a cut-off JSON answer once got saved as names; drop them.
         if (st.history.some(n => !looksLikeName(n))) st.history = st.history.filter(looksLikeName);
@@ -845,7 +850,8 @@
     }
     // Which "couldn't read it" message fits this answer.
     function failText(raw, L = T()) {
-        return L.err(answerEmpty(raw) ? L.emptyFail : answerCut(raw) ? L.cutFail : L.parseFail);
+        if (answerEmpty(raw)) return L.err(/<think/i.test(String(raw || '')) ? L.thinkFail : L.emptyFail);
+        return L.err(answerCut(raw) ? L.cutFail : L.parseFail);
     }
 
     function parseNames(raw) {
@@ -904,7 +910,7 @@
         return ctx().extensionSettings?.connectionManager?.profiles || [];
     }
 
-    async function requestLLM(messages, { profileId, maxTokens, signal, sendPreset = true } = {}) {
+    async function requestLLM(messages, { profileId, maxTokens, signal, sendPreset = false } = {}) {
         const c = ctx();
         signal?.throwIfAborted();
         // Thinking that came back separately is kept (as <think>…</think>) so "See the answer" can show it.
@@ -1207,7 +1213,7 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: st.sendPreset !== false, maxTokens: tokensFor(count, st, !!nameShape(form)), signal: myController?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, maxTokens: tokensFor(count, st, !!nameShape(form)), signal: myController?.signal });
             if (myController && myController.signal.aborted) return;
             if (controller !== myController) return;
             const parsed = applyShape(parseNames(raw), form);
@@ -1258,7 +1264,7 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: st.sendPreset !== false, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = src.pieces ? applyShape(parseNames(raw), form) : parseNames(raw);
             const kept = keepNames(parsed, avoid, form, st).slice(0, 3);
@@ -1307,7 +1313,7 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: st.sendPreset !== false, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = applyShape(parseNames(raw), form);
             const kept = keepNames(parsed, avoid, form, st);
@@ -1356,7 +1362,7 @@
         status = { kind: 'busy', text: '' }; rawOpen = false;
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: st.sendPreset !== false, maxTokens: tokensFor(1, st), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, maxTokens: tokensFor(1, st), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = parseNames(raw);
             const text = cleanPiece(parsed[0]?.name);
@@ -1485,7 +1491,7 @@
         const values = {
             lang: st.language, profile: st.profileId, words: st.wordNames, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
         };
-        const checks = { fx: !!st.effects, reading: !!st.showReading, hist: !!st.rememberHistory, preset: st.sendPreset !== false };
+        const checks = { fx: !!st.effects, reading: !!st.showReading, hist: !!st.rememberHistory, preset: !!st.sendPreset };
         $('[data-tbd-set]').each(function () {
             if (this === except) return;
             const key = this.getAttribute('data-tbd-set');

@@ -508,14 +508,21 @@ test('v0.1.14: empty answers get their own message, and the preset can stay home
     assert.equal(api.answerEmpty('<think>long thought</think>\n  '), true);
     assert.equal(api.answerEmpty('<think>thinking that never ended'), true);
     assert.equal(api.answerEmpty('Sure! Here are some names.'), false);
-    assert.ok(api.failText('<think>x</think>', L).includes(L.emptyFail));
+    assert.ok(api.failText('<think>x</think>', L).includes(L.thinkFail));
+    assert.ok(api.failText('', L).includes(L.emptyFail));
+    assert.ok(api.failText('<think>never closed', L).includes(L.thinkFail));
     assert.ok(api.failText('[{"name": "Ab', L).includes(L.cutFail));
     assert.ok(api.failText('I can help with that.', L).includes(L.parseFail));
     for (const lang of ['en', 'ko']) {
         const S = api.STRINGS[lang];
-        assert.ok(S.emptyFail && S.showRaw && S.hideRaw && S.rawEmpty && S.sPreset && S.sPresetHint);
+        assert.ok(S.emptyFail && S.thinkFail && S.showRaw && S.hideRaw && S.rawEmpty && S.sPreset && S.sPresetHint);
     }
-    assert.equal(api.settings().sendPreset, true);
+    // v0.1.15: off by default, and a saved "on" from v0.1.14 moves to off once; a later choice stays.
+    assert.equal(api.settings().sendPreset, false);
+    const old = load({ extensionSettings: { tbd_names: { sendPreset: true } } });
+    assert.equal(old.api.settings().sendPreset, false);
+    old.extensionSettings.tbd_names.sendPreset = true;
+    assert.equal(old.api.settings().sendPreset, true);
 });
 
 test('v0.1.14: profile requests pass the preset choice and keep separate thinking for "see the answer"', async () => {
@@ -541,5 +548,7 @@ test('v0.1.14: profile requests pass the preset choice and keep separate thinkin
     assert.equal(api.answerEmpty(raw), true);
     assert.equal(api.parseNames(raw).length, 0);
     await api.requestLLM([], { profileId: 'p1', maxTokens: 100 });
-    assert.equal(calls[1].includePreset, true);
+    assert.equal(calls[1].includePreset, false);
+    await api.requestLLM([], { profileId: 'p1', maxTokens: 100, sendPreset: true });
+    assert.equal(calls[2].includePreset, true);
 });
