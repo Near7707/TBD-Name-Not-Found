@@ -91,8 +91,27 @@
 .tbd-empty, .tbd-log { padding: 14px; font-size: 12px; color: var(--tbd-dim); }
 .tbd-log div:last-child::after { content: '_'; animation: tbd-blink 1s steps(1) infinite; }
 
-.tbd-row { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid color-mix(in srgb, var(--tbd-line) 50%, transparent); }
+.tbd-row { padding: 8px 14px 8px calc(14px + var(--tbd-depth, 0) * 18px); border-bottom: 1px solid color-mix(in srgb, var(--tbd-line) 50%, transparent); }
 .tbd-row:last-child { border-bottom: 0; }
+.tbd-row-main { display: flex; align-items: center; gap: 6px; }
+.tbd-variant .tbd-name { font-size: 15px; }
+.tbd-branch { color: var(--tbd-dim); margin-right: 6px; font-weight: normal; }
+.tbd-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 0 6px;
+    border: 1px solid var(--tbd-line);
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: normal;
+    color: var(--tbd-dim);
+    vertical-align: middle;
+}
+.tbd-refine-menu { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.tbd-refine-menu .tbd-small-btn { color: var(--tbd-fg); }
+.tbd-refining.tbd-log { padding: 6px 0 0; }
+.tbd-icon-btn.tbd-on { color: var(--tbd-accent); border-color: var(--tbd-line); }
+.tbd-icon-btn[disabled] { opacity: .35; cursor: default; }
 .tbd-row-text { flex: 1; min-width: 0; }
 .tbd-name { font-size: 17px; font-weight: bold; color: var(--tbd-name); word-break: break-word; }
 .tbd-note { font-size: 12px; color: var(--tbd-dim); }
@@ -207,6 +226,56 @@
 #tbd_panel.tbd-theme-panic .tbd-go { box-shadow: 0 0 12px rgba(226, 75, 74, .6); }
 #tbd_panel.tbd-theme-panic .tbd-status-ok { color: #f09595; }
 
+/* ---------- theme: glass (dark and clear) ---------- */
+/* See-through panel: the chat shows blurred behind it. Fields and rows are less see-through so text stays readable. */
+#tbd_panel.tbd-theme-glass,
+#tbd_panel.tbd-theme-glasslight {
+    backdrop-filter: blur(8px) saturate(1.2);
+    -webkit-backdrop-filter: blur(8px) saturate(1.2);
+    border-radius: 14px;
+    font-family: var(--monoFontFamily, ui-monospace, Consolas, monospace);
+}
+#tbd_panel.tbd-theme-glass {
+    --tbd-bg: rgba(14, 20, 40, .62);
+    --tbd-fg: #e8efff;
+    --tbd-dim: #b9c9ec;
+    --tbd-line: rgba(190, 215, 255, .35);
+    --tbd-accent: #ffffff;
+    --tbd-name: #ffffff;
+    --tbd-field-bg: rgba(6, 10, 24, .8);
+    --tbd-option-bg: #0e1428;
+    --tbd-btn-bg: rgba(220, 235, 255, .92);
+    --tbd-btn-fg: #0b1a36;
+    border: 1px solid rgba(190, 215, 255, .5);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05), 0 8px 30px rgba(0, 0, 0, .45);
+}
+#tbd_panel.tbd-theme-glasslight {
+    --tbd-bg: rgba(225, 238, 255, .3);
+    --tbd-fg: #0e1d33;
+    --tbd-dim: #2a4466;
+    --tbd-line: rgba(255, 255, 255, .7);
+    --tbd-accent: #0b2546;
+    --tbd-name: #0b2546;
+    --tbd-field-bg: rgba(255, 255, 255, .78);
+    --tbd-option-bg: #eef4fc;
+    --tbd-btn-bg: rgba(11, 37, 70, .9);
+    --tbd-btn-fg: #ffffff;
+    border: 1px solid rgba(255, 255, 255, .8);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), 0 8px 30px rgba(0, 0, 0, .3);
+}
+#tbd_panel.tbd-theme-glass .tbd-row { background: rgba(6, 10, 24, .35); }
+#tbd_panel.tbd-theme-glasslight .tbd-row { background: rgba(255, 255, 255, .45); }
+#tbd_panel.tbd-theme-glass .tbd-code { color: #fff; text-shadow: 2px 0 rgba(255, 80, 150, .75), -2px 0 rgba(80, 200, 255, .75); }
+#tbd_panel.tbd-theme-glasslight .tbd-code { color: #0b2546; text-shadow: 2px 0 rgba(255, 60, 130, .55), -2px 0 rgba(40, 150, 255, .6); }
+#tbd_panel.tbd-theme-glass .tbd-status-error { color: #ff9a9a; }
+#tbd_panel.tbd-theme-glasslight .tbd-status-error { color: #a32d2d; }
+#tbd_panel.tbd-theme-glasslight .tbd-head,
+#tbd_panel.tbd-theme-glasslight .tbd-results,
+#tbd_panel.tbd-theme-glasslight .tbd-foot,
+#tbd_panel.tbd-theme-glass .tbd-head,
+#tbd_panel.tbd-theme-glass .tbd-results,
+#tbd_panel.tbd-theme-glass .tbd-foot { border-style: solid; }
+
 /* ---------- effects ---------- */
 .tbd-blink { animation: tbd-blink 1s steps(1) infinite; }
 #tbd_panel .tbd-glitch { animation: tbd-glitch 2.8s infinite; display: inline-block; }
@@ -236,6 +305,9 @@
     #tbd_panel { top: 4vh; max-height: 88vh; }
     #tbd_panel.tbd-theme-panic { box-shadow: 0 0 10px rgba(226, 75, 74, .4); }
     #tbd_panel.tbd-theme-terminal { box-shadow: none; }
+    #tbd_panel.tbd-theme-glass, #tbd_panel.tbd-theme-glasslight { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+    #tbd_panel.tbd-theme-glass { --tbd-bg: rgba(14, 20, 40, .78); }
+    #tbd_panel.tbd-theme-glasslight { --tbd-bg: rgba(232, 241, 252, .6); }
     .tbd-form { grid-template-columns: minmax(0, 1fr); }
 }
 

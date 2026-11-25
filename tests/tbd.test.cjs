@@ -144,3 +144,27 @@ test('token budget grows with big batches', () => {
     assert.equal(api.tokensFor(5, st), 1000);
     assert.equal(api.tokensFor(30, st), 300 + 30 * 80);
 });
+
+test('sound choice goes in the prompt and replaces the random texture', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'fantasy', gender: 'any', length: 'any', sound: 'hard', mustContain: '' };
+    const user = api.buildMessages(form, api.rollSeeds(4, form, seeded(9)), {})[1].content;
+    assert.match(user, /Sound: hard and firm/);
+    assert.match(user, /not by the letters/);
+    assert.doesNotMatch(user, /\d+ syllables?, [a-z-]+ sound/);
+    const plain = api.buildMessages({ ...form, sound: 'any' }, api.rollSeeds(2, form, seeded(9)), {})[1].content;
+    assert.doesNotMatch(plain, /Sound:/);
+});
+
+test('reshape prompt names the source, the direction and the avoid list', () => {
+    const { api } = load();
+    assert.deepEqual([...api.REFINE_MODES], ['soft', 'hard', 'sharp', 'bright', 'dark', 'shorter', 'longer']);
+    const form = { target: 'place', vibe: 'gothic', gender: 'any', length: 'any', sound: 'any', mustContain: '' };
+    const msgs = api.buildRefineMessages({ name: 'Dorwick' }, 'bright', form, { lang: 'ko', avoid: ['Dorwick', 'Tirken'] });
+    const user = msgs[1].content;
+    assert.match(user, /"Dorwick"/);
+    assert.match(user, /Make 3 new variants/);
+    assert.match(user, /front vowels/);
+    assert.match(user, /Do NOT use these names.*Dorwick, Tirken/);
+    assert.match(user, /in Korean/);
+});
