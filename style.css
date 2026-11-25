@@ -726,3 +726,6 @@
 .tbd-frags { margin: 1px 0 2px; font-size: 12px; color: var(--tbd-dim); line-height: 1.5; }
 .tbd-frag b { color: var(--tbd-fg); font-weight: bold; }
 .tbd-frag-root { white-space: nowrap; }
+
+/* v0.2.1: roots that another choice overrides stay visible in the fold line, dimmed */
+#tbd_panel .tbd-fold-sum .tbd-fold-off { opacity: 0.55; text-decoration: line-through; font-weight: normal; }

@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.0
+// TBD — Name Not Found v0.2.1
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -64,6 +64,7 @@
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
             method: 'Made with', methods: { ai: 'AI', cache: 'Cache' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
             roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse' },
+            aiRootAny: 'Any', aiRootOff: { like: 'Not used now: the "Like this" words lead.', cosmic: 'Not used now: Lovecraftian invented names stay eldritch.' },
             ck: { common: 'Common name', noble: 'Noble house', religious: 'Monastic / saint' },
             fragments: 'fragments', cacheTag: 'CACHE', cacheTip: 'Built from name fragments. No AI was used.',
             foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from cache`,
@@ -148,6 +149,7 @@
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
             method: '만드는 방식', methods: { ai: 'AI', cache: 'Cache' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
             roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽' },
+            aiRootAny: '상관없음', aiRootOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', cosmic: '지금은 안 써요: 러브크래프트풍 지어낸 이름은 이질적인 이름이라서요.' },
             ck: { common: '일반 인명', noble: '귀족 가문', religious: '수도원·성인' },
             fragments: 'fragments', cacheTag: 'CACHE', cacheTip: '이름 조각으로 만든 이름이에요. AI는 안 썼어요.',
             foundCache: n => `200 OK — 캐시에서 이름 ${n}개 찾음`,
@@ -563,6 +565,8 @@
     const ALL_SPARKS = [...new Set(Object.values(SPARKS).flat())];
     const SYLLABLES = { short: [1, 2], medium: [2, 3], long: [3, 4], any: [1, 4] };
 
+    // Start letters a root (almost) never uses: a Latin name can't start with W.
+    const ROOT_NO_START = { latin: 'WK', norse: 'CW', celtic: 'WJ', norman: 'K' };
     const LIKE_FOCUS = ['its opening sound', 'its vowels', 'its ending', 'its rhythm', 'its consonants'];
 
     function pick(arr, rnd = Math.random) { return arr[Math.floor(rnd() * arr.length)]; }
@@ -582,11 +586,14 @@
         const real = realMode(opts) !== 'invented';
         const sparks = opts.vibe === 'custom' || typedDetail || like || real ? null : (SPARKS[opts.vibe] || ALL_SPARKS);
         const textures = texturesFor(opts.vibe);
-        const endings = endingsFor(target, opts.vibe);
         const shapes = shapesFor(target, opts.vibe);
         const shape = nameShape(opts);
         const familyKey = opts.vibe === 'cosmic' && real ? 'cosmicFolk' : opts.vibe;
-        const familyStyles = shape && shape.roles.includes('family') && !shape.fixed ? (FAMILY_STYLES[familyKey] || ALL_FAMILY_STYLES) : null;
+        // Picked roots set the sounds, so the vibe's own endings and family styles would argue with them.
+        const roots = aiRootsUsed(opts);
+        const endings = roots.length ? null : endingsFor(target, opts.vibe);
+        const familyStyles = !roots.length && shape && shape.roles.includes('family') && !shape.fixed ? (FAMILY_STYLES[familyKey] || ALL_FAMILY_STYLES) : null;
+        const rootStart = Math.floor(rnd() * Math.max(1, roots.length));
         const seeds = [];
         const usedEndings = new Set();
         const usedFamily = new Set();
@@ -595,6 +602,8 @@
         const focusStart = Math.floor(rnd() * LIKE_FOCUS.length);
         for (let i = 0; i < count; i++) {
             const seed = {};
+            // Like Cache, each name takes the picked roots in turn.
+            if (roots.length) seed.root = roots[(rootStart + i) % roots.length];
             // Sound-alike keeps the typed word's rhythm, so no random syllable count then.
             if (like !== 'sound') seed.syllables = lo + Math.floor(rnd() * (hi - lo + 1));
             if (!like && !real) seed.texture = pick(textures, rnd);
@@ -606,7 +615,10 @@
                 usedSparks.add(seed.spark);
             }
             // A forced start letter would fight "must contain", so skip it then.
-            if (!opts.mustContain && !like) seed.start = pick(START_LETTERS, rnd);
+            if (!opts.mustContain && !like) {
+                const letters = seed.root ? START_LETTERS.filter(c => !(ROOT_NO_START[seed.root] || '').includes(c)) : START_LETTERS;
+                seed.start = pick(letters, rnd);
+            }
             // Only nudge the ending about half the time; always forcing it sounds samey too.
             // Don't hand the same ending to two names in one batch (two "… Array" looked samey).
             if (endings && !like && !real && rnd() < 0.5) {
@@ -827,6 +839,27 @@
     function cacheKinds(form = {}) {
         const k = (Array.isArray(form.ckinds) ? form.ckinds : []).filter(x => CACHE_KINDS.includes(x));
         return k.length ? k : ['common'];
+    }
+    // v0.2.1: the AI can follow the same roots. Kept apart from the Cache roots (form.aiRoots),
+    // and empty means "any", so nothing changes until a root is picked.
+    function aiRoots(form = {}) {
+        if (isCache(form) || (form.target !== 'person' && form.target !== 'place')) return [];
+        return (Array.isArray(form.aiRoots) ? form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x));
+    }
+    // When another choice says the opposite, only one goes to the AI:
+    // typed "Like this" words lead, and Lovecraftian invented people stay eldritch.
+    function aiRootsOff(form = {}) {
+        if (!aiRoots(form).length) return '';
+        if (likeWords(form).length) return 'like';
+        if (form.vibe === 'cosmic' && form.target === 'person' && realMode(form) === 'invented') return 'cosmic';
+        return '';
+    }
+    function aiRootsUsed(form = {}) {
+        return aiRootsOff(form) ? [] : aiRoots(form);
+    }
+    function rootNames(roots, join = 'or') {
+        const n = roots.map(r => STRINGS.en.roots[r]);
+        return n.length > 1 ? `${n.slice(0, -1).join(', ')} ${join} ${n[n.length - 1]}` : (n[0] || '');
     }
     const VOWEL = /[aeiouyæœ]/i;
     // Glue two fragments: one letter where they'd double up (Wulf + frith → Wulfrith).
@@ -1054,7 +1087,7 @@
         const roots = cacheRoots(form).map(r => STRINGS.en.roots[r]).join(' and ');
         const full = form.target === 'person' && /\s/.test(String(src?.name || ''));
         return {
-            ...form, method: 'ai', vibe: 'custom', customVibe: `built from ${roots} name roots`, realNames: 'invented', likeText: '', extras: [], parts: ['given'],
+            ...form, method: 'ai', vibe: 'custom', customVibe: `built from ${roots} name roots`, realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'],
             ...(full ? { target: 'other', kind: 'any', kindText: 'a full name for a person; keep the same number of words and any title or "of …" part' } : {}),
         };
     }
@@ -1079,7 +1112,7 @@
         extrasOpen: false,
         moreOpen: false,
         wordNames: 'mark',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'] },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [] },
     };
 
     // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
@@ -1110,6 +1143,7 @@
         if (st.form.method !== 'cache') st.form.method = 'ai';
         st.form.roots = cacheRoots(st.form);
         st.form.ckinds = cacheKinds(st.form);
+        st.form.aiRoots = (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x));
         st.count = clampInt(st.count, 1, 30, 5);
         return st;
     }
@@ -1265,7 +1299,8 @@
             else if (form.vibe === 'cosmic') out.push('Cosmic-horror places are either decaying old towns by the sea or marsh, or ancient alien places that should not exist. Mix both.');
             else if (form.vibe === 'game') out.push('Game places sound like map areas or dungeons: grand, clear and easy to remember.');
             else if (form.vibe === 'myth') out.push('Myth places sound like sacred or legendary sites from old stories.');
-            else if (form.vibe !== 'custom' && form.vibe !== 'weird') out.push('Old-world places often use landscape endings (-holm, -mere, -wick, -ford, -by, -moor…). Mix them; don\'t put the same ending on every name.');
+            // Picked roots bring their own place endings (-heim, -ville), so the old English-style list would fight them.
+            else if (form.vibe !== 'custom' && form.vibe !== 'weird' && !aiRootsUsed(form).length) out.push('Old-world places often use landscape endings (-holm, -mere, -wick, -ford, -by, -moor…). Mix them; don\'t put the same ending on every name.');
         } else if (form.target === 'shop') {
             out.push('It must sound like a shop sign, not like a person. Shop names may use real words or a short phrase, as long as the whole name is fresh.');
         } else if (form.target === 'item') {
@@ -1406,6 +1441,16 @@
         return `${base} Never use ${many ? 'those words themselves' : 'that word itself'}, and don't just respell ${many ? 'them' : 'it'}; each one must be a different, new ${what}.`;
     }
 
+    // Picked roots: one short line. The AI knows these roots, but may make up meanings, so the note stays on feel.
+    function rootRule(form, roots) {
+        const shape = nameShape(form);
+        const what = form.target === 'place' ? 'place-name' : 'name';
+        const each = roots.length > 1 ? '; each name below says which' : '';
+        const family = shape && shape.roles.includes('family') && !shape.fixed ? ' Family names follow that root\'s own surname customs too.' : '';
+        return `Name roots: build each name from ${rootNames(roots)} ${what} elements (word roots, endings and naming customs)${each}.${family}`;
+    }
+    const ROOT_NOTE_RULE = "Don't state what the name means or where it comes from; describe only its feel.";
+
     function buildMessages(form, seeds, opts = {}) {
         const lang = opts.lang || 'en';
         const avoid = opts.avoid || [];
@@ -1426,6 +1471,8 @@
         }
         lines.push(`Setting / vibe: ${vibe}.`);
         lines.push('Style: Western, English-readable spelling.');
+        const roots = aiRootsUsed(form);
+        if (roots.length) lines.push(rootRule(form, roots));
         lines.push(...shapeRules(form));
         lines.push(...realRule(form));
         if (form.target === 'person' && form.gender && form.gender !== 'any') lines.push(shape ? `Gender feel (for the given and middle names and any title): ${form.gender}.` : `Gender feel: ${form.gender}.`);
@@ -1437,7 +1484,9 @@
         // With "like" words, they beat the vibe: a typed word that doesn't fit the setting still wins, the setting only adjusts spelling.
         lines.push(likeLine
             ? 'What is being named comes first, then the "like" words: follow them even if they don\'t match the setting. The setting only adjusts spelling and flavor, never at the cost of the likeness. Each name also has a seed that only adds variety:'
-            : 'The setting and what is being named come first. Each name also has a seed that only adds variety:');
+            : roots.length
+                ? 'What is being named comes first, then its name roots: they decide the sounds and word parts even where the setting would suggest others. The setting only adjusts spelling and flavor. Each name also has a seed that only adds variety:'
+                : 'The setting and what is being named come first. Each name also has a seed that only adds variety:');
         // Sound-alike seeds carry only a part to echo; skipping rules that don't apply means less overthinking.
         const echoOnly = seeds.length > 0 && seeds.every(s => s.likeFocus && !s.spark);
         // Real names get no inspiration word, so those rules would only be noise there.
@@ -1454,6 +1503,7 @@
         const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
         seeds.forEach((s, i) => {
             const parts = [];
+            if (s.root) parts.push(`${STRINGS.en.roots[s.root]} roots`);
             if (s.shape) parts.push(`shape: ${s.shape}`);
             if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
             if (s.syllables) parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
@@ -1470,7 +1520,7 @@
             lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         }
         lines.push('');
-        lines.push(`For each name add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about how it fits this setting. Don't claim a real meaning unless you are sure.`);
+        lines.push(`For each name add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about how it fits this setting. ${roots.length ? ROOT_NOTE_RULE : "Don't claim a real meaning unless you are sure."}`);
         if (opts.reading) lines.push(`Also add ${readingRule(lang, !!shape)}.`);
         if (opts.nicks) lines.push(NICK_RULE);
         lines.push('Reply with ONLY a JSON array, nothing else:');
@@ -1497,6 +1547,8 @@
         lines.push(`Setting / vibe: ${vibeText(form)}.`);
         lines.push(`Make ${count} new variant${count === 1 ? '' : 's'} that keep its overall feel and rough shape, but change it to be ${REFINE_DESC[mode] || REFINE_DESC.soft}.`);
         if (shape) lines.push('Reshape mostly the given and middle names (and other invented parts); keep titles and particles unless they clash.');
+        const roots = aiRootsUsed(form);
+        if (roots.length) lines.push(`Keep it built from ${rootNames(roots)} name roots.`);
         lines.push(SOUND_RULE);
         lines.push('Each variant must be clearly different from the original and from each other. Keep Western, English-readable spelling.');
         lines.push(...shapeRules(form));
@@ -1547,6 +1599,8 @@
         lines.push('It must fit the rest of the name and the setting, and be clearly different from the current one. Keep Western, English-readable spelling.');
         if (form.gender && form.gender !== 'any' && ['given', 'middle', 'title', 'religious'].includes(role)) lines.push(`Gender feel: ${form.gender}.`);
         if (role === 'given') { const likeLine = likeRule(form, 'given name'); if (likeLine) lines.push(likeLine); }
+        const roots = aiRootsUsed({ ...form, target: 'person' });
+        if (roots.length && REAL_ROLES.includes(role)) lines.push(`Build it from ${rootNames(roots)} name roots.`);
         const real = realPieceRule(form, role);
         if (real) lines.push(real);
         const realAsk = !!real && realMode(form) !== 'invented';
@@ -1826,6 +1880,7 @@
             <label class="tbd-ai-only">${escapeHtml(L.like)}<input id="tbd_like" class="text_pole" type="text" maxlength="${LIKE_MAX}" placeholder="${escapeHtml(L.likePh)}" value="${escapeHtml(form.likeText || '')}"></label>
             <label class="tbd-ai-only">${escapeHtml(L.likeMode)}${selectHtml('tbd_likemode', L.likeModes, form.likeMode === 'feel' ? 'feel' : 'sound')}</label>
             ${form.target === 'person' ? `<label class="tbd-wide tbd-ai-only" id="tbd_real_wrap">${escapeHtml(L.realNames)}${selectHtml('tbd_realnames', L.realOpts, realMode(form))}</label>` : ''}
+            ${canCache ? aiRootsHtml(form) : ''}
             </div>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
         </div>`;
@@ -1850,6 +1905,24 @@
             <div class="tbd-chips">${CACHE_ROOTS.map(v => chipHtml('root', v, L.roots[v], roots.includes(v))).join('')}</div>
             ${form.target === 'person' ? `<div class="tbd-chips-label">${escapeHtml(L.ckLabel)}</div>
             <div class="tbd-chips">${CACHE_KINDS.map(v => chipHtml('ckind', v, L.ck[v], kinds.includes(v))).join('')}</div>` : ''}</div>`;
+    }
+
+    // Roots for the AI: "Any" (default) or one or more roots. Tells when another choice wins.
+    function aiRootsHtml(form) {
+        const L = T();
+        const roots = aiRoots(form);
+        return `<div class="tbd-wide tbd-chipset tbd-ai-only" id="tbd_airoots"><div class="tbd-chips-label">${escapeHtml(L.rootsLabel)}</div>
+            <div class="tbd-chips">${chipHtml('airoot', 'any', L.aiRootAny, !roots.length)}${CACHE_ROOTS.map(v => chipHtml('airoot', v, L.roots[v], roots.includes(v))).join('')}</div>
+            ${aiRootNoteHtml(form)}</div>`;
+    }
+    function aiRootNoteHtml(form) {
+        const off = aiRootsOff(form);
+        return `<div class="tbd-note" id="tbd_airoot_note"${off ? '' : ' hidden'}>${off ? escapeHtml(T().aiRootOff[off]) : ''}</div>`;
+    }
+    // After a change that can switch the roots off or on: the fold line and the note.
+    function refreshAiRoots(form) {
+        $('#tbd_more_fold').replaceWith(moreFoldHtml(form));
+        $('#tbd_airoot_note').replaceWith(aiRootNoteHtml(form));
     }
 
     // Toggle buttons for what a person's name is made of, plus the kept family name.
@@ -1878,7 +1951,13 @@
         const like = isCache(form) ? [] : likeWords(form);
         if (like.length) on.push(`${L.like.replace(/\s*\(.*\)\s*$/, '')}: ${like.join(', ')}`);
         if (!isCache(form) && form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
-        const sum = !open && on.length ? `<span class="tbd-fold-sum">: ${escapeHtml(on.join(' · '))}</span>` : '';
+        const roots = aiRoots(form);
+        const rootsBit = roots.length ? `${L.rootsLabel}: ${roots.map(r => L.roots[r]).join(', ')}` : '';
+        // Roots another choice overrides show dimmed, so it's clear they're set but not used now.
+        const offBit = rootsBit && aiRootsOff(form) ? `<span class="tbd-fold-off" title="${escapeHtml(L.aiRootOff[aiRootsOff(form)])}">${escapeHtml(rootsBit)}</span>` : '';
+        if (rootsBit && !offBit) on.push(rootsBit);
+        const text = [escapeHtml(on.join(' · ')), offBit].filter(Boolean).join(' · ');
+        const sum = !open && text ? `<span class="tbd-fold-sum">: ${text}</span>` : '';
         return `<button type="button" id="tbd_more_fold" class="tbd-fold tbd-wide" aria-expanded="${open ? 'true' : 'false'}"><i class="fa-solid fa-chevron-${open ? 'down' : 'right'}" aria-hidden="true"></i><span>${escapeHtml(L.more)}${sum}</span></button>`;
     }
 
@@ -2021,6 +2100,7 @@
             method: st.form.method === 'cache' ? 'cache' : 'ai',
             roots: cacheRoots(st.form),
             ckinds: cacheKinds(st.form),
+            aiRoots: (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x)),
         };
         save();
         return st.form;
@@ -2542,12 +2622,9 @@
         $doc.on('click', '#tbd_again', generate);
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
         $doc.on('change', '#tbd_kind', () => readForm());
-        $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
+        $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); refreshAiRoots(readForm()); });
         $doc.on('change', '#tbd_gender, #tbd_length, #tbd_custom, #tbd_kindtext, #tbd_fixed', readForm);
-        $doc.on('change', '#tbd_sound, #tbd_must, #tbd_like, #tbd_likemode, #tbd_realnames', () => {
-            const form = readForm();
-            $('#tbd_more_fold').replaceWith(moreFoldHtml(form));
-        });
+        $doc.on('change', '#tbd_sound, #tbd_must, #tbd_like, #tbd_likemode, #tbd_realnames', () => refreshAiRoots(readForm()));
         $doc.on('click', '#tbd_more_fold', () => {
             const st = settings();
             const form = readForm();
@@ -2573,6 +2650,19 @@
                 form.method = v0 === 'cache' ? 'cache' : 'ai';
                 save();
                 render();
+                return;
+            }
+            if (group === 'airoot') {
+                // "Any" clears the roots; a root turns "Any" off; the last root off means "Any" again.
+                const set = new Set(v0 === 'any' ? [] : form.aiRoots);
+                if (v0 !== 'any') { if (set.has(v0)) set.delete(v0); else set.add(v0); }
+                form.aiRoots = CACHE_ROOTS.filter(x => set.has(x));
+                $('#tbd_airoots .tbd-chip').each(function () {
+                    const v = String($(this).data('v'));
+                    $(this).attr('aria-pressed', (v === 'any' ? !form.aiRoots.length : set.has(v)) ? 'true' : 'false');
+                });
+                save();
+                refreshAiRoots(form);
                 return;
             }
             if (group === 'root' || group === 'ckind') {
@@ -2666,6 +2756,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml,
             CACHE, CACHE_ROOTS, isCache, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },

@@ -1021,3 +1021,86 @@ test('v0.2.0: the form shows AI / Cache for people and places, roots and kinds i
     assert.match(api.resultsHtml(), /CACHE/);
     assert.equal(api.fragsHtml({ name: 'X' }), '');
 });
+
+test('v0.2.1: picked roots reach the AI per name, and "Any" changes nothing', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai' };
+    // Nothing picked: same prompt as before, with the vibe endings still in the seeds.
+    assert.deepEqual([...api.aiRoots(base)], []);
+    const plain = api.rollSeeds(20, base, seeded(3));
+    assert.ok(plain.every(s => !s.root));
+    assert.ok(plain.some(s => s.ending) && plain.some(s => s.family));
+    const plainText = api.buildMessages(base, plain)[1].content;
+    assert.ok(!/Name roots/.test(plainText));
+    assert.match(plainText, /Don't claim a real meaning/);
+
+    const form = { ...base, aiRoots: ['celtic', 'norse'] };
+    const seeds = api.rollSeeds(6, form, seeded(3));
+    assert.deepEqual([...new Set(seeds.map(s => s.root))].sort(), ['celtic', 'norse'], 'roots take turns');
+    assert.ok(seeds.every(s => !s.ending && !s.family), 'vibe endings and family styles would argue with the roots');
+    assert.ok(seeds.every(s => s.syllables), 'syllable count stays');
+    const text = api.buildMessages(form, seeds)[1].content;
+    assert.match(text, /Name roots: build each name from Celtic or Norse name elements .*each name below says which\. Family names follow/);
+    assert.match(text, /name roots: they decide the sounds/);
+    assert.match(text, /1\. given name: (Celtic|Norse) roots, /);
+    assert.match(text, /Don't state what the name means or where it comes from/);
+    assert.ok(!/Don't claim a real meaning/.test(text));
+});
+
+test('v0.2.1: when another choice says the opposite, the roots stay home', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'fantasy', parts: ['given'], extras: [], method: 'ai', aiRoots: ['latin'] };
+    assert.equal(api.aiRootsOff(form), '');
+    const like = { ...form, likeText: 'Elric' };
+    assert.equal(api.aiRootsOff(like), 'like');
+    assert.ok(!/Name roots/.test(api.buildMessages(like, api.rollSeeds(3, like, seeded(2)))[1].content));
+    const cosmic = { ...form, vibe: 'cosmic' };
+    assert.equal(api.aiRootsOff(cosmic), 'cosmic');
+    assert.equal(api.aiRootsOff({ ...cosmic, realNames: 'near' }), '', 'old-town folk can have roots');
+    assert.equal(api.aiRootsOff({ ...cosmic, target: 'place' }), '', 'cosmic places can');
+    // Shops, items and Cache mode never take AI roots.
+    assert.deepEqual([...api.aiRoots({ ...form, target: 'shop' })], []);
+    assert.deepEqual([...api.aiRoots({ ...form, method: 'cache' })], []);
+    // Places drop the English-style landscape ending line, which would fight a Germanic or Latin root.
+    const place = { target: 'place', vibe: 'fantasy', method: 'ai', aiRoots: ['germanic'] };
+    const placeText = api.buildMessages(place, api.rollSeeds(3, place, seeded(4)))[1].content;
+    assert.ok(!/-holm, -mere/.test(placeText));
+    assert.match(placeText, /Germanic place-name elements/);
+    assert.match(api.buildMessages({ ...place, aiRoots: [] }, api.rollSeeds(3, { ...place, aiRoots: [] }, seeded(4)))[1].content, /-holm, -mere/);
+});
+
+test('v0.2.1: ✨ and swapping a part keep the roots; ✨ from Cache does not add them twice', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'fantasy', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin'] };
+    const src = { name: 'Aurel Vantis', pieces: [{ role: 'given', text: 'Aurel' }, { role: 'family', text: 'Vantis' }] };
+    assert.match(api.buildRefineMessages(src, 'soft', form)[1].content, /Keep it built from Latin name roots/);
+    assert.match(api.buildPieceMessages(src, 'family', form)[1].content, /Build it from Latin name roots/);
+    assert.ok(!/Build it from/.test(api.buildPieceMessages(src, 'given', { ...form, aiRoots: [] })[1].content));
+    const fromCache = api.aiForm({ target: 'person', method: 'cache', roots: ['norse'], aiRoots: ['latin'] }, { name: 'Ulfgeir' });
+    assert.deepEqual([...fromCache.aiRoots], []);
+});
+
+test('v0.2.1: the roots chips sit in "More options" and the folded line shows them', () => {
+    const { api, extensionSettings } = load({ lang: 'ko' });
+    api.settings();
+    const form = { target: 'person', vibe: 'fantasy', method: 'ai', parts: ['given'], extras: [], aiRoots: ['celtic'] };
+    const html = api.formHtml(form);
+    assert.match(html, /id="tbd_airoots"/);
+    assert.match(html, /data-chip="airoot" data-v="any" aria-pressed="false"/);
+    assert.match(html, /data-chip="airoot" data-v="celtic" aria-pressed="true"/);
+    assert.ok(html.indexOf('id="tbd_airoots"') > html.indexOf('id="tbd_more"'), 'inside the fold');
+    assert.match(api.formHtml({ ...form, aiRoots: [] }), /data-chip="airoot" data-v="any" aria-pressed="true"/);
+    assert.ok(!/tbd_airoots/.test(api.formHtml({ ...form, target: 'shop' })));
+    extensionSettings.tbd_names.moreOpen = false;
+    assert.match(api.moreFoldHtml(form).replace(/<[^>]+>/g, ''), /뿌리: 켈트/);
+    const off = api.moreFoldHtml({ ...form, likeText: 'Elric' });
+    assert.match(off, /tbd-fold-off[^>]*>뿌리: 켈트/);
+    assert.match(api.aiRootsHtml({ ...form, likeText: 'Elric' }), /지금은 안 써요/);
+    assert.match(api.aiRootsHtml(form), /id="tbd_airoot_note" hidden/);
+});
+
+test('v0.2.1: start letters skip ones the root never uses', () => {
+    const { api } = load();
+    const seeds = api.rollSeeds(200, { target: 'person', vibe: 'fantasy', method: 'ai', aiRoots: ['latin'] }, seeded(9));
+    assert.ok(seeds.every(s => !['W', 'K'].includes(s.start)));
+});
