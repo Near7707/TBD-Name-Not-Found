@@ -605,3 +605,5 @@
 #tbd_panel .tbd-fold:hover { color: var(--tbd-fg); }
 #tbd_panel .tbd-fold-sum { color: var(--tbd-accent); font-weight: bold; }
 .tbd-chips[hidden] { display: none; }
+/* Plain-word names (Wren, Ox): marked, not hidden. */
+.tbd-word-tag { border-color: color-mix(in srgb, var(--tbd-accent) 60%, transparent); color: var(--tbd-fg); white-space: nowrap; }

@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.9
+// TBD — Name Not Found v0.1.10
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -57,6 +57,10 @@
             sTokensHint: 'Raised automatically for big batches. Thinking models may need more.',
             sTheme: 'Theme', sEffects: 'Moving effects (glitch, flicker, scanlines)',
             sReading: 'Show how to read each name',
+            sWords: 'Names that are plain English words (Wren, Ox)',
+            sWordOpts: { mark: 'Mark them', filter: 'Leave them out' },
+            wordTag: ws => `word: ${ws.map(w => w.word).join(', ')}`,
+            wordTip: 'This is an existing English word. Keep it, or reshape it with ✨.',
             sHistory: 'Avoid names I already got',
             sHistoryClear: 'Forget past names', sHistoryCleared: 'Past names forgotten',
             sBan: 'Names to always avoid (comma or new line)',
@@ -110,6 +114,10 @@
             sTokensHint: '많이 뽑을 땐 자동으로 늘어나요. 생각하는 모델은 더 필요할 수 있어요.',
             sTheme: '테마', sEffects: '움직이는 효과 (글리치, 깜빡임, 스캔라인)',
             sReading: '이름 읽는 법 보기',
+            sWords: '평범한 영어 낱말인 이름 (Wren, Ox)',
+            sWordOpts: { mark: '표시만 하기', filter: '아예 빼기' },
+            wordTag: ws => `낱말: ${ws.map(w => w.ko).join(', ')}`,
+            wordTip: '실제 영어 낱말이에요. 그대로 써도 되고, ✨로 바꿔 볼 수도 있어요.',
             sHistory: '이미 나온 이름은 피하기',
             sHistoryClear: '지난 이름 잊기', sHistoryCleared: '지난 이름을 잊었어요',
             sBan: '항상 피할 이름 (쉼표나 줄바꿈으로 구분)',
@@ -140,6 +148,48 @@
         'Eldoria', 'Silverwood', 'Ravenshollow', 'Whisperwind', 'Mistvale', 'Shadowmere', 'Starfall',
         'Moonwhisper', 'Ironforge', 'Brightwater', 'Stormhaven',
     ];
+
+    // Everyday English words AI likes to pass off as names (Wren, Ox). Not banned: just marked,
+    // or filtered if the user asks. "word=Korean meaning", split by ";".
+    const WORD_NAMES = new Map((
+        'wren=굴뚝새;robin=울새;finch=되새;sparrow=참새;raven=큰까마귀;rook=떼까마귀;crow=까마귀;jay=어치;lark=종다리;swift=칼새;swallow=제비;' +
+        'heron=왜가리;crane=두루미;hawk=매;falcon=송골매;kestrel=황조롱이;merlin=쇠황조롱이;owl=부엉이;dove=비둘기;starling=찌르레기;magpie=까치;' +
+        'kite=솔개;osprey=물수리;egret=백로;ibis=따오기;linnet=홍방울새;thrush=지빠귀;plover=물떼새;tern=제비갈매기;gull=갈매기;swan=백조;teal=쇠오리;' +
+        'phoenix=불사조;griffin=그리핀;drake=수오리;fox=여우;wolf=늑대;bear=곰;ox=황소;bull=황소;stag=수사슴;hart=수사슴;doe=암사슴;fawn=새끼 사슴;' +
+        'elk=엘크;hare=산토끼;lynx=스라소니;otter=수달;badger=오소리;boar=멧돼지;lion=사자;tiger=호랑이;panther=표범;puma=퓨마;jaguar=재규어;' +
+        'colt=망아지;mare=암말;pony=조랑말;ram=숫양;lamb=어린 양;mole=두더지;mink=밍크;ermine=흰담비;stoat=담비;weasel=족제비;newt=영원;toad=두꺼비;' +
+        'viper=독사;adder=살무사;cobra=코브라;pike=강꼬치고기;trout=송어;moth=나방;wasp=말벌;cricket=귀뚜라미;ash=물푸레나무·재;oak=참나무;elm=느릅나무;' +
+        'birch=자작나무;willow=버드나무;hazel=개암나무;alder=오리나무;rowan=마가목;aspen=사시나무;cedar=삼나무;pine=소나무;yew=주목;holly=호랑가시나무;' +
+        'ivy=담쟁이;laurel=월계수;myrtle=도금양;olive=올리브;maple=단풍나무;linden=보리수;heather=헤더;fern=고사리;moss=이끼;reed=갈대;sage=세이지;' +
+        'basil=바질;thyme=백리향;clover=토끼풀;daisy=데이지;lily=백합;rose=장미;iris=붓꽃;violet=제비꽃;poppy=양귀비;tansy=쑥국화;aster=과꽃;' +
+        'dahlia=달리아;jasmine=재스민;lavender=라벤더;lotus=연꽃;orchid=난초;briar=찔레;bramble=가시덤불;thistle=엉겅퀴;nettle=쐐기풀;sorrel=수영;' +
+        'saffron=사프란;juniper=노간주나무;hawthorn=산사나무;blossom=꽃;petal=꽃잎;berry=베리;plum=자두;cherry=체리;peach=복숭아;quince=모과;' +
+        'amber=호박;jade=옥;jet=흑옥;onyx=오닉스;opal=오팔;pearl=진주;ruby=루비;garnet=석류석;beryl=녹주석;coral=산호;crystal=수정;emerald=에메랄드;' +
+        'sapphire=사파이어;topaz=토파즈;jasper=벽옥;agate=마노;flint=부싯돌;slate=점판암;cobalt=코발트;iron=철;steel=강철;silver=은;gold=금;' +
+        'copper=구리;storm=폭풍;rain=비;snow=눈;frost=서리;hail=우박;mist=안개;fog=안개;cloud=구름;thunder=천둥;gale=강풍;breeze=산들바람;' +
+        'dawn=새벽;dusk=해질녘;night=밤;star=별;sun=해;moon=달;sky=하늘;nova=신성;comet=혜성;aurora=오로라;echo=메아리;ember=불씨;blaze=불길;' +
+        'flame=불꽃;spark=불똥;smoke=연기;cinder=타다 남은 재;tide=조수;wave=파도;river=강;brook=시내;lake=호수;marsh=늪;moor=황야;heath=황야;' +
+        'glen=골짜기;dale=골짜기;vale=골짜기;ridge=산등성이;cliff=절벽;stone=돌;rock=바위;cove=작은 만;isle=섬;shore=해변;winter=겨울;summer=여름;' +
+        'autumn=가을;blue=파랑;red=빨강;grey=회색;gray=회색;scarlet=주홍;crimson=진홍;sable=검은담비·검은색;ivory=상아;indigo=남색;azure=하늘색;' +
+        'cyan=청록;umber=암갈색;ochre=황토색;russet=적갈색;hope=희망;faith=믿음;grace=은혜;joy=기쁨;mercy=자비;honor=명예;justice=정의;valor=용맹;' +
+        'glory=영광;haven=피난처;bliss=더없는 행복;serenity=평온;harmony=조화;liberty=자유;destiny=운명;fate=운명;rebel=반역자;jinx=징크스;' +
+        'vex=성가시게 하다;hex=저주;rune=룬 문자;cipher=암호;glitch=오류;pixel=픽셀;vector=벡터;nexus=연결점;orbit=궤도;zero=영;ace=에이스;blade=칼날;' +
+        'arrow=화살;bolt=볼트·번개;'
+    ).split(';').filter(Boolean).map(t => { const [w, ko] = t.split('='); return [w, ko]; }));
+    // The parts that are meant to be invented (family names, epithets may use real words on purpose).
+    const WORD_CHECK_ROLES = ['given', 'middle'];
+    function wordHits(r, form = r.form || {}) {
+        let texts;
+        if (r.pieces) texts = r.pieces.filter(p => WORD_CHECK_ROLES.includes(p.role)).map(p => p.text);
+        else if (['person', 'place', 'other'].includes(form.target || 'person')) texts = [r.name];
+        else return [];
+        return texts.map(t => String(t).trim().toLowerCase()).filter(t => WORD_NAMES.has(t)).map(w => ({ word: w, ko: WORD_NAMES.get(w) }));
+    }
+    // Avoid list + repeats, then real words too when the user chose to filter them.
+    function keepNames(list, avoid, form, st = settings()) {
+        const out = filterNames(list, avoid);
+        return st.wordNames === 'filter' ? out.filter(n => !wordHits(n, form).length) : out;
+    }
 
     // ---------- random seeds ----------
     const START_LETTERS = 'BCDFGHJKLMNPRSTVWAEIOU'.split('');
@@ -380,6 +430,7 @@
         banList: '',
         showReading: true,
         extrasOpen: false,
+        wordNames: 'mark',
         form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', parts: ['given'], extras: [], fixedFamily: '' },
     };
 
@@ -393,6 +444,7 @@
         for (const [k, v] of Object.entries(DEFAULTS.form)) if (st.form[k] === undefined) st.form[k] = Array.isArray(v) ? [...v] : v;
         if (!Array.isArray(st.history)) st.history = [];
         if (!THEMES.includes(st.theme)) st.theme = 'st';
+        if (st.wordNames !== 'filter') st.wordNames = 'mark';
         st.count = clampInt(st.count, 1, 30, 5);
         return st;
     }
@@ -935,6 +987,8 @@
         return results.map((r, i) => {
             const depth = r.depth || 0;
             const tag = r.tag && L.r[r.tag] ? `<span class="tbd-tag">${escapeHtml(L.r[r.tag])}</span>` : '';
+            const words = wordHits(r);
+            const wordTag = words.length ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.wordTip)}">${escapeHtml(L.wordTag(words))}</span>` : '';
             const menu = menuFor === r ? `<div class="tbd-refine-menu">${REFINE_MODES.map(m =>
                 `<button class="tbd-small-btn tbd-refine-pick" data-mode="${m}">${escapeHtml(L.r[m])}</button>`).join('')}</div>` : '';
             const working = refining && refining.src === r
@@ -942,7 +996,7 @@
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
-                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}</div>${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
+                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}${wordTag}</div>${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
@@ -1054,7 +1108,7 @@
             if (myController && myController.signal.aborted) return;
             if (controller !== myController) return;
             const parsed = applyShape(parseNames(raw), form);
-            const kept = filterNames(parsed, avoid);
+            const kept = keepNames(parsed, avoid, form, st);
             if (!parsed.length) {
                 status = { kind: 'error', text: T().err(T().parseFail) };
             } else if (!kept.length) {
@@ -1103,7 +1157,7 @@
             const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = src.pieces ? applyShape(parseNames(raw), form) : parseNames(raw);
-            const kept = filterNames(parsed, avoid).slice(0, 3);
+            const kept = keepNames(parsed, avoid, form, st).slice(0, 3);
             const at = results.indexOf(src);
             if (!parsed.length) status = { kind: 'error', text: L.err(L.parseFail) };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
@@ -1152,7 +1206,7 @@
             const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
             if (refining !== job) return;
             const parsed = applyShape(parseNames(raw), form);
-            const kept = filterNames(parsed, avoid);
+            const kept = keepNames(parsed, avoid, form, st);
             const at = results.indexOf(src);
             if (!parsed.length) status = { kind: 'error', text: L.err(L.parseFail) };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
@@ -1204,7 +1258,8 @@
             const text = cleanPiece(parsed[0]?.name);
             const banned = new Set(avoid.map(a => a.toLowerCase()));
             if (!text) status = { kind: 'error', text: L.err(L.parseFail) };
-            else if (text.toLowerCase() === piece.text.toLowerCase() || (NAME_ROLES.includes(piece.role) && banned.has(text.toLowerCase()))) {
+            else if (text.toLowerCase() === piece.text.toLowerCase() || (NAME_ROLES.includes(piece.role) && banned.has(text.toLowerCase()))
+                || (st.wordNames === 'filter' && WORD_CHECK_ROLES.includes(piece.role) && WORD_NAMES.has(text.toLowerCase()))) {
                 status = { kind: 'error', text: L.err(L.allFiltered) };
             } else if (results.includes(src) && src.pieces[k] === piece) {
                 src.pieces = src.pieces.map((p, j) => (j === k ? { ...p, text } : p));
@@ -1291,6 +1346,7 @@
             <label for="${id('theme')}">${escapeHtml(L.sTheme)}</label>${sel('theme', optionList(L.th, st.theme))}
             <label class="checkbox_label"><input id="${id('fx')}" type="checkbox" data-tbd-set="fx"><span>${escapeHtml(L.sEffects)}</span></label>
             <label class="checkbox_label"><input id="${id('reading')}" type="checkbox" data-tbd-set="reading"><span>${escapeHtml(L.sReading)}</span></label>
+            <label for="${id('words')}">${escapeHtml(L.sWords)}</label>${sel('words', optionList(L.sWordOpts, st.wordNames))}
             <label class="checkbox_label"><input id="${id('hist')}" type="checkbox" data-tbd-set="hist"><span>${escapeHtml(L.sHistory)}</span></label>
             <div><button type="button" class="${inPanel ? 'tbd-small-btn' : 'menu_button'} tbd-hist-clear">${escapeHtml(L.sHistoryClear)}</button></div>
             <label for="${id('ban')}">${escapeHtml(L.sBan)}</label>
@@ -1314,7 +1370,7 @@
     function syncSettingFields(except = null) {
         const st = settings();
         const values = {
-            lang: st.language, profile: st.profileId, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
+            lang: st.language, profile: st.profileId, words: st.wordNames, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
         };
         const checks = { fx: !!st.effects, reading: !!st.showReading, hist: !!st.rememberHistory };
         $('[data-tbd-set]').each(function () {
@@ -1369,6 +1425,7 @@
             case 'theme': st.theme = THEMES.includes($el.val()) ? $el.val() : 'st'; save(); render(); syncSettingFields(); return;
             case 'fx': st.effects = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
             case 'reading': st.showReading = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
+            case 'words': st.wordNames = $el.val() === 'filter' ? 'filter' : 'mark'; save(); renderResultsOnly(); syncSettingFields(); return;
             case 'hist': st.rememberHistory = !!$el.prop('checked'); break;
             case 'ban': st.banList = String($el.val() || ''); break;
             default: return;
@@ -1503,6 +1560,7 @@
             rollSeeds, buildMessages, buildRefineMessages, REFINE_MODES, parseNames, filterNames, avoidList, rememberNames, detectLang,
             tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
+            wordHits, keepNames, WORD_NAMES,
         };
     } else {
         if (typeof $ === 'function' && document.body) settingsSlot();

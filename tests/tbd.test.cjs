@@ -398,3 +398,26 @@ test('v0.1.9: extras fold is closed by default', () => {
     const { api } = load();
     assert.equal(api.settings().extrasOpen, false);
 });
+
+test('v0.1.10: plain-word names are marked, and left out only when asked', () => {
+    const { api, extensionSettings } = load();
+    assert.equal(api.settings().wordNames, 'mark', 'mark by default');
+    assert.equal(api.WORD_NAMES.get('wren'), '굴뚝새');
+    const person = { target: 'person' };
+    assert.deepEqual([...api.wordHits({ name: 'Wren', form: person }).map(w => w.word)], ['wren']);
+    assert.equal(api.wordHits({ name: 'Wrenna', form: person }).length, 0, 'only exact words');
+    assert.equal(api.wordHits({ name: 'Ox', form: { target: 'item' } }).length, 0, 'items may use real words');
+    const full = { name: 'Ash Stone', pieces: [{ role: 'given', text: 'Ash' }, { role: 'family', text: 'Stone' }], form: person };
+    assert.deepEqual([...api.wordHits(full).map(w => w.word)], ['ash'], 'family names may be words');
+    const list = [{ name: 'Wren', note: '' }, { name: 'Voreth', note: '' }];
+    assert.equal(api.keepNames(list, [], person).length, 2, 'marking keeps them');
+    extensionSettings.tbd_names.wordNames = 'filter';
+    assert.deepEqual([...api.keepNames(list, [], person).map(n => n.name)], ['Voreth']);
+    extensionSettings.tbd_names.wordNames = 'nonsense';
+    assert.equal(api.settings().wordNames, 'mark');
+    for (const lang of ['en', 'ko']) {
+        const L = api.STRINGS[lang];
+        assert.ok(L.sWords && L.sWordOpts.mark && L.sWordOpts.filter && L.wordTip);
+        assert.ok(L.wordTag([{ word: 'wren', ko: '굴뚝새' }]).length);
+    }
+});
