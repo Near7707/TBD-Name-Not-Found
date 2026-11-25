@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.19
+// TBD — Name Not Found v0.1.20
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -28,7 +28,7 @@
             emptyFail: 'The AI sent back an empty answer. A thinking model may have spent every token on thinking: set "Thinking effort" to Low or raise "Max response tokens". With a connection profile, also keep "Send the connection profile\'s preset too" off.',
             showRaw: 'See the answer', hideRaw: 'Hide the answer', rawEmpty: '(empty — no thinking and no answer came back)',
             sThink: 'Thinking effort (thinking models)', sThinkOpts: { default: "Default (don't send)", min: 'Minimal', low: 'Low', medium: 'Medium', high: 'High' },
-            sThinkHint: 'Naming needs little thinking. If a thinking model answers empty or slowly, pick Low. Leave on Default for other models. On a Custom (OpenAI-compatible) connection, SillyTavern sends this only for OpenAI models: use the service\'s own connection (like NanoGPT), or pick a non-thinking model.',
+            sThinkHint: 'Naming needs little thinking. If a thinking model answers empty or slowly, pick Low. Leave on Default for other models. On a Custom (OpenAI-compatible) connection, SillyTavern sends this only for OpenAI models: use the service\'s own connection (like NanoGPT), or pick a non-thinking model. Minimal asks the model not to think at all, so models that always think may refuse it: use Low then. If this seems to do nothing, another extension may be changing the request on its way out.',
             sPreset: "Send the connection profile's preset too", sPresetHint: 'Off by default. A roleplay preset can make the AI answer empty or in character. Turn on only if your model needs its preset.',
             err: m => `500 — ${m}`,
             cancelled: '499 — cancelled',
@@ -62,7 +62,7 @@
             sProfile: 'Connection profile', sProfileCurrent: '(Use current API)', sProfileMissing: '⚠️ Profile not found — pick again',
             sCount: 'Names per search (1–30)',
             sTokens: 'Max response tokens',
-            sTokensHint: 'Raised automatically for big batches. Thinking models may need more; lower it for a very small local model.',
+            sTokensHint: 'Raised automatically for big batches. Thinking models may need more, but a very high limit can let them think for a long time: set it just high enough that answers aren\'t cut off. Lower it for a very small local model.',
             sTheme: 'Theme', sEffects: 'Moving effects (glitch, flicker, scanlines)',
             sReading: 'Show how to read each name',
             sWords: 'Names that are plain English words (Wren, Ox)',
@@ -95,7 +95,7 @@
             emptyFail: 'AI가 빈 답을 보냈어요. 생각하는 모델이 토큰을 생각에 다 썼을 수 있어요. 설정에서 "생각 정도"를 낮게로 바꾸거나 최대 응답 토큰을 늘려 보세요. 연결 프로필을 쓰면 "연결 프로필의 프리셋도 같이 보내기"는 꺼 두세요.',
             showRaw: '받은 답 보기', hideRaw: '받은 답 접기', rawEmpty: '(비어 있음 — 생각도 답도 안 왔어요)',
             sThink: '생각 정도 (생각하는 모델용)', sThinkOpts: { default: '기본 (안 보냄)', min: '최소', low: '낮게', medium: '보통', high: '높게' },
-            sThinkHint: '이름 짓기는 길게 생각할 필요가 없어요. 생각하는 모델이 빈 답을 보내거나 느리면 "낮게"로 두세요. 다른 모델은 기본 그대로 두면 돼요. Custom(OpenAI 호환) 연결에선 실리태번이 OpenAI 모델에만 이 값을 보내요. NanoGPT 같은 전용 연결을 쓰거나, 생각 안 하는 모델을 고르세요.',
+            sThinkHint: '이름 짓기는 길게 생각할 필요가 없어요. 생각하는 모델이 빈 답을 보내거나 느리면 "낮게"로 두세요. 다른 모델은 기본 그대로 두면 돼요. Custom(OpenAI 호환) 연결에선 실리태번이 OpenAI 모델에만 이 값을 보내요. NanoGPT 같은 전용 연결을 쓰거나, 생각 안 하는 모델을 고르세요. "최소"는 생각을 아예 하지 말라는 뜻이라, 항상 생각하는 모델은 거절할 수 있어요. 그럴 땐 "낮게"로 두세요. 설정이 안 먹히는 것 같으면 다른 확장이 요청을 가로채고 있을 수 있어요.',
             sPreset: '연결 프로필의 프리셋도 같이 보내기', sPresetHint: '기본은 꺼짐이에요. 롤플레이 프리셋을 같이 보내면 AI가 빈 답이나 롤플레이로 답할 수 있어요. 모델에 프리셋이 꼭 필요할 때만 켜세요.',
             err: m => `500 — ${m}`,
             cancelled: '499 — 취소함',
@@ -128,7 +128,7 @@
             sProfile: '연결 프로필', sProfileCurrent: '(현재 연결된 API 사용)', sProfileMissing: '⚠️ 찾을 수 없는 프로필 — 다시 골라 주세요',
             sCount: '한 번에 뽑을 이름 수 (1~30)',
             sTokens: '최대 응답 토큰',
-            sTokensHint: '많이 뽑을 땐 자동으로 늘어나요. 생각하는 모델은 더 필요할 수 있고, 아주 작은 로컬 모델이면 줄이세요.',
+            sTokensHint: '많이 뽑을 땐 자동으로 늘어나요. 생각하는 모델은 더 필요할 수 있지만, 너무 높으면 오래 생각할 수 있어요. 답이 잘리지 않을 만큼만 넉넉히 두세요. 아주 작은 로컬 모델이면 줄이세요.',
             sTheme: '테마', sEffects: '움직이는 효과 (글리치, 깜빡임, 스캔라인)',
             sReading: '이름 읽는 법 보기',
             sWords: '평범한 영어 낱말인 이름 (Wren, Ox)',
