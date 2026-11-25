@@ -677,3 +677,21 @@
     user-select: text;
     -webkit-user-select: text;
 }
+
+/* Nicknames under a person's name: small and quiet, each one taps to copy. */
+.tbd-nicks { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin: 1px 0 2px; font-size: 12px; color: var(--tbd-dim); }
+.tbd-nicks-label { margin-right: 2px; }
+#tbd_panel .tbd-nick {
+    margin: 0;
+    padding: 2px 3px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--tbd-dim);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+#tbd_panel .tbd-nick:hover, #tbd_panel .tbd-nick:focus-visible { color: var(--tbd-fg); text-decoration: underline; }
+.tbd-nick-dot { opacity: .6; }

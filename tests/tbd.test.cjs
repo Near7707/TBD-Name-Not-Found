@@ -626,3 +626,108 @@ test('v0.1.19: max response tokens go up to 65000', () => {
     extensionSettings.tbd_names.maxTokens = 999999;
     assert.equal(api.tokensFor(5, api.settings()), 65000);
 });
+
+test('v0.1.21: real-names choice changes the prompt and the seeds', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'medieval', gender: 'any', length: 'any', sound: 'any', parts: ['given'], extras: [] };
+    // Default: invented only, said plainly; no "real" field asked for.
+    const inv = api.buildMessages(base, api.rollSeeds(3, base, seeded(2)), { lang: 'en' })[1].content;
+    assert.match(inv, /Invent 3 original names/);
+    assert.match(inv, /don't hand back names that real people commonly have/);
+    assert.ok(!inv.includes('"real"'));
+    // Real names only: asks for names (not "invent original"), drops the plain-word rule, asks which are real.
+    const only = { ...base, realNames: 'only' };
+    const seeds = api.rollSeeds(5, only, seeded(4));
+    assert.ok(seeds.every(s => !s.ending && !s.texture && !s.spark && s.start));
+    const msg = api.buildMessages(only, seeds, { lang: 'en' })[1].content;
+    assert.match(msg, /Give 5 names/);
+    assert.match(msg, /Use real given names that people actually use/);
+    assert.ok(!msg.includes('plain existing English word'));
+    assert.match(msg, /"real": false/);
+    // Full name: applies to given/middle/family, not to a kept family name or extras.
+    const full = { ...base, realNames: 'near', parts: ['given', 'family'], extras: ['epithet'], fixedFamily: 'Holloway' };
+    assert.deepEqual([...api.realRoles(full)], ['given']);
+    const full2 = { ...full, fixedFamily: '' };
+    assert.deepEqual([...api.realRoles(full2)], ['given', 'family']);
+    const m2 = api.buildMessages(full2, api.rollSeeds(2, full2, seeded(1)), { lang: 'en' })[1].content;
+    assert.match(m2, /Base the given and family names on real names/);
+    assert.match(m2, /"real": \["\.\.\."\]/);
+    // Not for places.
+    assert.equal(api.realMode({ target: 'place', realNames: 'only' }), 'invented');
+    assert.deepEqual([...api.realRule({ target: 'place', realNames: 'only' })], []);
+    // No example names in the real-name lines (models copy examples).
+    for (const mode of ['invented', 'near', 'mix', 'only']) {
+        for (const line of api.realRule({ ...full2, realNames: mode })) assert.ok(!/[A-Z][a-z]+ →|like "[A-Z]/.test(line), line);
+    }
+});
+
+test('v0.1.21: "real" marks come through, and keep real names past the word filter', () => {
+    const { api } = load();
+    const one = api.parseNames('[{"name":"Rose","note":"n","real":true},{"name":"Wren","note":"n","real":false}]');
+    assert.equal(one[0].real, true);
+    assert.equal(one[1].real, undefined);
+    const st = { wordNames: 'filter' };
+    const only = { target: 'person', realNames: 'only' };
+    assert.deepEqual([...api.keepNames(one, [], only, st).map(n => n.name)], ['Rose']);
+    // Invented mode: the word filter wins as before.
+    assert.deepEqual([...api.keepNames(one, [], { target: 'person' }, st).map(n => n.name)], []);
+    // Full names: a list marks just those parts.
+    const form = { target: 'person', realNames: 'mix', parts: ['given', 'family'], extras: [] };
+    const shaped = api.applyShape(api.parseNames('[{"parts":{"given":"Agnes","family":"Torvel"},"note":"n","real":["given"]}]'), form);
+    assert.equal(shaped[0].real, true);
+    assert.deepEqual([...shaped[0].pieces.map(p => !!p.real)], [true, false]);
+    const none = api.applyShape(api.parseNames('[{"parts":{"given":"Ysmel","family":"Torvel"},"note":"n","real":[]}]'), form);
+    assert.equal(none[0].real, undefined);
+});
+
+test('v0.1.21: AI favorites stay with "real names only", marked instead', () => {
+    const { api } = load();
+    assert.ok(api.avoidList({ banList: 'Brindle', rememberHistory: false, history: [] }, { target: 'person', realNames: 'mix' }).includes('Luna'));
+    const av = api.avoidList({ banList: 'Brindle', rememberHistory: false, history: [] }, { target: 'person', realNames: 'only' });
+    assert.ok(!av.includes('Luna') && av.includes('Brindle'));
+    assert.ok(api.clicheHit({ name: 'Luna' }));
+    assert.ok(!api.clicheHit({ name: 'Agnes' }));
+});
+
+test('v0.1.21: nicknames are asked for only when on, and shown under the name', () => {
+    const { api, extensionSettings } = load({ lang: 'ko' });
+    const st = api.settings();
+    assert.equal(st.nicknames, false);
+    const form = { target: 'person', vibe: 'fantasy', parts: ['given'], extras: [] };
+    assert.equal(api.nickOn(form, st), false);
+    st.nicknames = true;
+    assert.equal(api.nickOn(form, st), true);
+    assert.equal(api.nickOn({ target: 'place' }, st), false);
+    assert.equal(api.nickOn({ ...form, parts: [], extras: ['codename'] }, st), false);
+    const msg = api.buildMessages(form, api.rollSeeds(2, form, seeded(3)), { lang: 'en', nicks: true })[1].content;
+    assert.match(msg, /"nicks": 2 or 3 short nicknames/);
+    assert.match(msg, /"nicks": \["\.\.\.", "\.\.\."\]/);
+    // Cleaned: no JSON bits, not the name itself, no repeats, at most 3.
+    assert.deepEqual([...api.cleanNicks(['Mimi', 'mimi', 'Mirabel', '{x}', 'Ree', 'Bel', 'Ra'], 'Mirabel')], ['Mimi', 'Ree', 'Bel']);
+    const parsed = api.parseNames('[{"name":"Mirabel","note":"n","nicks":["Mira","Belle"]}]');
+    assert.deepEqual([...parsed[0].nicks], ['Mira', 'Belle']);
+    api.setResults([{ ...parsed[0], real: true, form }]);
+    const html = api.resultsHtml();
+    assert.match(html, /애칭:/);
+    assert.match(html, /class="tbd-nick" data-n="1"[^>]*>Belle</);
+    assert.match(html, />실제</);
+    // Turned off: not shown.
+    extensionSettings.tbd_names.nicknames = false;
+    assert.ok(!api.resultsHtml().includes('tbd-nick'));
+});
+
+test('v0.1.21: one swapped part follows the real-names choice', () => {
+    const { api } = load();
+    const src = { name: 'Agnes Torvel', pieces: [{ role: 'given', text: 'Agnes' }, { role: 'family', text: 'Torvel' }] };
+    const form = { target: 'person', vibe: 'medieval', realNames: 'only', parts: ['given', 'family'], extras: [] };
+    const msg = api.buildPieceMessages(src, 'given', form, { lang: 'en', nicks: true })[1].content;
+    assert.match(msg, /Use a real name that people actually use/);
+    assert.match(msg, /"real": false/);
+    assert.match(msg, /"nicks"/);
+    const fam = api.buildPieceMessages(src, 'family', { ...form, realNames: 'invented' }, { lang: 'en', nicks: true })[1].content;
+    assert.ok(!fam.includes('"real"') && !fam.includes('"nicks"'));
+    assert.match(fam, /Invent it/);
+    // Refine in a real mode doesn't forbid landing near a real name.
+    const ref = api.buildRefineMessages({ name: 'Agnes' }, 'soft', { target: 'person', vibe: 'medieval', realNames: 'near' }, { lang: 'en' })[1].content;
+    assert.ok(!ref.includes('Bridget') && ref.includes('"real": false'));
+});

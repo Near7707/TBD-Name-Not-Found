@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.20
+// TBD — Name Not Found v0.1.21
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -54,6 +54,10 @@
             pc: { given: 'Given', middle: 'Middle', family: 'Family' },
             ex: { title: 'Title', particle: 'Noble particle', origin: 'Place of origin', patronymic: "Father's-name surname", epithet: 'Nickname / epithet', religious: 'Religious name', codename: 'Codename', alias: 'Alias / stage name' },
             fixedFamily: 'Keep this family name (optional)', fixedFamilyPh: 'e.g. Holloway',
+            realNames: 'Real names', realOpts: { invented: 'Invented only', near: 'Close to real names', mix: 'Mix in real names', only: 'Real names only' },
+            realTag: 'real', realTip: 'The AI says real people use this name. It can be wrong.',
+            clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
+            nicks: 'Nicknames', nickCopy: 'Copy this nickname',
             copyPiece: 'Copy this part', rerollPiece: 'Swap just this part', rerollingPiece: 'Swapping one part…', pieceRerolled: '200 OK — part swapped',
             gear: 'Settings', back: 'Back',
             // settings
@@ -65,6 +69,7 @@
             sTokensHint: 'Raised automatically for big batches. Thinking models may need more, but a very high limit can let them think for a long time: set it just high enough that answers aren\'t cut off. Lower it for a very small local model.',
             sTheme: 'Theme', sEffects: 'Moving effects (glitch, flicker, scanlines)',
             sReading: 'Show how to read each name',
+            sNicks: 'Show nicknames (people)', sNicksHint: 'Each person name also comes with 2–3 nicknames. Uses a few more tokens.',
             sWords: 'Names that are plain English words (Wren, Ox)',
             sWordOpts: { mark: 'Mark them', filter: 'Leave them out' },
             wordTag: ws => `word: ${ws.map(w => w.word).join(', ')}`,
@@ -121,6 +126,10 @@
             pc: { given: '이름', middle: '미들네임', family: '성' },
             ex: { title: '직함·존칭', particle: '귀족 표시', origin: '출신지', patronymic: '아버지 이름 성', epithet: '별명·칭호', religious: '세례명·수도명', codename: '코드네임', alias: '가명·예명' },
             fixedFamily: '성 고정 (안 써도 됨)', fixedFamilyPh: '예: Holloway',
+            realNames: '실제 이름', realOpts: { invented: '지어낸 이름만', near: '실제 이름 비슷하게', mix: '실제 이름도 섞기', only: '실제 이름만' },
+            realTag: '실제', realTip: 'AI가 실제로 쓰는 이름이라고 했어요. 틀릴 수 있어요.',
+            clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
+            nicks: '애칭', nickCopy: '이 애칭 복사',
             copyPiece: '이 조각 복사', rerollPiece: '이 조각만 다시 뽑기', rerollingPiece: '조각 하나 바꾸는 중…', pieceRerolled: '200 OK — 조각 바꿈',
             gear: '설정', back: '돌아가기',
             sTitle: 'TBD — Name Not Found',
@@ -131,6 +140,7 @@
             sTokensHint: '많이 뽑을 땐 자동으로 늘어나요. 생각하는 모델은 더 필요할 수 있지만, 너무 높으면 오래 생각할 수 있어요. 답이 잘리지 않을 만큼만 넉넉히 두세요. 아주 작은 로컬 모델이면 줄이세요.',
             sTheme: '테마', sEffects: '움직이는 효과 (글리치, 깜빡임, 스캔라인)',
             sReading: '이름 읽는 법 보기',
+            sNicks: '애칭 보기 (사람 이름)', sNicksHint: '사람 이름마다 애칭 2~3개도 같이 받아요. 토큰을 조금 더 써요.',
             sWords: '평범한 영어 낱말인 이름 (Wren, Ox)',
             sWordOpts: { mark: '표시만 하기', filter: '아예 빼기' },
             wordTag: ws => `낱말: ${ws.map(w => w.ko).join(', ')}`,
@@ -215,10 +225,44 @@
         const texts = n.pieces ? n.pieces.filter(p => !p.fixed).map(p => p.text) : [n.name];
         return texts.some(t => words.has(String(t).trim().toLowerCase()));
     }
+    // "Real names" (people only): invented only (default) / close to real names / mix in real names / real names only.
+    const REAL_MODES = ['invented', 'near', 'mix', 'only'];
+    // The parts the choice applies to. Extras (codename, epithet…) stay invented; a kept family name stays as it is.
+    const REAL_ROLES = ['given', 'middle', 'family'];
+    function realMode(form = {}) {
+        return form.target === 'person' && REAL_MODES.includes(form.realNames) ? form.realNames : 'invented';
+    }
+    function realRoles(form) {
+        if (form.target !== 'person') return [];
+        const shape = nameShape(form);
+        if (!shape) return ['given'];
+        return shape.roles.filter(r => REAL_ROLES.includes(r) && !(r === 'family' && shape.fixed));
+    }
+    // AI models' favorite names. With "real names only" they aren't banned (Luna is a real name), just marked.
+    const CLICHE_SET = new Set(CLICHES.map(c => c.toLowerCase()));
+    function clicheHit(r) {
+        const texts = r.pieces ? r.pieces.filter(p => REAL_ROLES.includes(p.role)).map(p => p.text) : [r.name];
+        return texts.some(t => CLICHE_SET.has(String(t).trim().toLowerCase()));
+    }
+    // "nicks" from the answer: a list (or a comma string), a few short name-like bits, not the name itself.
+    function cleanNicks(v, name = '') {
+        const list = Array.isArray(v) ? v : typeof v === 'string' ? v.split(/[,·/]/) : [];
+        const own = String(name).trim().toLowerCase();
+        const out = [];
+        for (const x of list) {
+            const t = cleanPiece(typeof x === 'string' ? x : '');
+            if (!t || t.length > 20 || !looksLikeName(t) || t.toLowerCase() === own) continue;
+            if (!out.some(o => o.toLowerCase() === t.toLowerCase())) out.push(t);
+        }
+        return out.slice(0, 3);
+    }
     // Avoid list + repeats + copies of the "like this" words, then real words too when the user chose to filter them.
+    // In a real-names mode, a name the AI called real stays even then (Rose is both a word and a real name).
     function keepNames(list, avoid, form, st = settings()) {
         const out = filterNames(list, avoid).filter(n => !isLikeCopy(n, form || {}));
-        return st.wordNames === 'filter' ? out.filter(n => !wordHits(n, form).length) : out;
+        if (st.wordNames !== 'filter') return out;
+        const realOk = realMode(form || {}) !== 'invented';
+        return out.filter(n => !wordHits(n, form).length || (realOk && n.real));
     }
 
     // ---------- random seeds ----------
@@ -310,7 +354,10 @@
         // "Like this" words set the direction too, and they replace the random start, ending and sound nudges
         // (a forced "starts with K" can't sound like "Elric").
         const like = likeWords(opts).length ? (opts.likeMode === 'feel' ? 'feel' : 'sound') : null;
-        const sparks = opts.vibe === 'custom' || typedDetail || like ? null : (SPARKS[opts.vibe] || ALL_SPARKS);
+        // Real names come from real use, so the made-up sound nudges (ending, texture, inspiration word) go.
+        // The start letter stays: it still spreads the batch over different real names.
+        const real = realMode(opts) !== 'invented';
+        const sparks = opts.vibe === 'custom' || typedDetail || like || real ? null : (SPARKS[opts.vibe] || ALL_SPARKS);
         const textures = texturesFor(opts.vibe);
         const endings = endingsFor(target, opts.vibe);
         const shapes = shapesFor(target, opts.vibe);
@@ -326,7 +373,7 @@
             const seed = {};
             // Sound-alike keeps the typed word's rhythm, so no random syllable count then.
             if (like !== 'sound') seed.syllables = lo + Math.floor(rnd() * (hi - lo + 1));
-            if (!like) seed.texture = pick(textures, rnd);
+            if (!like && !real) seed.texture = pick(textures, rnd);
             if (like === 'sound') seed.likeFocus = LIKE_FOCUS[(focusStart + i) % LIKE_FOCUS.length];
             // Like endings, no inspiration word twice in one batch (three "neon" names looked samey).
             if (sparks) {
@@ -338,7 +385,7 @@
             if (!opts.mustContain && !like) seed.start = pick(START_LETTERS, rnd);
             // Only nudge the ending about half the time; always forcing it sounds samey too.
             // Don't hand the same ending to two names in one batch (two "… Array" looked samey).
-            if (endings && !like && rnd() < 0.5) {
+            if (endings && !like && !real && rnd() < 0.5) {
                 const fresh = endings.filter(e => !usedEndings.has(e));
                 seed.ending = pick(fresh.length ? fresh : endings, rnd);
                 usedEndings.add(seed.ending);
@@ -442,10 +489,16 @@
                 const fixed = role === 'family' && shape.fixed;
                 const text = fixed ? shape.fixed : cleanPiece(n.parts[role]);
                 if (!text) continue;
-                pieces.push(fixed ? { role, text, fixed: true } : { role, text });
+                const piece = fixed ? { role, text, fixed: true } : { role, text };
+                // "real": true for the whole name marks every real-able part; a list marks just those.
+                if (!fixed && n.real && REAL_ROLES.includes(role) && (!n.realParts || n.realParts.includes(role))) piece.real = true;
+                pieces.push(piece);
             }
             if (!pieces.length) return null;
-            return { name: joinPieces(pieces), note: n.note, read: n.read, pieces };
+            const out = { name: joinPieces(pieces), note: n.note, read: n.read, pieces };
+            if (pieces.some(p => p.real)) out.real = true;
+            if (n.nicks?.length) out.nicks = n.nicks;
+            return out;
         }).filter(n => n && n.name.length <= 120);
     }
     // The parts worth remembering and avoiding next time (not "Sir", not a kept family name).
@@ -469,9 +522,10 @@
         history: [],
         banList: '',
         showReading: true,
+        nicknames: false,
         extrasOpen: false,
         wordNames: 'mark',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', parts: ['given'], extras: [], fixedFamily: '' },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '' },
     };
 
     // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
@@ -498,6 +552,7 @@
         if (!THEMES.includes(st.theme)) st.theme = 'st';
         if (st.wordNames !== 'filter') st.wordNames = 'mark';
         if (!REASONING_LEVELS.includes(st.reasoning)) st.reasoning = 'default';
+        if (!REAL_MODES.includes(st.form.realNames)) st.form.realNames = 'invented';
         st.count = clampInt(st.count, 1, 30, 5);
         return st;
     }
@@ -526,10 +581,12 @@
     function splitList(text) {
         return String(text || '').split(/[,\n]/).map(s => s.trim()).filter(Boolean);
     }
-    function avoidList(st = settings()) {
+    // With "real names only", AI favorites like Luna are real names too, so they're marked instead of avoided.
+    function avoidList(st = settings(), form = null) {
         const own = splitList(st.banList);
         const past = st.rememberHistory ? st.history.slice(-80) : [];
-        return [...new Set([...CLICHES, ...own, ...past])];
+        const cliches = form && realMode(form) === 'only' ? [] : CLICHES;
+        return [...new Set([...cliches, ...own, ...past])];
     }
     function rememberNames(names, st = settings()) {
         if (!st.rememberHistory || !names.length) return;
@@ -641,6 +698,8 @@
         }
         if (form.target === 'place') {
             out.push('Place names may use real words: joined real words or a real word plus a place word are welcome. Just never a single bare everyday word on its own (like "Mold" or "Salt").');
+        } else if (['mix', 'only'].includes(realMode(form))) {
+            // Real names may be words too (Rose, Hope), so the plain-word rule would fight the real-name choice.
         } else if (nameShape(form)) {
             out.push('The given and middle names must not be plain existing English words (like "Mold" or "Salt"). Family names, epithets and titles may use real words (trades, places, deeds).');
         } else if (form.target === 'person' || form.target === 'other') {
@@ -668,6 +727,45 @@
         return out;
     }
 
+    // "Real names": one short line, no example names (models copy examples) and nothing to tick off one by one.
+    function realWhat(roles) {
+        const words = roles.map(r => ({ given: 'given', middle: 'middle', family: 'family' }[r]));
+        return `${words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}` : words[0]} names`;
+    }
+    function realRule(form) {
+        const roles = realRoles(form);
+        if (!roles.length) return [];
+        const what = realWhat(roles);
+        const mode = realMode(form);
+        const out = [];
+        if (mode === 'invented') out.push(`Invent the ${what}; don't hand back names that real people commonly have.`);
+        else if (mode === 'near') out.push(`Base the ${what} on real names people use in this setting, each changed a little so it is new but still feels familiar.`);
+        else if (mode === 'mix') out.push(`Mix real ${what} that people use in this setting with invented ones, roughly half and half.`);
+        else out.push(`Use real ${what} that people actually use in this setting, not invented ones.${roles.length > 1 ? " Don't put together a famous person's full name." : ''}`);
+        if (mode !== 'invented') out.push(nameShape(form)
+            ? `Add "real": the list of parts (${roles.join(', ')}) that are real names people actually use; an empty list if none.`
+            : 'Add "real": true if it is a real name people actually use, otherwise false.');
+        return out;
+    }
+    // Nicknames only for people, and only when the name has a given name to shorten.
+    function nickOn(form, st = settings()) {
+        if (!st.nicknames || form.target !== 'person') return false;
+        const shape = nameShape(form);
+        return !shape || shape.roles.includes('given');
+    }
+    const NICK_RULE = 'Also add "nicks": 2 or 3 short nicknames for the given name, made the way English speakers shorten names (a clipped front or end, or -y/-ie added).';
+    // The JSON to answer in, with the extra fields that are switched on.
+    function answerJson(shape, { reading, real, nicks } = {}) {
+        const bits = [];
+        if (shape) bits.push(`"parts": {${shape.roles.map(r => `"${r}": "..."`).join(', ')}}`);
+        else bits.push('"name": "..."');
+        if (reading) bits.push('"read": "..."');
+        bits.push('"note": "..."');
+        if (real) bits.push(shape ? '"real": ["..."]' : '"real": false');
+        if (nicks) bits.push('"nicks": ["...", "..."]');
+        return `[{${bits.join(', ')}}]`;
+    }
+
     // How to show the reading: Korean letters for Korean, a stress respelling for English.
     function readingRule(lang, full) {
         const what = full ? 'how to say the whole full name, with a space between parts' : 'how to say it';
@@ -685,10 +783,6 @@
         if (shape.fixed) lines.push(`They are all family: every name keeps the family name "${shape.fixed}", so make the other parts fit it.`);
         lines.push('Put each part in its own field, without quotes or brackets.');
         return lines;
-    }
-    function shapeJson(shape, reading) {
-        const parts = shape.roles.map(r => `"${r}": "..."`).join(', ');
-        return `[{"parts": {${parts}}${reading ? ', "read": "..."' : ''}, "note": "..."}]`;
     }
     function namedPieces(src) {
         return src.pieces.map(p => `${p.role} "${p.text}"`).join(', ');
@@ -734,15 +828,20 @@
         const phrase = form.target === 'shop' || form.target === 'item';
         const shape = nameShape(form);
         const lines = [];
+        // "Invent original" would argue with "use real names", so those modes just ask for names.
+        const mode = realMode(form);
+        const ask = mode === 'mix' || mode === 'only' ? 'Give' : 'Invent';
+        const orig = mode === 'mix' || mode === 'only' ? '' : 'original ';
         if (shape) {
-            lines.push(`Invent ${seeds.length} original full name${seeds.length === 1 ? '' : 's'} for a person.`);
+            lines.push(`${ask} ${seeds.length} ${orig}full name${seeds.length === 1 ? '' : 's'} for a person.`);
             lines.push(...shapeLines(shape, form.vibe));
         } else {
-            lines.push(`Invent ${seeds.length} original name${seeds.length === 1 ? '' : 's'} for ${targetText(form)}.`);
+            lines.push(`${ask} ${seeds.length} ${orig}name${seeds.length === 1 ? '' : 's'} for ${targetText(form)}.`);
         }
         lines.push(`Setting / vibe: ${vibe}.`);
         lines.push('Style: Western, English-readable spelling.');
         lines.push(...shapeRules(form));
+        lines.push(...realRule(form));
         if (form.target === 'person' && form.gender && form.gender !== 'any') lines.push(shape ? `Gender feel (for the given and middle names and any title): ${form.gender}.` : `Gender feel: ${form.gender}.`);
         if (sound) lines.push(`Sound: ${sound}. ${SOUND_RULE}`);
         if (form.mustContain) lines.push(`Every ${shape ? 'full ' : ''}name must contain the letters "${String(form.mustContain).trim()}" (any position).`);
@@ -755,9 +854,14 @@
             : 'The setting and what is being named come first. Each name also has a seed that only adds variety:');
         // Sound-alike seeds carry only a part to echo; skipping rules that don't apply means less overthinking.
         const echoOnly = seeds.length > 0 && seeds.every(s => s.likeFocus && !s.spark);
-        if (!echoOnly) {
+        // Real names get no inspiration word, so those rules would only be noise there.
+        // (Other cases keep them as before: the bread fix in v0.1.9 was checked with them in.)
+        const noSparkRules = realMode(form) !== 'invented' && !seeds.some(s => s.spark);
+        if (!echoOnly && !noSparkRules) {
             lines.push('follow its sound hints. An inspiration word is only a loose mood: bend it to fit what is being named and the setting, and ignore it if it doesn\'t fit.');
             lines.push('Never put the inspiration object itself into the name or the note when it isn\'t part of what is being named (no "bus stop" in the name of a bread).');
+        } else if (!echoOnly) {
+            lines.push('follow its hints.');
         } else {
             lines.push('follow its hint.');
         }
@@ -782,8 +886,9 @@
         lines.push('');
         lines.push(`For each name add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about how it fits this setting. Don't claim a real meaning unless you are sure.`);
         if (opts.reading) lines.push(`Also add ${readingRule(lang, !!shape)}.`);
+        if (opts.nicks) lines.push(NICK_RULE);
         lines.push('Reply with ONLY a JSON array, nothing else:');
-        lines.push(shape ? shapeJson(shape, opts.reading) : opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
+        lines.push(answerJson(shape, { reading: opts.reading, real: mode !== 'invented' && realRoles(form).length > 0, nicks: opts.nicks }));
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused, cliché names.' },
             { role: 'user', content: lines.join('\n') },
@@ -811,17 +916,31 @@
         lines.push(...shapeRules(form));
         lines.push('Change the sounds inside the name, not just by gluing a letter on the end. Every variant must be easy to pronounce (no clusters like "-etd").');
         lines.push('Also cut sounds that pull the other way (for "sharper", drop soft r/l/m endings; for "softer", drop hard k/t/g stops).');
-        lines.push('Avoid anything only a letter or two away from a well-known real or mythological name (like Bridget or Thor).');
+        // With a real-names choice, a variant landing on a real name is fine; it just gets marked.
+        const real = realMode(form) !== 'invented' && realRoles(form).length > 0;
+        if (real) lines.push(...realRule(form).slice(1));
+        else lines.push('Avoid anything only a letter or two away from a well-known real or mythological name (like Bridget or Thor).');
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         lines.push('');
         lines.push(`For each variant add a short note (under 10 words) in ${lang === 'ko' ? 'Korean' : 'English'} about what changed in the sound.`);
         if (opts.reading) lines.push(`Also add ${readingRule(lang, !!shape)}.`);
+        if (opts.nicks) lines.push(NICK_RULE);
         lines.push('Reply with ONLY a JSON array, nothing else:');
-        lines.push(shape ? shapeJson(shape, opts.reading) : opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
+        lines.push(answerJson(shape, { reading: opts.reading, real, nicks: opts.nicks }));
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers who understands phonetics and how sounds feel.' },
             { role: 'user', content: lines.join('\n') },
         ];
+    }
+
+    // The real-names choice for one swapped part (given, middle or family only).
+    function realPieceRule(form, role) {
+        if (!realRoles(form).includes(role)) return '';
+        const mode = realMode(form);
+        if (mode === 'invented') return "Invent it; don't hand back a name that real people commonly have.";
+        if (mode === 'near') return 'Base it on a real name people use in this setting, changed a little so it is new but still feels familiar.';
+        if (mode === 'mix') return 'It may be a real name people use in this setting or an invented one.';
+        return 'Use a real name that people actually use in this setting.';
     }
 
     // A new version of just one part of a full name; the rest stays.
@@ -838,11 +957,21 @@
         lines.push('It must fit the rest of the name and the setting, and be clearly different from the current one. Keep Western, English-readable spelling.');
         if (form.gender && form.gender !== 'any' && ['given', 'middle', 'title', 'religious'].includes(role)) lines.push(`Gender feel: ${form.gender}.`);
         if (role === 'given') { const likeLine = likeRule(form, 'given name'); if (likeLine) lines.push(likeLine); }
+        const real = realPieceRule(form, role);
+        if (real) lines.push(real);
+        const realAsk = !!real && realMode(form) !== 'invented';
+        if (realAsk) lines.push('Add "real": true if it is a real name people actually use, otherwise false.');
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         lines.push('');
         if (opts.reading) lines.push(`Also add ${readingRule(lang, true)} — the whole name with the new part.`);
+        const nicks = !!opts.nicks && role === 'given';
+        if (nicks) lines.push(NICK_RULE);
         lines.push('Reply with ONLY a JSON array with one item, nothing else. "name" is the new part only, without quotes or brackets:');
-        lines.push(opts.reading ? '[{"name": "...", "read": "..."}]' : '[{"name": "..."}]');
+        const bits = ['"name": "..."'];
+        if (opts.reading) bits.push('"read": "..."');
+        if (realAsk) bits.push('"real": false');
+        if (nicks) bits.push('"nicks": ["...", "..."]');
+        lines.push(`[{${bits.join(', ')}}]`);
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused, cliché names.' },
             { role: 'user', content: lines.join('\n') },
@@ -891,6 +1020,14 @@
         return L.err(answerCut(raw) ? L.cutFail : L.parseFail);
     }
 
+    // "real": true / "yes" for a one-word name, or a list of parts (["given", "family"]) for a full name.
+    function realFrom(v) {
+        if (v === true || (typeof v === 'string' && /^\s*(true|yes)\s*$/i.test(v))) return { real: true };
+        const list = Array.isArray(v) ? v : typeof v === 'string' ? v.split(/[,\s]+/) : [];
+        const parts = [...new Set(list.map(x => String(x).trim().toLowerCase()).filter(x => REAL_ROLES.includes(x)))];
+        return parts.length ? { real: true, realParts: parts } : {};
+    }
+
     function parseNames(raw) {
         const text = stripThinking(raw).replace(/```(?:json)?/gi, '');
         const out = [];
@@ -906,7 +1043,10 @@
                 if (typeof it === 'string') out.push({ name: it, note: '' });
                 else if (it && typeof it === 'object') {
                     const parts = it.parts && typeof it.parts === 'object' && !Array.isArray(it.parts) ? it.parts : null;
-                    out.push({ name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? ''), read: String(it.read ?? it.reading ?? it.pronunciation ?? ''), ...(parts ? { parts } : {}) });
+                    out.push({
+                        name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? ''), read: String(it.read ?? it.reading ?? it.pronunciation ?? ''),
+                        ...(parts ? { parts } : {}), ...realFrom(it.real), ...(it.nicks ?? it.nicknames ? { nicks: it.nicks ?? it.nicknames } : {}),
+                    });
                 }
             }
         }
@@ -925,7 +1065,11 @@
                 // Line answers may put the reading in brackets: "Quilla (퀼라)".
                 const m = name.match(/^(.+?)\s*[([]([^()[\]]+)[)\]]$/);
                 if (m) { name = m[1].trim(); if (!read) read = m[2].trim(); }
-                return { name, note: n.note.trim(), read: read.slice(0, 80), ...(n.parts ? { parts: n.parts } : {}) };
+                const nicks = n.nicks ? cleanNicks(n.nicks, name) : [];
+                return {
+                    name, note: n.note.trim(), read: read.slice(0, 80), ...(n.parts ? { parts: n.parts } : {}),
+                    ...(n.real ? { real: true } : {}), ...(n.realParts ? { realParts: n.realParts } : {}), ...(nicks.length ? { nicks } : {}),
+                };
             })
             .filter(n => n.parts || (n.name && n.name.length <= 40 && looksLikeName(n.name)));
     }
@@ -1082,6 +1226,7 @@
             <label>${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
             <label>${escapeHtml(L.like)}<input id="tbd_like" class="text_pole" type="text" maxlength="${LIKE_MAX}" placeholder="${escapeHtml(L.likePh)}" value="${escapeHtml(form.likeText || '')}"></label>
             <label>${escapeHtml(L.likeMode)}${selectHtml('tbd_likemode', L.likeModes, form.likeMode === 'feel' ? 'feel' : 'sound')}</label>
+            ${form.target === 'person' ? `<label class="tbd-wide" id="tbd_real_wrap">${escapeHtml(L.realNames)}${selectHtml('tbd_realnames', L.realOpts, realMode(form))}</label>` : ''}
             ${form.target === 'person' ? personPartsHtml(form) : ''}
             ${detailLabel ? `<label class="tbd-wide" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
@@ -1129,11 +1274,16 @@
         if (busy) return `<div class="tbd-log" id="tbd_log"></div>`;
         if (!results.length) return `<div class="tbd-empty">${escapeHtml(L.empty)}</div>`;
         const reading = !!settings().showReading;
+        const showNicks = !!settings().nicknames;
         return results.map((r, i) => {
             const depth = r.depth || 0;
             const tag = r.tag && L.r[r.tag] ? `<span class="tbd-tag">${escapeHtml(L.r[r.tag])}</span>` : '';
             const words = wordHits(r);
             const wordTag = words.length ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.wordTip)}">${escapeHtml(L.wordTag(words))}</span>` : '';
+            const realTag = r.real ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.realTip)}">${escapeHtml(L.realTag)}</span>` : '';
+            const clicheTag = clicheHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.clicheTip)}">${escapeHtml(L.clicheTag)}</span>` : '';
+            const nicks = showNicks && r.nicks?.length ? `<div class="tbd-nicks"><span class="tbd-nicks-label">${escapeHtml(L.nicks)}:</span>${r.nicks.map((n, k) =>
+                `${k ? '<span class="tbd-nick-dot" aria-hidden="true">·</span>' : ''}<button type="button" class="tbd-nick" data-n="${k}" title="${escapeHtml(L.nickCopy)}">${escapeHtml(n)}</button>`).join('')}</div>` : '';
             const menu = menuFor === r ? `<div class="tbd-refine-menu">${REFINE_MODES.map(m =>
                 `<button class="tbd-small-btn tbd-refine-pick" data-mode="${m}">${escapeHtml(L.r[m])}</button>`).join('')}</div>` : '';
             const working = refining && refining.src === r
@@ -1141,7 +1291,7 @@
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
-                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}${wordTag}</div>${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
+                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}${realTag}${wordTag}${clicheTag}</div>${nicks}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
@@ -1228,6 +1378,7 @@
             mustContain: String($('#tbd_must').val() || '').trim().slice(0, 20),
             likeText: String($('#tbd_like').val() || '').slice(0, LIKE_MAX),
             likeMode: $('#tbd_likemode').val() === 'feel' ? 'feel' : 'sound',
+            realNames: REAL_MODES.includes($('#tbd_realnames').val()) ? $('#tbd_realnames').val() : (REAL_MODES.includes(st.form.realNames) ? st.form.realNames : 'invented'),
             parts: Array.isArray(st.form.parts) ? st.form.parts : ['given'],
             extras: Array.isArray(st.form.extras) ? st.form.extras : [],
             fixedFamily: String($('#tbd_fixed').val() ?? st.form.fixedFamily ?? '').slice(0, 40),
@@ -1245,8 +1396,8 @@
         const form = readForm();
         const lang = detectLang();
         const count = st.count;
-        const avoid = avoidList(st);
-        const messages = buildMessages(form, rollSeeds(count, form), { lang, avoid, reading: !!st.showReading });
+        const avoid = avoidList(st, form);
+        const messages = buildMessages(form, rollSeeds(count, form), { lang, avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
 
         busy = true;
         controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -1296,8 +1447,8 @@
         const st = settings();
         const L = T();
         const form = src.form || st.form;
-        const avoid = [...new Set([...avoidList(st), ...results.flatMap(memoryNames)])];
-        const messages = buildRefineMessages(src, mode, form, { lang: detectLang(), avoid, reading: !!st.showReading });
+        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
+        const messages = buildRefineMessages(src, mode, form, { lang: detectLang(), avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, mode, ctl, kind: 'refine' };
         refining = job;
@@ -1342,11 +1493,12 @@
         const L = T();
         const lang = detectLang();
         const form = src.form || st.form;
-        const avoid = [...new Set([...avoidList(st), ...results.flatMap(memoryNames)])];
+        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
         const isVariant = (src.depth || 0) > 0 && src.from && REFINE_DESC[src.tag];
+        const nicks = nickOn(form, st);
         const messages = isVariant
-            ? buildRefineMessages(src.from, src.tag, form, { lang, avoid, count: 1, reading: !!st.showReading })
-            : buildMessages(form, rollSeeds(1, form), { lang, avoid, reading: !!st.showReading });
+            ? buildRefineMessages(src.from, src.tag, form, { lang, avoid, count: 1, reading: !!st.showReading, nicks })
+            : buildMessages(form, rollSeeds(1, form), { lang, avoid, reading: !!st.showReading, nicks });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, ctl, kind: 'reroll' };
         refining = job;
@@ -1362,8 +1514,8 @@
             if (!parsed.length) status = { kind: 'error', text: failText(raw, L), raw };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered), raw };
             else if (at !== -1) {
-                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces };
-                if (!fresh.pieces) delete fresh.pieces;
+                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces, real: kept[0].real, nicks: kept[0].nicks };
+                for (const k of ['pieces', 'real', 'nicks']) if (!fresh[k]) delete fresh[k];
                 // Variants hanging under the old name no longer fit, so they go with it.
                 const depth = src.depth || 0;
                 let end = at + 1;
@@ -1393,9 +1545,10 @@
         const st = settings();
         const L = T();
         const form = src.form || st.form;
-        const avoid = [...new Set([...avoidList(st), ...results.flatMap(memoryNames)])];
+        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
         const reading = !!st.showReading;
-        const messages = buildPieceMessages(src, piece.role, form, { lang: detectLang(), avoid, reading });
+        const nicks = nickOn(form, st);
+        const messages = buildPieceMessages(src, piece.role, form, { lang: detectLang(), avoid, reading, nicks });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, ctl, kind: 'piece' };
         refining = job;
@@ -1408,13 +1561,27 @@
             const parsed = parseNames(raw);
             const text = cleanPiece(parsed[0]?.name);
             const banned = new Set(avoid.map(a => a.toLowerCase()));
+            // Only a real-names mode lets a part the AI called real through the word filter.
+            const realOk = !!parsed[0]?.real && realMode(form) !== 'invented' && REAL_ROLES.includes(piece.role);
             if (!text) status = { kind: 'error', text: failText(raw, L), raw };
             else if (text.toLowerCase() === piece.text.toLowerCase() || (NAME_ROLES.includes(piece.role) && banned.has(text.toLowerCase()))
                 || likeWords(form).some(w => w.toLowerCase() === text.toLowerCase())
-                || (st.wordNames === 'filter' && WORD_CHECK_ROLES.includes(piece.role) && WORD_NAMES.has(text.toLowerCase()))) {
+                || (st.wordNames === 'filter' && !realOk && WORD_CHECK_ROLES.includes(piece.role) && WORD_NAMES.has(text.toLowerCase()))) {
                 status = { kind: 'error', text: L.err(L.allFiltered) };
             } else if (results.includes(src) && src.pieces[k] === piece) {
-                src.pieces = src.pieces.map((p, j) => (j === k ? { ...p, text } : p));
+                src.pieces = src.pieces.map((p, j) => {
+                    if (j !== k) return p;
+                    const next = { ...p, text };
+                    delete next.real;
+                    if (realOk) next.real = true;
+                    return next;
+                });
+                if (src.pieces.some(p => p.real)) src.real = true; else delete src.real;
+                // A new given name needs its own nicknames; the old ones would be for someone else.
+                if (piece.role === 'given') {
+                    const fresh = nicks ? cleanNicks(parsed[0].nicks, text) : [];
+                    if (fresh.length) src.nicks = fresh; else delete src.nicks;
+                }
                 src.name = joinPieces(src.pieces);
                 src.read = reading ? String(parsed[0].read || '').slice(0, 80) : '';
                 if (NAME_ROLES.includes(piece.role)) { rememberNames([text], st); refreshHistory(); }
@@ -1503,6 +1670,8 @@
             <label for="${id('theme')}">${escapeHtml(L.sTheme)}</label>${sel('theme', optionList(L.th, st.theme))}
             <label class="checkbox_label"><input id="${id('fx')}" type="checkbox" data-tbd-set="fx"><span>${escapeHtml(L.sEffects)}</span></label>
             <label class="checkbox_label"><input id="${id('reading')}" type="checkbox" data-tbd-set="reading"><span>${escapeHtml(L.sReading)}</span></label>
+            <label class="checkbox_label"><input id="${id('nicks')}" type="checkbox" data-tbd-set="nicks"><span>${escapeHtml(L.sNicks)}</span></label>
+            <small>${escapeHtml(L.sNicksHint)}</small>
             <label for="${id('words')}">${escapeHtml(L.sWords)}</label>${sel('words', optionList(L.sWordOpts, st.wordNames))}
             <label for="${id('think')}">${escapeHtml(L.sThink)}</label>${sel('think', optionList(L.sThinkOpts, st.reasoning))}
             <small>${escapeHtml(L.sThinkHint)}</small>
@@ -1534,7 +1703,7 @@
         const values = {
             lang: st.language, profile: st.profileId, words: st.wordNames, think: st.reasoning, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
         };
-        const checks = { fx: !!st.effects, reading: !!st.showReading, hist: !!st.rememberHistory, preset: !!st.sendPreset };
+        const checks = { fx: !!st.effects, reading: !!st.showReading, nicks: !!st.nicknames, hist: !!st.rememberHistory, preset: !!st.sendPreset };
         $('[data-tbd-set]').each(function () {
             if (this === except) return;
             const key = this.getAttribute('data-tbd-set');
@@ -1588,6 +1757,7 @@
             case 'theme': st.theme = THEMES.includes($el.val()) ? $el.val() : 'st'; save(); render(); syncSettingFields(); return;
             case 'fx': st.effects = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
             case 'reading': st.showReading = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
+            case 'nicks': st.nicknames = !!$el.prop('checked'); save(); renderResultsOnly(); syncSettingFields(); return;
             case 'words': st.wordNames = $el.val() === 'filter' ? 'filter' : 'mark'; save(); renderResultsOnly(); syncSettingFields(); return;
             case 'hist': st.rememberHistory = !!$el.prop('checked'); break;
             case 'preset': st.sendPreset = !!$el.prop('checked'); break;
@@ -1662,7 +1832,7 @@
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
         $doc.on('change', '#tbd_kind', () => readForm());
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
-        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_like, #tbd_likemode, #tbd_kindtext, #tbd_fixed', readForm);
+        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_like, #tbd_likemode, #tbd_realnames, #tbd_kindtext, #tbd_fixed', readForm);
         $doc.on('click', '#tbd_extras_fold', () => {
             const st = settings();
             const form = readForm();
@@ -1690,6 +1860,13 @@
             const p = r?.pieces?.[Number($(this).closest('.tbd-piece').data('k'))];
             if (!p) return;
             if (await copyText(p.text)) toastr.success(T().copied, 'TBD');
+            else toastr.warning(T().copyFail, 'TBD');
+        });
+        $doc.on('click', '#tbd_panel .tbd-nick', async function () {
+            const r = results[Number($(this).closest('.tbd-row').data('i'))];
+            const n = r?.nicks?.[Number($(this).data('n'))];
+            if (!n) return;
+            if (await copyText(n)) toastr.success(T().copied, 'TBD');
             else toastr.warning(T().copyFail, 'TBD');
         });
         $doc.on('click', '#tbd_panel .tbd-piece-roll', function () {
@@ -1733,6 +1910,8 @@
             tokensFor, settings, historyHtml, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
+            realMode, realRoles, realRule, realPieceRule, nickOn, cleanNicks, clicheHit, answerJson, resultsHtml,
+            setResults: list => { results = list; },
         };
     } else {
         if (typeof $ === 'function' && document.body) settingsSlot();
