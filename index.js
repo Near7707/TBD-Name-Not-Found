@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.2
+// TBD — Name Not Found v0.1.3
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -32,6 +32,7 @@
             l: { any: 'Any', short: 'Short', medium: 'Medium', long: 'Long' },
             s: { any: 'Any', soft: 'Soft', hard: 'Hard', sharp: 'Sharp', bright: 'Bright', dark: 'Dark' },
             refineBtn: 'Reshape the sound', refining: 'Reshaping…', refineCancel: 'Cancel',
+            rerollBtn: 'Swap just this name', rerolling: 'Finding another…', rerolled: '200 OK — name swapped',
             r: { soft: 'Softer', hard: 'Harder', sharp: 'Sharper', bright: 'Brighter', dark: 'Darker', shorter: 'Shorter', longer: 'Longer' },
             variants: n => `200 OK — ${n} variant${n === 1 ? '' : 's'} found`,
             // settings
@@ -46,7 +47,7 @@
             sHistoryClear: 'Forget past names', sHistoryCleared: 'Past names forgotten',
             sBan: 'Names to always avoid (comma or new line)',
             sBanHint: 'Common AI picks are already avoided.',
-            th: { st: 'Follow SillyTavern', terminal: 'Terminal', bsod: 'Blue screen', panic: 'Kernel panic', glass: 'Glass (dark)', glasslight: 'Glass (clear)' },
+            th: { st: 'Follow SillyTavern', terminal: 'Terminal', bsod: 'Blue screen', panic: 'Kernel panic', glass: 'Glass (dark)', glasslight: 'Glass (clear)', oldwin: 'Old error box', tape: 'Warning tape', neon: 'Neon glitch' },
         },
         ko: {
             menu: 'TBD: 이름 짓기',
@@ -71,6 +72,7 @@
             l: { any: '상관없음', short: '짧게', medium: '보통', long: '길게' },
             s: { any: '상관없음', soft: '부드럽게', hard: '단단하게', sharp: '날카롭게', bright: '밝게', dark: '어둡게' },
             refineBtn: '소리 다듬기', refining: '다듬는 중…', refineCancel: '취소',
+            rerollBtn: '이 이름만 다시 뽑기', rerolling: '다른 이름 찾는 중…', rerolled: '200 OK — 이름 바꿈',
             r: { soft: '더 부드럽게', hard: '더 단단하게', sharp: '더 날카롭게', bright: '더 밝게', dark: '더 어둡게', shorter: '더 짧게', longer: '더 길게' },
             variants: n => `200 OK — 변형 ${n}개 찾음`,
             sTitle: 'TBD — Name Not Found',
@@ -84,7 +86,7 @@
             sHistoryClear: '지난 이름 잊기', sHistoryCleared: '지난 이름을 잊었어요',
             sBan: '항상 피할 이름 (쉼표나 줄바꿈으로 구분)',
             sBanHint: 'AI가 자주 내는 뻔한 이름은 이미 피하고 있어요.',
-            th: { st: '실리태번 따라가기', terminal: '터미널', bsod: '블루스크린', panic: '커널 패닉', glass: '유리 (어둡게)', glasslight: '유리 (맑게)' },
+            th: { st: '실리태번 따라가기', terminal: '터미널', bsod: '블루스크린', panic: '커널 패닉', glass: '유리 (어둡게)', glasslight: '유리 (맑게)', oldwin: '옛날 오류창', tape: '경고 테이프', neon: '네온 글리치' },
         },
     };
 
@@ -96,6 +98,9 @@
         panic:    { code: 'FATAL 0x404', title: 'KERNEL PANIC — TBD', loading: ['> name == undefined', '> memory dump… OK', '> recovering name from fragments_'] },
         glass:      { code: '404', title: 'TBD // glass fault', loading: ['> refracting…', '> sweeping up shards…', '> name reassembled_'] },
         glasslight: { code: '404', title: 'TBD // glass fault', loading: ['> refracting…', '> sweeping up shards…', '> name reassembled_'] },
+        oldwin:     { code: '404', title: 'TBD.exe — Name Not Found', loading: ['Searching for names…', 'Please wait…', 'Almost done…'] },
+        tape:       { code: 'SYSTEM FAILURE', title: '404 TBD / SYSTEM FAILURE', loading: ['ERR_NAME_NOT_FOUND', '> retrying…', '> rebuilding name index_'] },
+        neon:       { code: '404', title: 'TBD // name not found', loading: ['> signal lost…', '> re-syncing…', '> name found in the static_'] },
     };
     const THEMES = Object.keys(THEME_TEXT);
 
@@ -286,9 +291,12 @@
         const lines = [];
         lines.push(`Here is a name for ${TARGET_DESC[form.target] || TARGET_DESC.other}: "${src.name}".`);
         lines.push(`Setting / vibe: ${vibeText(form)}.`);
-        lines.push(`Make ${count} new variants that keep its overall feel and rough shape, but change it to be ${REFINE_DESC[mode] || REFINE_DESC.soft}.`);
+        lines.push(`Make ${count} new variant${count === 1 ? '' : 's'} that keep its overall feel and rough shape, but change it to be ${REFINE_DESC[mode] || REFINE_DESC.soft}.`);
         lines.push(SOUND_RULE);
         lines.push('Each variant must be clearly different from the original and from each other. Keep Western, English-readable spelling.');
+        lines.push('Change the sounds inside the name, not just by gluing a letter on the end. Every variant must be easy to pronounce (no clusters like "-etd").');
+        lines.push('Also cut sounds that pull the other way (for "sharper", drop soft r/l/m endings; for "softer", drop hard k/t/g stops).');
+        lines.push('Avoid anything only a letter or two away from a well-known real or mythological name (like Bridget or Thor).');
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         lines.push('');
         lines.push(`For each variant add a short note (under 10 words) in ${lang === 'ko' ? 'Korean' : 'English'} about what changed in the sound.`);
@@ -421,6 +429,19 @@
         const tt = THEME_TEXT[theme] || THEME_TEXT.st;
         const L = T();
         const closeBtn = `<button id="tbd_close" class="tbd-icon-btn" title="${escapeHtml(L.close)}" aria-label="${escapeHtml(L.close)}"><i class="fa-solid fa-xmark"></i></button>`;
+        if (theme === 'oldwin') {
+            return `<div class="tbd-win-bar"><span>${escapeHtml(tt.title)}</span>${closeBtn}</div>
+                <div class="tbd-head tbd-head-row"><div class="tbd-win-icon" aria-hidden="true">✕</div>
+                <div class="tbd-head-text"><div class="tbd-title">Error ${escapeHtml(tt.code)}</div><div class="tbd-sub">${escapeHtml(L.tagline)}</div></div></div>`;
+        }
+        if (theme === 'tape') {
+            return `<div class="tbd-tape-tabs"><span class="tbd-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="tbd-tape-tab">${escapeHtml(tt.title)}</span>${closeBtn}</div>
+                <div class="tbd-tape-url">about:404#name_not_found</div>
+                <div class="tbd-tape-stripe" aria-hidden="true"></div>
+                <div class="tbd-head tbd-head-row"><i class="fa-solid fa-file-circle-xmark tbd-tape-icon" aria-hidden="true"></i>
+                <div class="tbd-head-text"><div class="tbd-code">${escapeHtml(tt.code)}</div><div class="tbd-sub">ERR_NAME_NOT_FOUND · code 404 — ${escapeHtml(L.tagline)}</div></div></div>`;
+        }
         if (theme === 'panic') {
             return `<div class="tbd-panic-bar"><span>${escapeHtml(tt.title)}</span><span class="tbd-blink">■ REC</span>${closeBtn}</div>
                 <div class="tbd-head"><div class="tbd-code tbd-glitch">${escapeHtml(tt.code)}</div>
@@ -432,15 +453,20 @@
             ${closeBtn}</div>`;
     }
 
+    // Our own arrow (one only, theme colored, never over the text).
+    function selectHtml(id, map, current) {
+        return `<span class="tbd-select"><select id="${id}" class="text_pole">${optionList(map, current)}</select></span>`;
+    }
+
     function formHtml(form) {
         const L = T();
         return `<div class="tbd-form">
-            <label>${escapeHtml(L.target)}<select id="tbd_target" class="text_pole">${optionList(L.t, form.target)}</select></label>
-            <label>${escapeHtml(L.vibe)}<select id="tbd_vibe" class="text_pole">${optionList(L.v, form.vibe)}</select></label>
+            <label>${escapeHtml(L.target)}${selectHtml('tbd_target', L.t, form.target)}</label>
+            <label>${escapeHtml(L.vibe)}${selectHtml('tbd_vibe', L.v, form.vibe)}</label>
             <label class="tbd-wide" id="tbd_custom_wrap"${form.vibe === 'custom' ? '' : ' hidden'}><input id="tbd_custom" class="text_pole" type="text" maxlength="80" placeholder="${escapeHtml(L.customVibePh)}" value="${escapeHtml(form.customVibe)}"></label>
-            <label id="tbd_gender_wrap"${form.target === 'person' ? '' : ' hidden'}>${escapeHtml(L.gender)}<select id="tbd_gender" class="text_pole">${optionList(L.g, form.gender)}</select></label>
-            <label>${escapeHtml(L.length)}<select id="tbd_length" class="text_pole">${optionList(L.l, form.length)}</select></label>
-            <label>${escapeHtml(L.sound)}<select id="tbd_sound" class="text_pole">${optionList(L.s, form.sound || 'any')}</select></label>
+            <label id="tbd_gender_wrap"${form.target === 'person' ? '' : ' hidden'}>${escapeHtml(L.gender)}${selectHtml('tbd_gender', L.g, form.gender)}</label>
+            <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
+            <label>${escapeHtml(L.sound)}${selectHtml('tbd_sound', L.s, form.sound || 'any')}</label>
             <label class="tbd-wide">${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
         </div>`;
@@ -456,12 +482,13 @@
             const menu = menuFor === r ? `<div class="tbd-refine-menu">${REFINE_MODES.map(m =>
                 `<button class="tbd-small-btn tbd-refine-pick" data-mode="${m}">${escapeHtml(L.r[m])}</button>`).join('')}</div>` : '';
             const working = refining && refining.src === r
-                ? `<div class="tbd-refining tbd-log"><div>${escapeHtml(L.refining)} (${escapeHtml(L.r[refining.mode])})</div></div>
+                ? `<div class="tbd-refining tbd-log"><div>${refining.kind === 'reroll' ? escapeHtml(L.rerolling) : `${escapeHtml(L.refining)} (${escapeHtml(L.r[refining.mode])})`}</div></div>
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
                     <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${tag}</div>${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                    <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
                     <button class="tbd-icon-btn tbd-insert" title="${escapeHtml(L.insert)}" aria-label="${escapeHtml(L.insert)}"><i class="fa-solid fa-pen-to-square"></i></button>
                 </div>${menu}${working}
@@ -561,7 +588,8 @@
             } else if (!kept.length) {
                 status = { kind: 'error', text: T().err(T().allFiltered) };
             } else {
-                results = kept.slice(0, count);
+                const used = { ...form };
+                results = kept.slice(0, count).map(k => ({ ...k, form: used }));
                 rememberNames(results.map(r => r.name), st);
                 save();
                 status = { kind: 'ok', text: T().found(results.length) };
@@ -591,9 +619,9 @@
         const st = settings();
         const L = T();
         const avoid = [...new Set([...avoidList(st), ...results.map(r => r.name)])];
-        const messages = buildRefineMessages(src, mode, st.form, { lang: detectLang(), avoid });
+        const messages = buildRefineMessages(src, mode, src.form || st.form, { lang: detectLang(), avoid });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-        const job = { src, mode, ctl };
+        const job = { src, mode, ctl, kind: 'refine' };
         refining = job;
         menuFor = null;
         status = { kind: 'busy', text: '' };
@@ -611,10 +639,60 @@
                 const depth = src.depth || 0;
                 let j = at + 1;
                 while (j < results.length && (results[j].depth || 0) > depth) j++;
-                results.splice(j, 0, ...kept.map(k => ({ ...k, depth: Math.min(depth + 1, 3), tag: mode })));
+                results.splice(j, 0, ...kept.map(k => ({ ...k, depth: Math.min(depth + 1, 3), tag: mode, from: src, form: src.form })));
                 rememberNames(kept.map(k => k.name), st);
                 save();
                 status = { kind: 'ok', text: L.variants(kept.length) };
+            }
+        } catch (e) {
+            if (refining !== job) return;
+            if (ctl?.signal.aborted || e?.name === 'AbortError') status = { kind: 'error', text: L.cancelled };
+            else status = { kind: 'error', text: L.err(String(e?.message || e || 'unknown error').slice(0, 160)) };
+        } finally {
+            if (refining === job) {
+                refining = null;
+                renderResultsOnly();
+            }
+        }
+    }
+
+    // Swap one name for a new one made the same way. A variant is remade from its source
+    // in the same direction; a first-round name is remade with the search it came from.
+    async function reroll(src) {
+        if (busy || refining || !results.includes(src)) return;
+        const st = settings();
+        const L = T();
+        const lang = detectLang();
+        const form = src.form || st.form;
+        const avoid = [...new Set([...avoidList(st), ...results.map(r => r.name)])];
+        const isVariant = (src.depth || 0) > 0 && src.from && REFINE_DESC[src.tag];
+        const messages = isVariant
+            ? buildRefineMessages(src.from, src.tag, form, { lang, avoid, count: 1 })
+            : buildMessages(form, rollSeeds(1, form), { lang, avoid });
+        const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const job = { src, ctl, kind: 'reroll' };
+        refining = job;
+        menuFor = null;
+        status = { kind: 'busy', text: '' };
+        renderResultsOnly();
+        try {
+            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(1, st), signal: ctl?.signal });
+            if (refining !== job) return;
+            const parsed = parseNames(raw);
+            const kept = filterNames(parsed, avoid);
+            const at = results.indexOf(src);
+            if (!parsed.length) status = { kind: 'error', text: L.err(L.parseFail) };
+            else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
+            else if (at !== -1) {
+                const fresh = { ...src, name: kept[0].name, note: kept[0].note };
+                // Variants hanging under the old name no longer fit, so they go with it.
+                const depth = src.depth || 0;
+                let end = at + 1;
+                while (end < results.length && (results[end].depth || 0) > depth) end++;
+                results.splice(at, end - at, fresh);
+                rememberNames([fresh.name], st);
+                save();
+                status = { kind: 'ok', text: L.rerolled };
             }
         } catch (e) {
             if (refining !== job) return;
@@ -796,6 +874,10 @@
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
             menuFor = menuFor === r ? null : (r || null);
             renderResultsOnly();
+        });
+        $doc.on('click', '#tbd_panel .tbd-reroll', function () {
+            const r = results[Number($(this).closest('.tbd-row').data('i'))];
+            if (r) reroll(r);
         });
         $doc.on('click', '#tbd_panel .tbd-refine-pick', function () {
             const r = results[Number($(this).closest('.tbd-row').data('i'))];

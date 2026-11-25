@@ -168,3 +168,14 @@ test('reshape prompt names the source, the direction and the avoid list', () => 
     assert.match(user, /Do NOT use these names.*Dorwick, Tirken/);
     assert.match(user, /in Korean/);
 });
+
+test('reshape prompt asks for real sound changes and can ask for just one', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'fantasy', gender: 'any', length: 'any', sound: 'any', mustContain: '' };
+    const user = api.buildRefineMessages({ name: 'Brinet' }, 'hard', form, { count: 1 })[1].content;
+    assert.match(user, /Make 1 new variant that/);
+    assert.match(user, /not just by gluing a letter/);
+    assert.match(user, /easy to pronounce/);
+    assert.match(user, /pull the other way/);
+    assert.match(user, /well-known real or mythological name/);
+});
