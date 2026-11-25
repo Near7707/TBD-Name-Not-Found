@@ -8,7 +8,7 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.23)
+## Features (v0.1.24)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
 - Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length. Less-used ones (sound feel, letters the name must contain, "Like this", real names) fold into **More options**; folded, the line still shows what you changed
@@ -23,11 +23,12 @@ AI models tend to give the same few names no matter which one you use. TBD rolls
 - People sound like their setting too: every preset vibe gets their own name endings, rules and examples, so non-fantasy names don't drift into fantasy
 - What you type wins: with your own vibe or details, no random inspiration word is added, and inspiration words never get pasted into the name as unrelated objects
 - Names that are plain English words (Wren, Ox) get a small "word" mark instead of being hidden, so you can keep them or reshape them with ✨. A setting can leave them out instead. Only given/middle names and single-word person, place and other names are checked; exact matches only (Wrenna passes)
-- **Real names** (people): invented only (default), close to real names, mix in real names, or real names only. In myth "real" means names from real legends, in weird rare real names that sound strange, in fantasy game real names used like game heroes. It applies to given, middle and family names; extras like codenames stay invented, and a kept family name stays as it is. Names the AI says are real get a small "real" mark (the AI can be wrong). With a real-names choice, a real name that is also a word (Rose) stays even when plain words are left out; with "real names only", common AI picks (Luna) are marked instead of avoided
+- **Real names** (people): invented only (default), close to real names, mix in real names, or real names only. In myth "real" means names from real legends, in weird rare real names that sound strange, in fantasy game real names used like game heroes. It applies to given, middle and family names; extras like codenames stay invented, and a kept family name stays as it is. Names the AI says are real get a small "real" mark (the AI can be wrong: check with 🔎). With a real-names choice, a real name that is also a word (Rose) stays even when plain words are left out; with "real names only", common AI picks (Luna) are marked instead of avoided
 - **Nicknames** (setting, off by default): each person name also comes with 2–3 nicknames under it. Tap one to copy it
 - How to read each name, next to it: Korean letters in Korean, a stress respelling in English (e.g. KWIL-uh). Can be turned off
 - 1–30 names per search (default 5), each with a short note
 - Copy a name with one tap
+- **Check a name** (🔎 next to it): looks for a page with exactly the same name on Wikipedia, plus a Google search link. For a full name, the whole name and each part (given, middle, family) are checked; a kept family name and extras aren't. With the Korean interface, Korean Wikipedia is searched too, using the Korean reading. A page about the name itself ("a given name") just means people really use it. **Ask the AI too** asks whether it clashes with a famous brand, character or place, or means something bad in another language (marked as an AI guess). The name is sent to Wikipedia only when you tap 🔎 (or turn on automatic checks). This is not a legal trademark check
 - Reshape a name's sound (✨ button next to it): softer, harder, sharper, brighter, darker, shorter or longer. You get 3 variants under the original, and variants can be reshaped again
 - Swap just one name (🔄 next to it): a variant is remade the same way it was made; a first-round name is remade with the search it came from
 - Sound groups follow phonetics: soft = l, r, m, n, w, y and vowels; hard = k, t, p, d, g, b; sharp = s, z, x, f, v, sh, th; bright = i, e; dark = o, u, a. The AI judges by sound, not spelling
@@ -63,6 +64,7 @@ Find **TBD — Name Not Found** in the Extensions panel, or press ⚙ next to �
 | Theme / Moving effects | Look of the window |
 | Show how to read each name | Reading next to each name (on by default) |
 | Show nicknames | 2–3 nicknames under each person name (off by default, uses a few more tokens) |
+| Check new names automatically | Looks every new name up on Wikipedia and shows ⚠ only when a page has the same name (off by default) |
 | Names that are plain English words | Mark them (default) or leave them out |
 | Avoid names I already got | Remembers recent results so they don't come back |
 | Names to always avoid | Your own list, separated by commas or new lines |
@@ -72,7 +74,6 @@ Find **TBD — Name Not Found** in the Extensions panel, or press ⚙ next to �
 - Name pools by root (Latin, Old English, Norman/French, Germanic, Celtic…) × kind (noble houses, monastic/saints, place names, given names)
 - "Mix" mode that blends several roots into one name, with a ratio slider
 - Random-only mode that works without any API
-- Check a name against Wikipedia, with a Google search link
 - Real names from Wikidata, a "dig deeper into this root" button, favorites, and skipping names already in your chat or lorebook
 - More themes
 

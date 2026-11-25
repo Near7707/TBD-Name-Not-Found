@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const source = readFileSync(join(__dirname, '..', 'index.js'), 'utf8');
 
-function load({ lang = '', extensionSettings = {} } = {}) {
+function load({ lang = '', extensionSettings = {}, fetch } = {}) {
     const hook = {};
     const sandbox = {
         __TBD_TEST__: hook,
@@ -16,6 +16,8 @@ function load({ lang = '', extensionSettings = {} } = {}) {
         Event: class { constructor(type, o) { this.type = type; Object.assign(this, o); } },
         document: { getElementById: () => null },
         jQuery: () => { throw new Error('init should not run in tests'); },
+        URLSearchParams,
+        fetch,
     };
     sandbox.globalThis = sandbox;
     vm.runInNewContext(source, sandbox);
@@ -815,4 +817,102 @@ test('v0.1.23: less-used conditions fold, and the fold shows what was changed', 
     assert.ok(!/tbd-fold-sum/.test(api.moreFoldHtml(form)), 'open: no summary');
     // Nothing changed: no summary either.
     assert.ok(!/tbd-fold-sum/.test(api.moreFoldHtml({ target: 'place', length: 'any', sound: 'any' })));
+});
+
+test('v0.1.24: name check looks up the full name, each name part, and the Korean reading in Korean', () => {
+    const { api } = load();
+    const plain = api.checkTargets({ name: 'Vistra', read: '비스트라' }, 'en');
+    assert.deepEqual([...plain.map(t => `${t.wiki}:${t.role}:${t.text}`)], ['en:full:Vistra']);
+    const ko = api.checkTargets({ name: 'Vistra', read: '비스트라' }, 'ko');
+    assert.deepEqual([...ko.map(t => `${t.wiki}:${t.text}`)], ['en:Vistra', 'ko:비스트라']);
+    // A reading in capital letters (English panel) is never sent to Korean Wikipedia.
+    assert.equal(api.checkTargets({ name: 'Vistra', read: 'VIS-tra' }, 'ko').length, 1);
+    const full = { name: 'Sir Rolan "Ash" Varrow', read: '롤란 배로', pieces: [
+        { role: 'title', text: 'Sir' }, { role: 'given', text: 'Rolan' }, { role: 'family', text: 'Varrow' }, { role: 'codename', text: 'Ash' }] };
+    assert.deepEqual([...api.checkTargets(full, 'ko').map(t => `${t.wiki}:${t.role}:${t.text}`)],
+        ['en:full:Rolan Varrow', 'en:given:Rolan', 'en:family:Varrow', 'ko:full:롤란 배로']);
+    // A kept family name is the user's own choice, so it isn't checked by itself.
+    const kept = { name: 'Rolan Holloway', pieces: [{ role: 'given', text: 'Rolan' }, { role: 'family', text: 'Holloway', fixed: true }] };
+    assert.deepEqual([...api.checkTargets(kept, 'en').map(t => t.text)], ['Rolan Holloway', 'Rolan']);
+});
+
+const WIKI = { batchcomplete: true, query: {
+    normalized: [{ from: 'rolan', to: 'Rolan' }],
+    redirects: [{ from: 'Rolan', to: 'Roland (name)' }],
+    pages: [
+        { ns: 0, title: 'Vistra', missing: true },
+        { pageid: 1, ns: 0, title: 'Vistra Corp', fullurl: 'https://en.wikipedia.org/wiki/Vistra_Corp', pageprops: { 'wikibase-shortdesc': 'American power company' } },
+        { pageid: 2, ns: 0, title: 'Roland (name)', fullurl: 'https://en.wikipedia.org/wiki/Roland_(name)', extract: 'Roland is a masculine given name.' },
+        { pageid: 3, ns: 0, title: 'Mira', fullurl: 'https://en.wikipedia.org/wiki/Mira', pageprops: { disambiguation: '' } },
+    ],
+} };
+
+test('v0.1.24: Wikipedia answers become hit / several pages / name page / nothing', () => {
+    const { api } = load();
+    const out = api.readWikiAnswer(WIKI, ['Vistra', 'Vistra Corp', 'rolan', 'Mira', 'Nobody']);
+    assert.equal(out.get('Vistra'), null);
+    assert.equal(out.get('Nobody'), null);
+    assert.equal(out.get('Vistra Corp').kind, 'hit');
+    assert.equal(out.get('Vistra Corp').desc, 'American power company');
+    assert.equal(out.get('rolan').kind, 'name', 'followed the normalize + redirect steps');
+    assert.equal(out.get('Mira').kind, 'many');
+});
+
+test('v0.1.24: lookups are cached, batched, and keyless', async () => {
+    const calls = [];
+    const fetch = async url => { calls.push(String(url)); return { ok: true, json: async () => WIKI }; };
+    const { api } = load({ fetch });
+    const first = await api.wikiLookup('en', ['Vistra Corp', 'Mira', 'Mira']);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /^https:\/\/en\.wikipedia\.org\/w\/api\.php\?/);
+    assert.match(calls[0], /origin=\*/);
+    assert.match(decodeURIComponent(calls[0].replace(/\+/g, ' ')), /titles=Vistra Corp\|Mira/);
+    assert.equal(first.get('Mira').kind, 'many');
+    await api.wikiLookup('en', ['Mira']);
+    assert.equal(calls.length, 1, 'second time comes from the cache');
+    const bad = load({ fetch: async () => ({ ok: false, status: 503 }) });
+    await assert.rejects(bad.api.wikiLookup('en', ['X']));
+});
+
+test('v0.1.24: the check line shows parts, Korean wiki, Google and the AI button; auto check hides clean results', () => {
+    const { api } = load({ lang: 'ko' });
+    const hit = { kind: 'hit', title: 'Vistra Corp', desc: '미국 전력 회사', url: 'https://en.wikipedia.org/wiki/Vistra_Corp' };
+    const r = { name: 'Rolan Varrow', pieces: [{ role: 'given', text: 'Rolan' }, { role: 'family', text: 'Varrow' }],
+        check: { state: 'done', items: [
+            { role: 'full', wiki: 'en', text: 'Rolan Varrow', hit: null },
+            { role: 'given', wiki: 'en', text: 'Rolan', hit: { kind: 'name', title: 'Roland (name)', url: 'u' } },
+            { role: 'family', wiki: 'en', text: 'Varrow', hit },
+            { role: 'full', wiki: 'ko', text: '롤란 배로', hit: null },
+        ] } };
+    const html = api.checkHtml(r);
+    assert.match(html, /전체<\/span> ✓ 없음/);
+    assert.match(html, /이름<\/span> ℹ <a[^>]*>이름 문서/);
+    assert.match(html, /성<\/span> ⚠ <a[^>]*>Vistra Corp<\/a> — 미국 전력 회사/);
+    assert.match(html, /한국어 위키<\/span> ✓ 없음/);
+    assert.match(html, /google\.com\/search\?q=%22Rolan%20Varrow%22/);
+    assert.match(html, /AI에게도 묻기/);
+    assert.ok(api.checkWarns(r.check));
+    // Auto check: nothing worth a ⚠ → nothing shown. A name page alone isn't a warning.
+    const quiet = { name: 'Rolan', check: { state: 'done', quiet: true, items: [{ role: 'full', wiki: 'en', text: 'Rolan', hit: { kind: 'name', url: 'u' } }] } };
+    assert.equal(api.checkHtml(quiet), '');
+    quiet.check.items[0].hit = hit;
+    assert.match(api.checkHtml(quiet), /⚠/);
+    assert.equal(api.checkHtml({ name: 'X', check: { state: 'fail', hidden: true } }), '');
+    assert.match(api.checkHtml({ name: 'X', check: { state: 'fail' } }), /위키백과에 연결하지 못했어요/);
+    const single = api.checkHtml({ name: 'X', check: { state: 'done', items: [{ role: 'full', wiki: 'en', text: 'X', hit: null }] } });
+    assert.match(single, /위키백과<\/span> ✓ 없음/);
+});
+
+test('v0.1.24: 🔎 button on every name, AI check asks plainly, "real" tooltip points to 🔎, auto check off by default', () => {
+    const { api } = load({ lang: 'ko' });
+    const st = api.settings();
+    assert.equal(st.autoCheck, false);
+    api.setResults([{ name: 'Vistra', note: 'n' }]);
+    assert.match(api.resultsHtml(), /tbd-check-btn/);
+    const msg = api.buildCheckMessages('Vistra', 'ko')[1].content;
+    assert.match(msg, /"Vistra"/);
+    assert.match(msg, /in Korean/);
+    assert.match(msg, /brand/);
+    assert.match(api.STRINGS.ko.realTip, /🔎/);
+    assert.match(api.STRINGS.en.sCheckHint, /not a legal trademark check/);
 });

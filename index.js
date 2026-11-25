@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.23
+// TBD — Name Not Found v0.1.24
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -55,7 +55,11 @@
             ex: { title: 'Title', particle: 'Noble particle', origin: 'Place of origin', patronymic: "Father's-name surname", epithet: 'Nickname / epithet', religious: 'Religious name', codename: 'Codename', alias: 'Alias / stage name' },
             fixedFamily: 'Keep this family name (optional)', fixedFamilyPh: 'e.g. Holloway',
             realNames: 'Real names', realOpts: { invented: 'Invented only', near: 'Close to real names', mix: 'Mix in real names', only: 'Real names only' },
-            realTag: 'real', realTip: 'The AI says real people use this name. It can be wrong.',
+            realTag: 'real', realTip: 'The AI says real people use this name. It can be wrong: check with 🔎.',
+            checkBtn: 'Check this name (Wikipedia)', checking: 'Checking Wikipedia…', checkFail: "Couldn't reach Wikipedia.",
+            checkNone: '✓ no page', checkMany: 'several pages with this name', checkNamePage: 'a page about the name (people use it)',
+            checkFull: 'Full', checkWiki: 'Wikipedia', checkEn: 'English Wikipedia', checkKo: 'Korean Wikipedia',
+            checkGoogle: 'Search Google', checkAsk: 'Ask the AI too', checkAsking: 'Asking…', checkAiTag: 'AI guess', checkAiEmpty: '(no answer)',
             clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
             nicks: 'Nicknames', nickCopy: 'Copy this nickname',
@@ -70,6 +74,7 @@
             sTokensHint: 'Raised automatically for big batches. Thinking models may need more, but a very high limit can let them think for a long time: set it just high enough that answers aren\'t cut off. Lower it for a very small local model.',
             sTheme: 'Theme', sEffects: 'Moving effects (glitch, flicker, scanlines)',
             sReading: 'Show how to read each name',
+            sCheck: 'Check new names automatically (Wikipedia)', sCheckHint: 'Looks each new name up on Wikipedia and shows ⚠ only when a page has the same name. The names are sent to Wikipedia; 🔎 does the same, only when you tap it. This is not a legal trademark check.',
             sNicks: 'Show nicknames (people)', sNicksHint: 'Each person name also comes with 2–3 nicknames. Uses a few more tokens.',
             sWords: 'Names that are plain English words (Wren, Ox)',
             sWordOpts: { mark: 'Mark them', filter: 'Leave them out' },
@@ -128,7 +133,11 @@
             ex: { title: '직함·존칭', particle: '귀족 표시', origin: '출신지', patronymic: '아버지 이름 성', epithet: '별명·칭호', religious: '세례명·수도명', codename: '코드네임', alias: '가명·예명' },
             fixedFamily: '성 고정 (안 써도 됨)', fixedFamilyPh: '예: Holloway',
             realNames: '실제 이름', realOpts: { invented: '지어낸 이름만', near: '실제 이름 비슷하게', mix: '실제 이름도 섞기', only: '실제 이름만' },
-            realTag: '실제', realTip: 'AI가 실제로 쓰는 이름이라고 했어요. 틀릴 수 있어요.',
+            realTag: '실제', realTip: 'AI가 실제로 쓰는 이름이라고 했어요. 틀릴 수 있으니 🔎로 확인해 보세요.',
+            checkBtn: '이름 확인 (위키백과)', checking: '위키백과 찾는 중…', checkFail: '위키백과에 연결하지 못했어요',
+            checkNone: '✓ 없음', checkMany: '같은 이름 여러 개', checkNamePage: '이름 문서 (실제로 쓰는 이름)',
+            checkFull: '전체', checkWiki: '위키백과', checkEn: '영어 위키', checkKo: '한국어 위키',
+            checkGoogle: '구글에서 보기', checkAsk: 'AI에게도 묻기', checkAsking: '묻는 중…', checkAiTag: 'AI 추정', checkAiEmpty: '(답 없음)',
             clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
             nicks: '애칭', nickCopy: '이 애칭 복사',
@@ -142,6 +151,7 @@
             sTokensHint: '많이 뽑을 땐 자동으로 늘어나요. 생각하는 모델은 더 필요할 수 있지만, 너무 높으면 오래 생각할 수 있어요. 답이 잘리지 않을 만큼만 넉넉히 두세요. 아주 작은 로컬 모델이면 줄이세요.',
             sTheme: '테마', sEffects: '움직이는 효과 (글리치, 깜빡임, 스캔라인)',
             sReading: '이름 읽는 법 보기',
+            sCheck: '새 이름 자동으로 확인 (위키백과)', sCheckHint: '이름이 나올 때마다 위키백과에서 찾아, 같은 이름의 문서가 있을 때만 ⚠를 보여 줘요. 이름이 위키백과로 보내져요. 🔎도 누를 때만 똑같이 보내요. 법적인 상표 확인은 아니에요.',
             sNicks: '애칭 보기 (사람 이름)', sNicksHint: '사람 이름마다 애칭 2~3개도 같이 받아요. 토큰을 조금 더 써요.',
             sWords: '평범한 영어 낱말인 이름 (Wren, Ox)',
             sWordOpts: { mark: '표시만 하기', filter: '아예 빼기' },
@@ -279,6 +289,159 @@
         if (st.wordNames !== 'filter') return out;
         const realOk = realMode(form || {}) !== 'invented';
         return out.filter(n => !wordHits(n, form).length || (realOk && n.real));
+    }
+
+    // ---------- name check (🔎) ----------
+    // Looks the name up on Wikipedia (exact title only, no key needed). Korean Wikipedia is searched
+    // with the Korean reading, and only when the panel is in Korean. Parts of a person's name are checked
+    // one by one (a kept family name and extras like codenames are left out).
+    const CHECK_ROLES = ['given', 'middle', 'family'];
+    function checkTargets(r, lang = 'en') {
+        const out = [];
+        if (r.pieces) {
+            const parts = r.pieces.filter(p => CHECK_ROLES.includes(p.role));
+            if (parts.length > 1) out.push({ role: 'full', text: parts.map(p => p.text).join(' '), wiki: 'en' });
+            for (const p of parts) if (!p.fixed) out.push({ role: p.role, text: p.text, wiki: 'en' });
+            if (!out.length) out.push({ role: 'full', text: r.name, wiki: 'en' });
+        } else {
+            out.push({ role: 'full', text: r.name, wiki: 'en' });
+        }
+        const read = String(r.read || '').trim();
+        if (lang === 'ko' && read && /[가-힣]/.test(read)) out.push({ role: 'full', text: read, wiki: 'ko' });
+        return out.filter(t => String(t.text).trim());
+    }
+    // A page about the name itself (Rolan: "a given name") just means people really use it.
+    const NAME_PAGE = /\b(given name|surname|family name|first name|masculine name|feminine name|unisex name|personal name)\b|(이름이다|성씨|인명|이름의 하나)/i;
+    // Turn one api.php answer into title → { kind: 'hit' | 'many' | 'name', title, desc, url }, or null for no page.
+    function readWikiAnswer(json, asked) {
+        const q = json?.query || {};
+        const step = new Map();
+        for (const n of q.normalized || []) step.set(n.from, n.to);
+        const redir = new Map();
+        for (const n of q.redirects || []) redir.set(n.from, n.to);
+        const pages = new Map();
+        for (const p of q.pages || []) if (p && p.title) pages.set(p.title, p);
+        const out = new Map();
+        for (const t of asked) {
+            let k = step.get(t) || t;
+            k = redir.get(k) || k;
+            const p = pages.get(k);
+            if (!p || p.missing || p.invalid) { out.set(t, null); continue; }
+            const props = p.pageprops || {};
+            const desc = String(props['wikibase-shortdesc'] || p.extract || '').replace(/\s+/g, ' ').trim().slice(0, 90);
+            const kind = 'disambiguation' in props ? 'many' : NAME_PAGE.test(`${desc} ${p.title}`) ? 'name' : 'hit';
+            out.set(t, { kind, title: p.title, desc, url: p.fullurl || '' });
+        }
+        return out;
+    }
+    const wikiCache = new Map(); // "en:Vistra" → result or null (kept until reload)
+    async function wikiLookup(wiki, titles, { signal } = {}) {
+        const want = [...new Set(titles.map(t => String(t).trim()).filter(Boolean))];
+        const missing = want.filter(t => !wikiCache.has(`${wiki}:${t}`));
+        for (let i = 0; i < missing.length; i += 20) {
+            const chunk = missing.slice(i, i + 20);
+            const url = `https://${wiki}.wikipedia.org/w/api.php?` + new URLSearchParams({
+                action: 'query', format: 'json', formatversion: '2', origin: '*', redirects: '1',
+                prop: 'pageprops|info|extracts', ppprop: 'disambiguation|wikibase-shortdesc', inprop: 'url',
+                exintro: '1', explaintext: '1', exchars: '120', exlimit: '20', titles: chunk.join('|'),
+            });
+            const res = await fetch(url, { signal });
+            if (!res.ok) throw new Error(`Wikipedia ${res.status}`);
+            const found = readWikiAnswer(await res.json(), chunk);
+            for (const t of chunk) wikiCache.set(`${wiki}:${t}`, found.get(t) ?? null);
+        }
+        return new Map(want.map(t => [t, wikiCache.get(`${wiki}:${t}`) ?? null]));
+    }
+    // Check every given result. Results get r.check = { state, items } (items keep their order).
+    async function checkNames(list, { quiet = false } = {}) {
+        const lang = detectLang();
+        // Each result gets its own check object; a result swapped meanwhile simply drops it.
+        const jobs = list.map(r => {
+            r.check = { ...(r.check || {}), state: 'busy', quiet, hidden: false };
+            return { c: r.check, targets: checkTargets(r, lang) };
+        });
+        renderResultsOnly();
+        const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timer = setTimeout(() => ctl?.abort(), 12000);
+        try {
+            const found = {};
+            for (const wiki of ['en', 'ko']) {
+                const titles = jobs.flatMap(j => j.targets.filter(t => t.wiki === wiki).map(t => t.text));
+                if (titles.length) found[wiki] = await wikiLookup(wiki, titles, { signal: ctl?.signal });
+            }
+            for (const { c, targets } of jobs) {
+                c.items = targets.map(t => ({ ...t, hit: found[t.wiki]?.get(String(t.text).trim()) ?? null }));
+                c.state = 'done';
+            }
+        } catch {
+            for (const { c } of jobs) c.state = 'fail';
+        } finally {
+            clearTimeout(timer);
+            renderResultsOnly();
+        }
+    }
+    // Something worth a ⚠ (another page has this exact name). A name page alone is only "people use it".
+    function checkWarns(c) {
+        return !!c?.items?.some(i => i.hit && i.hit.kind !== 'name');
+    }
+    function googleUrl(name) {
+        return `https://www.google.com/search?q=${encodeURIComponent(`"${name}"`)}`;
+    }
+    function checkHtml(r) {
+        const c = r.check;
+        if (!c || c.hidden) return '';
+        // Auto check stays out of sight unless it found something.
+        if (c.quiet && !(c.state === 'done' && checkWarns(c))) return '';
+        const L = T();
+        const many = (c.items || []).filter(i => i.wiki === 'en').length > 1;
+        const hasKo = (c.items || []).some(i => i.wiki === 'ko');
+        const link = (url, text) => url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>` : escapeHtml(text);
+        let body;
+        if (c.state === 'busy') body = `<span>${escapeHtml(L.checking)}</span>`;
+        else if (c.state === 'fail') body = `<span class="tbd-check-warn">${escapeHtml(L.checkFail)}</span>`;
+        else body = (c.items || []).map(i => {
+            const label = i.wiki === 'ko' ? L.checkKo : many ? (i.role === 'full' ? L.checkFull : L.pc[i.role]) : hasKo ? L.checkEn : L.checkWiki;
+            const head = `<span class="tbd-check-label">${escapeHtml(label)}</span> `;
+            const h = i.hit;
+            if (!h) return `<span class="tbd-check-item">${head}${escapeHtml(L.checkNone)}</span>`;
+            if (h.kind === 'many') return `<span class="tbd-check-item tbd-check-warn">${head}⚠ ${link(h.url, L.checkMany)}</span>`;
+            if (h.kind === 'name') return `<span class="tbd-check-item">${head}ℹ ${link(h.url, L.checkNamePage)}</span>`;
+            return `<span class="tbd-check-item tbd-check-warn">${head}⚠ ${link(h.url, h.title)}${h.desc ? ` — ${escapeHtml(h.desc)}` : ''}</span>`;
+        }).join('<span class="tbd-nick-dot" aria-hidden="true">·</span>');
+        const ai = c.ai
+            ? `<div class="tbd-check-ai"><span class="tbd-tag tbd-word-tag">${escapeHtml(L.checkAiTag)}</span> ${escapeHtml(c.ai.state === 'busy' ? L.checkAsking : c.ai.text || '')}</div>` : '';
+        const askBtn = c.ai?.state === 'busy' ? '' : `<button type="button" class="tbd-check-ask">${escapeHtml(L.checkAsk)}</button>`;
+        const full = r.pieces ? r.pieces.filter(p => CHECK_ROLES.includes(p.role)).map(p => p.text).join(' ') || r.name : r.name;
+        return `<div class="tbd-check">${body}<span class="tbd-check-links"><a href="${escapeHtml(googleUrl(full))}" target="_blank" rel="noopener noreferrer">${escapeHtml(L.checkGoogle)}</a>${askBtn}</span>${ai}</div>`;
+    }
+    // Asked only on a tap. A guess, marked as one.
+    function buildCheckMessages(name, lang) {
+        const out = lang === 'ko' ? 'Korean' : 'English';
+        return [
+            { role: 'system', content: 'You check whether an invented name runs into trouble. Answer briefly and honestly.' },
+            { role: 'user', content: `Name: "${name}"\nIn 2 or 3 short sentences, in ${out}: does it match or closely resemble a well-known brand, company, product, fictional character, famous real person or place? Does it mean something rude or embarrassing in a major language? If nothing comes to mind, say so plainly. Don't make up facts; say when you're unsure. Plain text, no list.` },
+        ];
+    }
+    // Runs after the status line is set; the panel redraws once the answer is in.
+    function autoCheck(list) {
+        if (!settings().autoCheck || !list.length) return;
+        setTimeout(() => checkNames(list, { quiet: true }), 0);
+    }
+    async function askAiCheck(r) {
+        if (!r.check || r.check.ai?.state === 'busy') return;
+        const st = settings();
+        const full = r.pieces ? r.pieces.filter(p => CHECK_ROLES.includes(p.role)).map(p => p.text).join(' ') || r.name : r.name;
+        const check = r.check;
+        check.ai = { state: 'busy' };
+        renderResultsOnly();
+        try {
+            const raw = await requestLLM(buildCheckMessages(full, detectLang()), { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(1, st) });
+            const text = stripThinking(String(raw || '')).replace(/\s+/g, ' ').trim().slice(0, 400);
+            check.ai = { state: 'done', text: text || T().checkAiEmpty };
+        } catch (e) {
+            check.ai = { state: 'done', text: T().err(String(e?.message || e || 'unknown error').slice(0, 120)) };
+        }
+        if (r.check === check) renderResultsOnly();
     }
 
     // ---------- random seeds ----------
@@ -589,6 +752,7 @@
         banList: '',
         showReading: true,
         nicknames: false,
+        autoCheck: false,
         extrasOpen: false,
         moreOpen: false,
         wordNames: 'mark',
@@ -1413,7 +1577,8 @@
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
-                </div>${piecesHtml(r)}${menu}${working}
+                    <button class="tbd-icon-btn tbd-check-btn${r.check && !r.check.hidden && !r.check.quiet ? ' tbd-on' : ''}" title="${escapeHtml(L.checkBtn)}" aria-label="${escapeHtml(L.checkBtn)}"><i class="fa-solid fa-magnifying-glass"></i></button>
+                </div>${checkHtml(r)}${piecesHtml(r)}${menu}${working}
             </div>`;
         }).join('');
     }
@@ -1539,6 +1704,7 @@
                 rememberNames(results.flatMap(memoryNames), st); refreshHistory();
                 save();
                 status = cut ? { kind: 'error', text: T().foundCut(results.length) } : { kind: 'ok', text: T().found(results.length) };
+                autoCheck(results);
             }
         } catch (e) {
             if (controller !== myController) return;
@@ -1590,6 +1756,7 @@
                 rememberNames(kept.flatMap(memoryNames), st); refreshHistory();
                 save();
                 status = { kind: 'ok', text: L.variants(kept.length) };
+                autoCheck(results.filter(x => x.from === src && !x.check));
             }
         } catch (e) {
             if (refining !== job) return;
@@ -1634,6 +1801,7 @@
             else if (at !== -1) {
                 const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces, real: kept[0].real, nicks: kept[0].nicks };
                 for (const k of ['pieces', 'real', 'nicks']) if (!fresh[k]) delete fresh[k];
+                delete fresh.check; // the old name's check is not about this one
                 // Variants hanging under the old name no longer fit, so they go with it.
                 const depth = src.depth || 0;
                 let end = at + 1;
@@ -1642,6 +1810,7 @@
                 rememberNames(memoryNames(fresh), st); refreshHistory();
                 save();
                 status = { kind: 'ok', text: L.rerolled };
+                autoCheck([fresh]);
             }
         } catch (e) {
             if (refining !== job) return;
@@ -1701,10 +1870,12 @@
                     if (fresh.length) src.nicks = fresh; else delete src.nicks;
                 }
                 src.name = joinPieces(src.pieces);
+                delete src.check;
                 src.read = reading ? String(parsed[0].read || '').slice(0, 80) : '';
                 if (NAME_ROLES.includes(piece.role)) { rememberNames([text], st); refreshHistory(); }
                 save();
                 status = { kind: 'ok', text: L.pieceRerolled };
+                autoCheck([src]);
             }
         } catch (e) {
             if (refining !== job) return;
@@ -1790,6 +1961,8 @@
             <label class="checkbox_label"><input id="${id('reading')}" type="checkbox" data-tbd-set="reading"><span>${escapeHtml(L.sReading)}</span></label>
             <label class="checkbox_label"><input id="${id('nicks')}" type="checkbox" data-tbd-set="nicks"><span>${escapeHtml(L.sNicks)}</span></label>
             <small>${escapeHtml(L.sNicksHint)}</small>
+            <label class="checkbox_label"><input id="${id('check')}" type="checkbox" data-tbd-set="check"><span>${escapeHtml(L.sCheck)}</span></label>
+            <small>${escapeHtml(L.sCheckHint)}</small>
             <label for="${id('words')}">${escapeHtml(L.sWords)}</label>${sel('words', optionList(L.sWordOpts, st.wordNames))}
             <label for="${id('think')}">${escapeHtml(L.sThink)}</label>${sel('think', optionList(L.sThinkOpts, st.reasoning))}
             <small>${escapeHtml(L.sThinkHint)}</small>
@@ -1821,7 +1994,7 @@
         const values = {
             lang: st.language, profile: st.profileId, words: st.wordNames, think: st.reasoning, count: st.count, tokens: st.maxTokens, theme: st.theme, ban: st.banList,
         };
-        const checks = { fx: !!st.effects, reading: !!st.showReading, nicks: !!st.nicknames, hist: !!st.rememberHistory, preset: !!st.sendPreset };
+        const checks = { fx: !!st.effects, reading: !!st.showReading, nicks: !!st.nicknames, check: !!st.autoCheck, hist: !!st.rememberHistory, preset: !!st.sendPreset };
         $('[data-tbd-set]').each(function () {
             if (this === except) return;
             const key = this.getAttribute('data-tbd-set');
@@ -1877,6 +2050,7 @@
             case 'reading': st.showReading = !!$el.prop('checked'); save(); render(); syncSettingFields(); return;
             case 'nicks': st.nicknames = !!$el.prop('checked'); save(); renderResultsOnly(); syncSettingFields(); return;
             case 'words': st.wordNames = $el.val() === 'filter' ? 'filter' : 'mark'; save(); renderResultsOnly(); syncSettingFields(); return;
+            case 'check': st.autoCheck = !!$el.prop('checked'); break;
             case 'hist': st.rememberHistory = !!$el.prop('checked'); break;
             case 'preset': st.sendPreset = !!$el.prop('checked'); break;
             case 'think': st.reasoning = REASONING_LEVELS.includes($el.val()) ? $el.val() : 'default'; break;
@@ -2025,6 +2199,19 @@
         });
         $doc.on('keydown', '#tbd_must, #tbd_like, #tbd_custom, #tbd_kindtext, #tbd_fixed', (e) => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
         $doc.on('keydown', (e) => { if (e.key === 'Escape' && $('#tbd_panel').is(':visible')) closePanel(); });
+        $doc.on('click', '#tbd_panel .tbd-check-btn', function () {
+            const r = results[Number($(this).closest('.tbd-row').data('i'))];
+            if (!r) return;
+            const c = r.check;
+            if (c && !c.hidden && !c.quiet) { if (c.state !== 'busy') { c.hidden = true; renderResultsOnly(); } return; }
+            if (c && c.state === 'done') { c.hidden = false; c.quiet = false; renderResultsOnly(); return; }
+            if (c && c.state === 'busy') { c.quiet = false; renderResultsOnly(); return; }
+            checkNames([r]);
+        });
+        $doc.on('click', '#tbd_panel .tbd-check-ask', function () {
+            const r = results[Number($(this).closest('.tbd-row').data('i'))];
+            if (r) askAiCheck(r);
+        });
         $doc.on('click', '#tbd_panel .tbd-copy', async function () {
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
             if (!r) return;
@@ -2041,6 +2228,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
+            checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
         };
     } else {
