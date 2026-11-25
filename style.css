@@ -11,7 +11,8 @@
     overflow-y: auto;
     z-index: 9000;
     border-radius: 12px;
-    font-family: var(--monoFontFamily, ui-monospace, Consolas, monospace);
+    /* Follow SillyTavern's own font. Only small "error screen" bits use a fixed-width font. */
+    font-family: inherit;
     font-size: 14px;
     line-height: 1.5;
     box-sizing: border-box;
@@ -33,6 +34,18 @@
 }
 
 #tbd_panel * { box-sizing: border-box; }
+
+/* Fixed-width font for decoration only. Korean falls back to SillyTavern's font
+   (not the system fixed-width Korean font, which is Gulim on Windows). */
+#tbd_panel {
+    --tbd-mono: ui-monospace, 'Cascadia Mono', Consolas, 'SF Mono', Menlo, 'DejaVu Sans Mono', 'Liberation Mono', 'D2Coding', var(--mainFontFamily, sans-serif);
+}
+#tbd_panel .tbd-code,
+#tbd_panel .tbd-foot,
+#tbd_panel .tbd-log,
+#tbd_panel .tbd-panic-bar,
+#tbd_panel .tbd-tape-tab,
+#tbd_panel .tbd-tape-url { font-family: var(--tbd-mono); }
 
 /* ---------- layout ---------- */
 .tbd-head { padding: 12px 14px; border-bottom: 1px dashed var(--tbd-line); }
@@ -107,10 +120,13 @@
     background: var(--tbd-btn-bg) !important;
     color: var(--tbd-btn-fg) !important;
     border: 1px solid var(--tbd-btn-bg) !important;
-    opacity: 1;
+    /* SillyTavern's menu_button starts faded and only gets full color on hover. Start full. */
+    opacity: 1 !important;
+    filter: none !important;
     cursor: pointer;
+    transition: filter .15s;
 }
-#tbd_panel .tbd-go:hover { filter: brightness(1.15); }
+#tbd_panel .tbd-go:hover { filter: brightness(1.08) !important; }
 
 .tbd-results { border-top: 1px dashed var(--tbd-line); min-height: 60px; }
 .tbd-empty, .tbd-log { padding: 14px; font-size: 12px; color: var(--tbd-dim); }
@@ -194,7 +210,7 @@
     --tbd-bg: #185fa5;
     --tbd-fg: #e6f1fb;
     --tbd-dim: #cfe3f8;
-    --tbd-line: #378add;
+    --tbd-line: #85b7eb;
     --tbd-accent: #ffffff;
     --tbd-name: #ffffff;
     --tbd-field-bg: #0c447c;
@@ -202,13 +218,12 @@
     --tbd-btn-bg: #ffffff;
     --tbd-btn-fg: #0c447c;
     backdrop-filter: none;
-    font-family: 'Segoe UI', system-ui, sans-serif;
     border-radius: 4px;
 }
-#tbd_panel.tbd-theme-bsod .tbd-code { font-size: 30px; font-weight: normal; }
-#tbd_panel.tbd-theme-bsod .tbd-head,
+#tbd_panel.tbd-theme-bsod .tbd-code { font-size: 30px; font-weight: normal; font-family: inherit; }
+#tbd_panel.tbd-theme-bsod .tbd-head { border-bottom-style: solid; }
 #tbd_panel.tbd-theme-bsod .tbd-results,
-#tbd_panel.tbd-theme-bsod .tbd-foot { border-style: solid; }
+#tbd_panel.tbd-theme-bsod .tbd-foot { border-top-style: solid; }
 #tbd_panel.tbd-theme-bsod .tbd-status-error { color: #fac775; }
 
 /* ---------- theme: kernel panic ---------- */
@@ -259,7 +274,6 @@
     backdrop-filter: blur(8px) saturate(1.2);
     -webkit-backdrop-filter: blur(8px) saturate(1.2);
     border-radius: 14px;
-    font-family: var(--monoFontFamily, ui-monospace, Consolas, monospace);
 }
 #tbd_panel.tbd-theme-glass {
     --tbd-bg: rgba(12, 18, 38, .84);
@@ -296,11 +310,11 @@
 #tbd_panel.tbd-theme-glass .tbd-status-error { color: #ff9a9a; }
 #tbd_panel.tbd-theme-glasslight .tbd-status-error { color: #a32d2d; }
 #tbd_panel.tbd-theme-glasslight .tbd-head,
+#tbd_panel.tbd-theme-glass .tbd-head { border-bottom-style: solid; }
 #tbd_panel.tbd-theme-glasslight .tbd-results,
 #tbd_panel.tbd-theme-glasslight .tbd-foot,
-#tbd_panel.tbd-theme-glass .tbd-head,
 #tbd_panel.tbd-theme-glass .tbd-results,
-#tbd_panel.tbd-theme-glass .tbd-foot { border-style: solid; }
+#tbd_panel.tbd-theme-glass .tbd-foot { border-top-style: solid; }
 
 /* ---------- theme: old error box ---------- */
 #tbd_panel.tbd-theme-oldwin {
@@ -319,7 +333,6 @@
     border: 2px solid;
     border-color: #ffffff #404040 #404040 #ffffff;
     box-shadow: 1px 1px 0 #000, 6px 6px 18px rgba(0, 0, 0, .35);
-    font-family: Tahoma, 'MS Sans Serif', 'Segoe UI', system-ui, sans-serif;
 }
 .tbd-win-bar {
     display: flex;
@@ -330,6 +343,7 @@
     color: #fff;
     font-weight: bold;
     font-size: 13px;
+    font-family: Tahoma, 'Segoe UI', var(--mainFontFamily, sans-serif);
 }
 .tbd-win-bar > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #tbd_panel .tbd-win-bar .tbd-icon-btn {
@@ -343,9 +357,9 @@
     display: flex; align-items: center; justify-content: center;
     box-shadow: 1px 1px 0 #800000;
 }
-#tbd_panel.tbd-theme-oldwin .tbd-head,
+#tbd_panel.tbd-theme-oldwin .tbd-head { border-bottom-style: solid; }
 #tbd_panel.tbd-theme-oldwin .tbd-results,
-#tbd_panel.tbd-theme-oldwin .tbd-foot { border-style: solid; }
+#tbd_panel.tbd-theme-oldwin .tbd-foot { border-top-style: solid; }
 #tbd_panel.tbd-theme-oldwin .text_pole {
     border-radius: 0;
     border: 2px solid !important;
@@ -373,8 +387,8 @@
     --tbd-name: #faeeda;
     --tbd-field-bg: #2c2c2a;
     --tbd-option-bg: #2c2c2a;
-    --tbd-btn-bg: #c63a39;
-    --tbd-btn-fg: #ffffff;
+    --tbd-btn-bg: #f5c02e;
+    --tbd-btn-fg: #1c1c1a;
     backdrop-filter: none;
     border: 1.5px solid #ef9f27;
     border-radius: 10px;
@@ -408,7 +422,7 @@
 #tbd_panel.tbd-theme-tape .tbd-code { font-size: 18px; letter-spacing: 2px; color: #ffffff; }
 #tbd_panel.tbd-theme-tape .tbd-sub { color: #ef9f27; }
 #tbd_panel.tbd-theme-tape .tbd-row:not(.tbd-variant) .tbd-name::after { content: '_'; color: #ef9f27; animation: tbd-blink 1s steps(1) infinite; }
-#tbd_panel.tbd-theme-tape .tbd-go { box-shadow: 0 0 10px rgba(226, 75, 74, .5); }
+#tbd_panel.tbd-theme-tape .tbd-go { box-shadow: 0 0 10px rgba(245, 192, 46, .45); }
 #tbd_panel.tbd-theme-tape .tbd-status-ok { color: #ef9f27; }
 #tbd_panel.tbd-theme-tape .tbd-status-error { color: #f09595; }
 
@@ -441,7 +455,7 @@
     box-shadow: 0 0 16px rgba(212, 83, 126, .55);
     text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
 }
-#tbd_panel.tbd-theme-neon .tbd-go:hover { filter: brightness(1.18); box-shadow: 0 0 22px rgba(212, 83, 126, .75); }
+#tbd_panel.tbd-theme-neon .tbd-go:hover { filter: brightness(1.12) !important; box-shadow: 0 0 22px rgba(212, 83, 126, .75); }
 #tbd_panel.tbd-theme-neon .tbd-status-ok { color: #ed93b1; }
 #tbd_panel.tbd-theme-neon .tbd-status-error { color: #f09595; }
 

@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.3
+// TBD — Name Not Found v0.1.4
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {

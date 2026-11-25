@@ -8,7 +8,7 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.3)
+## Features (v0.1.4)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
 - Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length, sound feel, letters the name must contain
