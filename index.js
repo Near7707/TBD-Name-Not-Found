@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.7
+// TBD — Name Not Found v0.1.8
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -42,6 +42,11 @@
                 shop: { any: 'Any', restaurant: 'Restaurant', cafe: 'Café / desserts', bakery: 'Bakery', bar: 'Bar / pub', lodging: 'Inn / hotel', store: 'Store / market', clothes: 'Clothing', books: 'Books / stationery', pharmacy: 'Pharmacy / apothecary', repair: 'Repair shop / workshop', electronics: 'Electronics / machines', weapons: 'Weapons / gear', beauty: 'Hair / grooming', florist: 'Florist / plants', antiques: 'Antiques / second-hand', custom: 'Custom…' },
                 item: { any: 'Any', wearable: 'Worn / carried', tool: 'Tool / machine', device: 'Electronics / gadget', vehicle: 'Vehicle', food: 'Food / drink', medicine: 'Medicine / chemical', weapon: 'Weapon', records: 'Book / document / record', furniture: 'Furniture / household', collectible: 'Art / collectible', product: 'Product / brand', custom: 'Custom…' },
             },
+            parts: 'Name parts', extras: 'Extras',
+            pc: { given: 'Given', middle: 'Middle', family: 'Family' },
+            ex: { title: 'Title', particle: 'Noble particle', origin: 'Place of origin', patronymic: "Father's-name surname", epithet: 'Nickname / epithet', religious: 'Religious name', codename: 'Codename', alias: 'Alias / stage name' },
+            fixedFamily: 'Keep this family name (optional)', fixedFamilyPh: 'e.g. Holloway',
+            copyPiece: 'Copy this part', rerollPiece: 'Swap just this part', rerollingPiece: 'Swapping one part…', pieceRerolled: '200 OK — part swapped',
             gear: 'Settings', back: 'Back',
             // settings
             sTitle: 'TBD — Name Not Found',
@@ -91,6 +96,11 @@
                 shop: { any: '상관없음', restaurant: '식당', cafe: '카페·디저트', bakery: '빵집', bar: '술집·바', lodging: '숙소(여관·호텔)', store: '마트·잡화점', clothes: '옷가게', books: '서점·문구점', pharmacy: '약국·약방', repair: '수리점·공방', electronics: '전자기기·기계 상점', weapons: '무기·장비점', beauty: '미용실·몸단장', florist: '꽃집·식물', antiques: '골동품·중고', custom: '직접 쓰기…' },
                 item: { any: '상관없음', wearable: '입는 것·지니는 것', tool: '도구·기계', device: '전자기기·장치', vehicle: '탈것', food: '먹을 것·마실 것', medicine: '약·화학품', weapon: '무기', records: '책·문서·기록', furniture: '가구·집 소품', collectible: '예술품·수집품', product: '상품·브랜드', custom: '직접 쓰기…' },
             },
+            parts: '이름 구성', extras: '특수한 이름',
+            pc: { given: '이름', middle: '미들네임', family: '성' },
+            ex: { title: '직함·존칭', particle: '귀족 표시', origin: '출신지', patronymic: '아버지 이름 성', epithet: '별명·칭호', religious: '세례명·수도명', codename: '코드네임', alias: '가명·예명' },
+            fixedFamily: '성 고정 (안 써도 됨)', fixedFamilyPh: '예: Holloway',
+            copyPiece: '이 조각 복사', rerollPiece: '이 조각만 다시 뽑기', rerollingPiece: '조각 하나 바꾸는 중…', pieceRerolled: '200 OK — 조각 바꿈',
             gear: '설정', back: '돌아가기',
             sTitle: 'TBD — Name Not Found',
             sLang: '언어', sLangAuto: '실리태번 따라가기',
@@ -195,8 +205,11 @@
         const target = opts.target || 'person';
         const endings = endingsFor(target, opts.vibe);
         const shapes = shapesFor(target, opts.vibe);
+        const shape = nameShape(opts);
+        const familyStyles = shape && shape.roles.includes('family') && !shape.fixed ? (FAMILY_STYLES[opts.vibe] || ALL_FAMILY_STYLES) : null;
         const seeds = [];
         const usedEndings = new Set();
+        const usedFamily = new Set();
         for (let i = 0; i < count; i++) {
             const seed = {
                 syllables: lo + Math.floor(rnd() * (hi - lo + 1)),
@@ -213,9 +226,89 @@
                 usedEndings.add(seed.ending);
             }
             if (shapes) seed.shape = pick(shapes, rnd);
+            if (familyStyles) {
+                const fresh = familyStyles.filter(f => !usedFamily.has(f));
+                seed.family = pick(fresh.length ? fresh : familyStyles, rnd);
+                usedFamily.add(seed.family);
+            }
             seeds.push(seed);
         }
         return seeds;
+    }
+
+    // ---------- person names in parts (given / middle / family + extras) ----------
+    const NAME_PARTS = ['given', 'middle', 'family'];
+    const NAME_EXTRAS = ['title', 'particle', 'origin', 'patronymic', 'epithet', 'religious', 'codename', 'alias'];
+    // How the parts line up in the full name. Codename, religious name and alias trail behind.
+    const PIECE_ORDER = ['title', 'given', 'middle', 'particle', 'family', 'patronymic', 'origin', 'epithet', 'codename', 'religious', 'alias'];
+    const PIECE_DESC = {
+        given: 'given (first) name',
+        middle: 'middle name',
+        family: 'family name (surname)',
+        title: 'title or honorific (like Sir, Lady, Captain, Doctor)',
+        particle: 'nobility particle (like von, de, of House) that sits right before the family name; if there is no family name, include the house name in it (like "of House Varn")',
+        origin: 'place of origin (like "of Westmere", "da Riva"), with an invented place',
+        patronymic: 'surname made from an invented father\'s name (like Erikson, ap Rhys, MacArran)',
+        epithet: 'nickname or epithet (like "the Grey", "Ironhand")',
+        religious: 'religious or monastic name, with its title (like "Brother Anselm", "Sister Maren")',
+        codename: 'codename or handle (like Nightjar, Vex-9)',
+        alias: 'alias or stage name (another name they go by)',
+    };
+    // Parts that are names of their own, so they go on the avoid list. Titles and particles don't.
+    const NAME_ROLES = ['given', 'middle', 'family', 'patronymic', 'codename', 'alias'];
+    // Family names follow the setting, like place endings do.
+    const FAMILY_STYLES = {
+        fantasy: ['from an invented place', 'from a trade', 'from a landscape feature', "from an invented ancestor's name", 'an old clan name'],
+        medieval: ['from a place (-ford, -wick, -by, -ley…)', 'from a trade', 'from a landscape feature', "from a father's name (-son, Fitz-)"],
+        gothic: ['an old noble house', 'from a family estate', 'heavy and old, two or three syllables', 'from a church or relic word'],
+        scifi: ['short and clipped, one or two syllables', 'corporate or code-like', 'a blend of two languages', 'a colony- or ship-born name'],
+        modern: ['a realistic everyday surname', 'from a place', 'from a trade', "from a father's name"],
+        cozy: ['from a plant or food', 'from a craft', 'from a cosy little place', 'soft and homely'],
+    };
+    const ALL_FAMILY_STYLES = [...new Set(Object.values(FAMILY_STYLES).flat())];
+
+    // What a person's name is made of. null means the plain old single name.
+    function nameShape(form = {}) {
+        if (form.target !== 'person') return null;
+        let parts = (Array.isArray(form.parts) ? form.parts : ['given']).filter(p => NAME_PARTS.includes(p));
+        const extras = (Array.isArray(form.extras) ? form.extras : []).filter(p => NAME_EXTRAS.includes(p));
+        if (!parts.length && !extras.length) parts = ['given'];
+        const roles = PIECE_ORDER.filter(r => parts.includes(r) || extras.includes(r));
+        if (roles.length === 1 && roles[0] === 'given') return null;
+        let fixed = roles.includes('family') ? cleanPiece(form.fixedFamily) : '';
+        if (roles.length === 1) fixed = ''; // nothing else to make
+        return { roles, fixed };
+    }
+    function cleanPiece(v) {
+        return String(v ?? '').replace(/^["'“”‘’()\[\]\s]+|["'“”‘’()\[\]\s]+$/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    }
+    function pieceText(p) {
+        if (p.role === 'codename') return `"${p.text}"`;
+        if (p.role === 'religious' || p.role === 'alias') return `(${p.text})`;
+        return p.text;
+    }
+    function joinPieces(pieces) { return pieces.map(pieceText).join(' '); }
+    // Turn {"parts": {...}} answers into pieces in the right order. Plain answers pass through.
+    function applyShape(list, form) {
+        const shape = nameShape(form);
+        if (!shape) return list;
+        return list.map(n => {
+            if (!n.parts) return n.name ? n : null;
+            const pieces = [];
+            for (const role of shape.roles) {
+                const fixed = role === 'family' && shape.fixed;
+                const text = fixed ? shape.fixed : cleanPiece(n.parts[role]);
+                if (!text) continue;
+                pieces.push(fixed ? { role, text, fixed: true } : { role, text });
+            }
+            if (!pieces.length) return null;
+            return { name: joinPieces(pieces), note: n.note, read: n.read, pieces };
+        }).filter(n => n && n.name.length <= 120);
+    }
+    // The parts worth remembering and avoiding next time (not "Sir", not a kept family name).
+    function memoryNames(r) {
+        if (!r.pieces) return [r.name];
+        return r.pieces.filter(p => NAME_ROLES.includes(p.role) && !p.fixed).map(p => p.text);
     }
 
     // ---------- settings ----------
@@ -231,7 +324,7 @@
         history: [],
         banList: '',
         showReading: true,
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '' },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', parts: ['given'], extras: [], fixedFamily: '' },
     };
 
     function settings() {
@@ -241,7 +334,7 @@
         for (const [k, v] of Object.entries(DEFAULTS)) {
             if (st[k] === undefined) st[k] = Array.isArray(v) ? [] : (v && typeof v === 'object') ? { ...v } : v;
         }
-        for (const [k, v] of Object.entries(DEFAULTS.form)) if (st.form[k] === undefined) st.form[k] = v;
+        for (const [k, v] of Object.entries(DEFAULTS.form)) if (st.form[k] === undefined) st.form[k] = Array.isArray(v) ? [...v] : v;
         if (!Array.isArray(st.history)) st.history = [];
         if (!THEMES.includes(st.theme)) st.theme = 'st';
         st.count = clampInt(st.count, 1, 30, 5);
@@ -370,18 +463,46 @@
         }
         if (form.target === 'place') {
             out.push('Place names may use real words: joined real words or a real word plus a place word are welcome. Just never a single bare everyday word on its own (like "Mold" or "Salt").');
+        } else if (nameShape(form)) {
+            out.push('The given and middle names must not be plain existing English words (like "Mold" or "Salt"). Family names, epithets and titles may use real words (trades, places, deeds).');
         } else if (form.target === 'person' || form.target === 'other') {
             out.push('Never use a plain existing English word on its own as the name (like "Mold" or "Salt").');
         }
-        out.push('Across the batch, no two names may share the same ending or the same last word (not two "… Array" or two "-ex").');
+        const shape = nameShape(form);
+        if (shape) {
+            out.push(shape.fixed
+                ? 'Across the batch, no two given names may share the same ending.'
+                : 'Across the batch, no two given names may share the same ending, and no two family names may be the same.');
+        } else {
+            out.push('Across the batch, no two names may share the same ending or the same last word (not two "… Array" or two "-ex").');
+        }
         return out;
     }
 
     // How to show the reading: Korean letters for Korean, a stress respelling for English.
-    function readingRule(lang) {
+    function readingRule(lang, full) {
+        const what = full ? 'how to say the whole full name, with a space between parts' : 'how to say it';
         return lang === 'ko'
-            ? '"read": how to say it, written in Korean Hangul using standard Korean loanword spelling (e.g. Quilla → 퀼라)'
-            : '"read": a simple respelling with the stressed syllable in capitals (e.g. Quilla → KWIL-uh)';
+            ? `"read": ${what}, written in Korean Hangul using standard Korean loanword spelling (e.g. Quilla → 퀼라)`
+            : `"read": ${what}, as a simple respelling with the stressed syllable in capitals (e.g. Quilla → KWIL-uh)`;
+    }
+
+    // The parts a person's name must have, and the JSON shape to answer in.
+    function shapeLines(shape) {
+        const lines = ['Each full name is made of exactly these parts, in this order (nothing else):'];
+        for (const role of shape.roles) {
+            lines.push(`- ${role}: ${PIECE_DESC[role]}${role === 'family' && shape.fixed ? ` — always exactly "${shape.fixed}"` : ''}`);
+        }
+        if (shape.fixed) lines.push(`They are all family: every name keeps the family name "${shape.fixed}", so make the other parts fit it.`);
+        lines.push('Put each part in its own field, without quotes or brackets.');
+        return lines;
+    }
+    function shapeJson(shape, reading) {
+        const parts = shape.roles.map(r => `"${r}": "..."`).join(', ');
+        return `[{"parts": {${parts}}${reading ? ', "read": "..."' : ''}, "note": "..."}]`;
+    }
+    function namedPieces(src) {
+        return src.pieces.map(p => `${p.role} "${p.text}"`).join(', ');
     }
 
     // Sound groups follow phonetics: sonorants, stops, fricatives, front vs back vowels.
@@ -410,17 +531,24 @@
         const vibe = vibeText(form);
         const sound = SOUND_DESC[form.sound];
         const phrase = form.target === 'shop' || form.target === 'item';
+        const shape = nameShape(form);
         const lines = [];
-        lines.push(`Invent ${seeds.length} original name${seeds.length === 1 ? '' : 's'} for ${targetText(form)}.`);
+        if (shape) {
+            lines.push(`Invent ${seeds.length} original full name${seeds.length === 1 ? '' : 's'} for a person.`);
+            lines.push(...shapeLines(shape));
+        } else {
+            lines.push(`Invent ${seeds.length} original name${seeds.length === 1 ? '' : 's'} for ${targetText(form)}.`);
+        }
         lines.push(`Setting / vibe: ${vibe}.`);
         lines.push('Style: Western, English-readable spelling.');
         lines.push(...shapeRules(form));
-        if (form.target === 'person' && form.gender && form.gender !== 'any') lines.push(`Gender feel: ${form.gender}.`);
+        if (form.target === 'person' && form.gender && form.gender !== 'any') lines.push(shape ? `Gender feel (for the given and middle names and any title): ${form.gender}.` : `Gender feel: ${form.gender}.`);
         if (sound) lines.push(`Sound: ${sound}. ${SOUND_RULE}`);
-        if (form.mustContain) lines.push(`Every name must contain the letters "${String(form.mustContain).trim()}" (any position).`);
+        if (form.mustContain) lines.push(`Every ${shape ? 'full ' : ''}name must contain the letters "${String(form.mustContain).trim()}" (any position).`);
         lines.push('');
         lines.push('The setting and what is being named come first. Each name also has a seed that only adds variety:');
         lines.push('follow its sound hints, but bend the inspiration word to fit the setting (never let it pull the name out of the setting).');
+        const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
         seeds.forEach((s, i) => {
             const parts = [];
             if (s.shape) parts.push(`shape: ${s.shape}`);
@@ -429,7 +557,7 @@
             if (s.ending) parts.push(`ends with "${s.ending}"`);
             if (!sound) parts.push(`${s.texture} sound`);
             parts.push(`inspiration: "${s.spark}"`);
-            lines.push(`${i + 1}. ${parts.join(', ')}`);
+            lines.push(`${i + 1}. ${main}${parts.join(', ')}${s.family ? `; family name: ${s.family}` : ''}`);
         });
         if (avoid.length) {
             lines.push('');
@@ -437,9 +565,9 @@
         }
         lines.push('');
         lines.push(`For each name add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about how it fits this setting. Don't claim a real meaning unless you are sure.`);
-        if (opts.reading) lines.push(`Also add ${readingRule(lang)}.`);
+        if (opts.reading) lines.push(`Also add ${readingRule(lang, !!shape)}.`);
         lines.push('Reply with ONLY a JSON array, nothing else:');
-        lines.push(opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
+        lines.push(shape ? shapeJson(shape, opts.reading) : opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused fantasy clichés.' },
             { role: 'user', content: lines.join('\n') },
@@ -451,10 +579,17 @@
         const lang = opts.lang || 'en';
         const avoid = opts.avoid || [];
         const count = opts.count || 3;
+        const shape = src.pieces ? nameShape(form) : null;
         const lines = [];
-        lines.push(`Here is a name for ${targetText(form)}: "${src.name}".`);
+        if (shape) {
+            lines.push(`Here is a full name for a person: "${src.name}" (${namedPieces(src)}).`);
+            lines.push(...shapeLines(shape));
+        } else {
+            lines.push(`Here is a name for ${targetText(form)}: "${src.name}".`);
+        }
         lines.push(`Setting / vibe: ${vibeText(form)}.`);
         lines.push(`Make ${count} new variant${count === 1 ? '' : 's'} that keep its overall feel and rough shape, but change it to be ${REFINE_DESC[mode] || REFINE_DESC.soft}.`);
+        if (shape) lines.push('Reshape mostly the given and middle names (and other invented parts); keep titles and particles unless they clash.');
         lines.push(SOUND_RULE);
         lines.push('Each variant must be clearly different from the original and from each other. Keep Western, English-readable spelling.');
         lines.push(...shapeRules(form));
@@ -464,11 +599,33 @@
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         lines.push('');
         lines.push(`For each variant add a short note (under 10 words) in ${lang === 'ko' ? 'Korean' : 'English'} about what changed in the sound.`);
-        if (opts.reading) lines.push(`Also add ${readingRule(lang)}.`);
+        if (opts.reading) lines.push(`Also add ${readingRule(lang, !!shape)}.`);
         lines.push('Reply with ONLY a JSON array, nothing else:');
-        lines.push(opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
+        lines.push(shape ? shapeJson(shape, opts.reading) : opts.reading ? '[{"name": "...", "read": "...", "note": "..."}]' : '[{"name": "...", "note": "..."}]');
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers who understands phonetics and how sounds feel.' },
+            { role: 'user', content: lines.join('\n') },
+        ];
+    }
+
+    // A new version of just one part of a full name; the rest stays.
+    function buildPieceMessages(src, role, form, opts = {}) {
+        const lang = opts.lang || 'en';
+        const avoid = opts.avoid || [];
+        const current = src.pieces.find(p => p.role === role)?.text || '';
+        const lines = [];
+        lines.push(`Here is a full name for a person: "${src.name}" (${namedPieces(src)}).`);
+        lines.push(`Setting / vibe: ${vibeText(form)}.`);
+        lines.push(`Replace only its ${role} part, now "${current}". The new part is a ${PIECE_DESC[role]}.`);
+        lines.push('It must fit the rest of the name and the setting, and be clearly different from the current one. Keep Western, English-readable spelling.');
+        if (form.gender && form.gender !== 'any' && ['given', 'middle', 'title', 'religious'].includes(role)) lines.push(`Gender feel: ${form.gender}.`);
+        if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
+        lines.push('');
+        if (opts.reading) lines.push(`Also add ${readingRule(lang, true)} — the whole name with the new part.`);
+        lines.push('Reply with ONLY a JSON array with one item, nothing else. "name" is the new part only, without quotes or brackets:');
+        lines.push(opts.reading ? '[{"name": "...", "read": "..."}]' : '[{"name": "..."}]');
+        return [
+            { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused fantasy clichés.' },
             { role: 'user', content: lines.join('\n') },
         ];
     }
@@ -490,7 +647,8 @@
                     for (const it of arr) {
                         if (typeof it === 'string') out.push({ name: it, note: '' });
                         else if (it && typeof it === 'object') {
-                            out.push({ name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? ''), read: String(it.read ?? it.reading ?? it.pronunciation ?? '') });
+                            const parts = it.parts && typeof it.parts === 'object' && !Array.isArray(it.parts) ? it.parts : null;
+                            out.push({ name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? ''), read: String(it.read ?? it.reading ?? it.pronunciation ?? ''), ...(parts ? { parts } : {}) });
                         }
                     }
                 }
@@ -510,9 +668,9 @@
                 // Line answers may put the reading in brackets: "Quilla (퀼라)".
                 const m = name.match(/^(.+?)\s*[([]([^()[\]]+)[)\]]$/);
                 if (m) { name = m[1].trim(); if (!read) read = m[2].trim(); }
-                return { name, note: n.note.trim(), read: read.slice(0, 40) };
+                return { name, note: n.note.trim(), read: read.slice(0, 80), ...(n.parts ? { parts: n.parts } : {}) };
             })
-            .filter(n => n.name && n.name.length <= 40);
+            .filter(n => n.parts || (n.name && n.name.length <= 40));
     }
 
     function filterNames(list, avoid) {
@@ -521,6 +679,7 @@
         return list.filter(n => {
             const key = n.name.toLowerCase();
             if (banned.has(key) || seen.has(key)) return false;
+            if (n.pieces && memoryNames(n).some(t => banned.has(t.toLowerCase()))) return false;
             seen.add(key);
             return true;
         });
@@ -580,8 +739,8 @@
         return result;
     }
 
-    function tokensFor(count, st = settings()) {
-        return Math.max(clampInt(st.maxTokens, 200, 16000, 1000), 300 + count * 100);
+    function tokensFor(count, st = settings(), heavy = false) {
+        return Math.max(clampInt(st.maxTokens, 200, 16000, 1000), 300 + count * (heavy ? 160 : 100));
     }
 
     // ---------- state ----------
@@ -648,10 +807,38 @@
             ${kinds ? `<label id="tbd_kind_wrap">${escapeHtml(L.kind)}${selectHtml('tbd_kind', L.k[form.target], kind)}</label>` : ''}
             <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
             <label>${escapeHtml(L.sound)}${selectHtml('tbd_sound', L.s, form.sound || 'any')}</label>
+            ${form.target === 'person' ? personPartsHtml(form) : ''}
             ${detailLabel ? `<label class="tbd-wide" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
             <label class="tbd-wide">${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
         </div>`;
+    }
+
+    // Toggle buttons for what a person's name is made of, plus the kept family name.
+    function personPartsHtml(form) {
+        const L = T();
+        const parts = Array.isArray(form.parts) ? form.parts : ['given'];
+        const extras = Array.isArray(form.extras) ? form.extras : [];
+        const chip = (group, v, label, on) =>
+            `<button type="button" class="tbd-chip" data-chip="${group}" data-v="${v}" aria-pressed="${on ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
+        return `<div class="tbd-wide tbd-chipset">
+                <div class="tbd-chips-label">${escapeHtml(L.parts)}</div>
+                <div class="tbd-chips">${NAME_PARTS.map(v => chip('part', v, L.pc[v], parts.includes(v))).join('')}</div>
+                <div class="tbd-chips-label">${escapeHtml(L.extras)}</div>
+                <div class="tbd-chips">${NAME_EXTRAS.map(v => chip('extra', v, L.ex[v], extras.includes(v))).join('')}</div>
+            </div>
+            <label class="tbd-wide" id="tbd_fixed_wrap"${parts.includes('family') ? '' : ' hidden'}>${escapeHtml(L.fixedFamily)}<input id="tbd_fixed" class="text_pole" type="text" maxlength="40" placeholder="${escapeHtml(L.fixedFamilyPh)}" value="${escapeHtml(form.fixedFamily || '')}"></label>`;
+    }
+
+    // Each part of a full name: tap it to copy, 🔄 to swap just that part.
+    function piecesHtml(r) {
+        if (!r.pieces || r.pieces.length < 2) return '';
+        const L = T();
+        return `<div class="tbd-pieces">${r.pieces.map((p, k) => {
+            const label = L.pc[p.role] || L.ex[p.role] || p.role;
+            return `<span class="tbd-piece" data-k="${k}"><button class="tbd-piece-copy" title="${escapeHtml(`${label} — ${L.copyPiece}`)}">${escapeHtml(pieceText(p))}</button>${p.fixed ? ''
+                : `<button class="tbd-piece-roll" title="${escapeHtml(L.rerollPiece)}" aria-label="${escapeHtml(`${label}: ${L.rerollPiece}`)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>`}</span>`;
+        }).join('')}</div>`;
     }
 
     function resultsHtml() {
@@ -665,7 +852,7 @@
             const menu = menuFor === r ? `<div class="tbd-refine-menu">${REFINE_MODES.map(m =>
                 `<button class="tbd-small-btn tbd-refine-pick" data-mode="${m}">${escapeHtml(L.r[m])}</button>`).join('')}</div>` : '';
             const working = refining && refining.src === r
-                ? `<div class="tbd-refining tbd-log"><div>${refining.kind === 'reroll' ? escapeHtml(L.rerolling) : `${escapeHtml(L.refining)} (${escapeHtml(L.r[refining.mode])})`}</div></div>
+                ? `<div class="tbd-refining tbd-log"><div>${refining.kind === 'reroll' ? escapeHtml(L.rerolling) : refining.kind === 'piece' ? escapeHtml(L.rerollingPiece) : `${escapeHtml(L.refining)} (${escapeHtml(L.r[refining.mode])})`}</div></div>
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
@@ -674,7 +861,7 @@
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
                     <button class="tbd-icon-btn tbd-insert" title="${escapeHtml(L.insert)}" aria-label="${escapeHtml(L.insert)}"><i class="fa-solid fa-pen-to-square"></i></button>
-                </div>${menu}${working}
+                </div>${piecesHtml(r)}${menu}${working}
             </div>`;
         }).join('');
     }
@@ -751,6 +938,9 @@
             length: $('#tbd_length').val() || 'any',
             sound: $('#tbd_sound').val() || 'any',
             mustContain: String($('#tbd_must').val() || '').trim().slice(0, 20),
+            parts: Array.isArray(st.form.parts) ? st.form.parts : ['given'],
+            extras: Array.isArray(st.form.extras) ? st.form.extras : [],
+            fixedFamily: String($('#tbd_fixed').val() ?? st.form.fixedFamily ?? '').slice(0, 40),
         };
         save();
         return st.form;
@@ -774,10 +964,10 @@
         status = { kind: 'busy', text: '' };
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(count, st), signal: myController?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(count, st, !!nameShape(form)), signal: myController?.signal });
             if (myController && myController.signal.aborted) return;
             if (controller !== myController) return;
-            const parsed = parseNames(raw);
+            const parsed = applyShape(parseNames(raw), form);
             const kept = filterNames(parsed, avoid);
             if (!parsed.length) {
                 status = { kind: 'error', text: T().err(T().parseFail) };
@@ -786,7 +976,7 @@
             } else {
                 const used = { ...form };
                 results = kept.slice(0, count).map(k => ({ ...k, form: used }));
-                rememberNames(results.map(r => r.name), st);
+                rememberNames(results.flatMap(memoryNames), st);
                 save();
                 status = { kind: 'ok', text: T().found(results.length) };
             }
@@ -814,8 +1004,9 @@
         if (busy || refining || !results.includes(src) || !REFINE_DESC[mode]) return;
         const st = settings();
         const L = T();
-        const avoid = [...new Set([...avoidList(st), ...results.map(r => r.name)])];
-        const messages = buildRefineMessages(src, mode, src.form || st.form, { lang: detectLang(), avoid, reading: !!st.showReading });
+        const form = src.form || st.form;
+        const avoid = [...new Set([...avoidList(st), ...results.flatMap(memoryNames)])];
+        const messages = buildRefineMessages(src, mode, form, { lang: detectLang(), avoid, reading: !!st.showReading });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, mode, ctl, kind: 'refine' };
         refining = job;
@@ -823,9 +1014,9 @@
         status = { kind: 'busy', text: '' };
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(3, st), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(3, st, !!src.pieces), signal: ctl?.signal });
             if (refining !== job) return;
-            const parsed = parseNames(raw);
+            const parsed = src.pieces ? applyShape(parseNames(raw), form) : parseNames(raw);
             const kept = filterNames(parsed, avoid).slice(0, 3);
             const at = results.indexOf(src);
             if (!parsed.length) status = { kind: 'error', text: L.err(L.parseFail) };
@@ -836,7 +1027,7 @@
                 let j = at + 1;
                 while (j < results.length && (results[j].depth || 0) > depth) j++;
                 results.splice(j, 0, ...kept.map(k => ({ ...k, depth: Math.min(depth + 1, 3), tag: mode, from: src, form: src.form })));
-                rememberNames(kept.map(k => k.name), st);
+                rememberNames(kept.flatMap(memoryNames), st);
                 save();
                 status = { kind: 'ok', text: L.variants(kept.length) };
             }
@@ -860,7 +1051,7 @@
         const L = T();
         const lang = detectLang();
         const form = src.form || st.form;
-        const avoid = [...new Set([...avoidList(st), ...results.map(r => r.name)])];
+        const avoid = [...new Set([...avoidList(st), ...results.flatMap(memoryNames)])];
         const isVariant = (src.depth || 0) > 0 && src.from && REFINE_DESC[src.tag];
         const messages = isVariant
             ? buildRefineMessages(src.from, src.tag, form, { lang, avoid, count: 1, reading: !!st.showReading })
@@ -872,23 +1063,70 @@
         status = { kind: 'busy', text: '' };
         renderResultsOnly();
         try {
-            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(1, st), signal: ctl?.signal });
+            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
             if (refining !== job) return;
-            const parsed = parseNames(raw);
+            const parsed = applyShape(parseNames(raw), form);
             const kept = filterNames(parsed, avoid);
             const at = results.indexOf(src);
             if (!parsed.length) status = { kind: 'error', text: L.err(L.parseFail) };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered) };
             else if (at !== -1) {
-                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read };
+                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces };
+                if (!fresh.pieces) delete fresh.pieces;
                 // Variants hanging under the old name no longer fit, so they go with it.
                 const depth = src.depth || 0;
                 let end = at + 1;
                 while (end < results.length && (results[end].depth || 0) > depth) end++;
                 results.splice(at, end - at, fresh);
-                rememberNames([fresh.name], st);
+                rememberNames(memoryNames(fresh), st);
                 save();
                 status = { kind: 'ok', text: L.rerolled };
+            }
+        } catch (e) {
+            if (refining !== job) return;
+            if (ctl?.signal.aborted || e?.name === 'AbortError') status = { kind: 'error', text: L.cancelled };
+            else status = { kind: 'error', text: L.err(String(e?.message || e || 'unknown error').slice(0, 160)) };
+        } finally {
+            if (refining === job) {
+                refining = null;
+                renderResultsOnly();
+            }
+        }
+    }
+
+    // Swap one part of a full name (keep "Holloway", swap "Mira").
+    async function rerollPiece(src, k) {
+        if (busy || refining || !results.includes(src)) return;
+        const piece = src.pieces?.[k];
+        if (!piece || piece.fixed) return;
+        const st = settings();
+        const L = T();
+        const form = src.form || st.form;
+        const avoid = [...new Set([...avoidList(st), ...results.flatMap(memoryNames)])];
+        const reading = !!st.showReading;
+        const messages = buildPieceMessages(src, piece.role, form, { lang: detectLang(), avoid, reading });
+        const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const job = { src, ctl, kind: 'piece' };
+        refining = job;
+        menuFor = null;
+        status = { kind: 'busy', text: '' };
+        renderResultsOnly();
+        try {
+            const raw = await requestLLM(messages, { profileId: st.profileId, maxTokens: tokensFor(1, st), signal: ctl?.signal });
+            if (refining !== job) return;
+            const parsed = parseNames(raw);
+            const text = cleanPiece(parsed[0]?.name);
+            const banned = new Set(avoid.map(a => a.toLowerCase()));
+            if (!text) status = { kind: 'error', text: L.err(L.parseFail) };
+            else if (text.toLowerCase() === piece.text.toLowerCase() || (NAME_ROLES.includes(piece.role) && banned.has(text.toLowerCase()))) {
+                status = { kind: 'error', text: L.err(L.allFiltered) };
+            } else if (results.includes(src) && src.pieces[k] === piece) {
+                src.pieces = src.pieces.map((p, j) => (j === k ? { ...p, text } : p));
+                src.name = joinPieces(src.pieces);
+                src.read = reading ? String(parsed[0].read || '').slice(0, 80) : '';
+                if (NAME_ROLES.includes(piece.role)) rememberNames([text], st);
+                save();
+                status = { kind: 'ok', text: L.pieceRerolled };
             }
         } catch (e) {
             if (refining !== job) return;
@@ -1103,7 +1341,32 @@
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
         $doc.on('change', '#tbd_kind', () => readForm());
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
-        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_kindtext', readForm);
+        $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_kindtext, #tbd_fixed', readForm);
+        $doc.on('click', '#tbd_panel .tbd-chip', function () {
+            const form = readForm();
+            const key = $(this).data('chip') === 'part' ? 'parts' : 'extras';
+            const v = String($(this).data('v'));
+            const list = new Set(form[key]);
+            if (list.has(v)) list.delete(v); else list.add(v);
+            const next = { ...form, [key]: [...list] };
+            // Keep at least one part: turning off the last one does nothing.
+            if (!next.parts.length && !next.extras.length) return;
+            form[key] = key === 'parts' ? NAME_PARTS.filter(p => list.has(p)) : NAME_EXTRAS.filter(p => list.has(p));
+            $(this).attr('aria-pressed', list.has(v) ? 'true' : 'false');
+            $('#tbd_fixed_wrap').prop('hidden', !form.parts.includes('family'));
+            save();
+        });
+        $doc.on('click', '#tbd_panel .tbd-piece-copy', async function () {
+            const r = results[Number($(this).closest('.tbd-row').data('i'))];
+            const p = r?.pieces?.[Number($(this).closest('.tbd-piece').data('k'))];
+            if (!p) return;
+            if (await copyText(p.text)) toastr.success(T().copied, 'TBD');
+            else toastr.warning(T().copyFail, 'TBD');
+        });
+        $doc.on('click', '#tbd_panel .tbd-piece-roll', function () {
+            const r = results[Number($(this).closest('.tbd-row').data('i'))];
+            if (r) rerollPiece(r, Number($(this).closest('.tbd-piece').data('k')));
+        });
         $doc.on('click', '#tbd_panel .tbd-refine', function () {
             if (refining) return;
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
@@ -1124,7 +1387,7 @@
             status = { kind: 'error', text: T().cancelled };
             renderResultsOnly();
         });
-        $doc.on('keydown', '#tbd_must, #tbd_custom, #tbd_kindtext', (e) => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
+        $doc.on('keydown', '#tbd_must, #tbd_custom, #tbd_kindtext, #tbd_fixed', (e) => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
         $doc.on('keydown', (e) => { if (e.key === 'Escape' && $('#tbd_panel').is(':visible')) closePanel(); });
         $doc.on('click', '#tbd_panel .tbd-copy', async function () {
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
@@ -1145,6 +1408,7 @@
         globalThis.__TBD_TEST__.api = {
             rollSeeds, buildMessages, buildRefineMessages, REFINE_MODES, parseNames, filterNames, avoidList, rememberNames, detectLang,
             tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
+            nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
         };
     } else {
         if (typeof $ === 'function' && document.body) settingsSlot();

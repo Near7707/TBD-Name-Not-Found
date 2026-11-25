@@ -169,6 +169,60 @@
 #tbd_panel .tbd-psettings .tbd-go { margin-top: 12px; }
 .tbd-note { font-size: 12px; color: var(--tbd-dim); }
 
+/* ---------- person name parts ---------- */
+.tbd-chipset { display: flex; flex-direction: column; gap: 3px; }
+.tbd-chips-label { font-size: 12px; color: var(--tbd-dim); }
+.tbd-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+#tbd_panel .tbd-chip {
+    min-height: 32px;
+    padding: 4px 10px;
+    border-radius: 16px;
+    border: 1px solid var(--tbd-line);
+    background: transparent;
+    color: var(--tbd-fg);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+}
+/* On = accent border + tint + bold, so it reads in every theme (button colors were too close to the background in some). */
+#tbd_panel .tbd-chip[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--tbd-accent) 24%, transparent);
+    border-color: var(--tbd-accent);
+    color: var(--tbd-name);
+    font-weight: bold;
+}
+#tbd_panel .tbd-chip[aria-pressed="false"] { color: var(--tbd-dim); }
+/* Parts of a found name: tap to copy one, 🔄 to swap one. Wraps on phones. */
+.tbd-pieces { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.tbd-piece {
+    display: inline-flex;
+    max-width: 100%;
+    border: 1px solid var(--tbd-line);
+    border-radius: 6px;
+    overflow: hidden;
+}
+#tbd_panel .tbd-piece button {
+    background: transparent;
+    border: 0;
+    margin: 0;
+    color: var(--tbd-fg);
+    font-family: inherit;
+    font-size: 13px;
+    min-height: 30px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+#tbd_panel .tbd-piece-copy { padding: 2px 8px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tbd_panel .tbd-piece-roll { flex: none; width: 28px; padding: 0; border-left: 1px solid var(--tbd-line); color: var(--tbd-dim); font-size: 11px; }
+#tbd_panel .tbd-piece-roll i { font-size: 11px; }
+#tbd_panel .tbd-piece button:hover { color: var(--tbd-accent); }
+#tbd_panel .tbd-piece-roll[disabled] { opacity: .35; cursor: default; }
+
 .tbd-icon-btn, .tbd-small-btn {
     background: transparent;
     border: 1px solid transparent;

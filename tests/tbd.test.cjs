@@ -270,3 +270,75 @@ test('one batch does not repeat an ending', () => {
     }
     assert.match(api.buildMessages(form, api.rollSeeds(3, form, seeded(1)), {})[1].content, /no two names may share the same ending/);
 });
+
+test('person name shape: plain given name stays the old way', () => {
+    const { api } = load();
+    assert.equal(api.nameShape({ target: 'person', parts: ['given'], extras: [] }), null);
+    assert.equal(api.nameShape({ target: 'place', parts: ['given', 'family'] }), null);
+    assert.equal(api.nameShape({ target: 'person', parts: [], extras: [] }), null, 'nothing picked falls back to a given name');
+    const s = api.nameShape({ target: 'person', parts: ['family', 'given'], extras: ['codename', 'title'], fixedFamily: ' Holloway ' });
+    assert.deepEqual([...s.roles], ['title', 'given', 'family', 'codename']);
+    assert.equal(s.fixed, 'Holloway');
+    assert.equal(api.nameShape({ target: 'person', parts: ['family'], fixedFamily: 'Holloway' }).fixed, '', 'only a kept family name leaves nothing to make');
+});
+
+test('full-name prompt lists the parts and asks for parts JSON', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', gender: 'feminine', length: 'any', sound: 'any', mustContain: '', parts: ['given', 'family'], extras: ['epithet'], fixedFamily: '' };
+    const seeds = api.rollSeeds(4, form, seeded(3));
+    assert.ok(seeds.every(s => s.family), 'family style seeds');
+    assert.equal(new Set(seeds.map(s => s.family)).size, 4, 'no repeated family style in one batch');
+    const user = api.buildMessages(form, seeds, { lang: 'ko', reading: true })[1].content;
+    assert.match(user, /full names for a person/);
+    assert.match(user, /- given: given \(first\) name/);
+    assert.match(user, /- epithet:/);
+    assert.match(user, /given name: starts with/);
+    assert.match(user, /family name: /);
+    assert.match(user, /"parts": \{"given": "\.\.\.", "family": "\.\.\.", "epithet": "\.\.\."\}/);
+    assert.match(user, /whole full name, with a space/);
+    assert.match(user, /no two family names may be the same/);
+    assert.match(user, /Family names, epithets and titles may use real words/);
+    const fixed = api.buildMessages({ ...form, fixedFamily: 'Holloway' }, api.rollSeeds(2, { ...form, fixedFamily: 'Holloway' }, seeded(3)), {})[1].content;
+    assert.match(fixed, /always exactly "Holloway"/);
+    assert.doesNotMatch(fixed, /family name: from/);
+});
+
+test('parts answers become pieces in order, with a kept family name', () => {
+    const { api } = load();
+    const form = { target: 'person', parts: ['given', 'middle', 'family'], extras: ['title', 'codename', 'alias'], fixedFamily: 'Holloway' };
+    const raw = '[{"parts":{"codename":"\\"Nightjar\\"","given":"Mira","middle":"Aldous","family":"Wrong","title":"Captain","alias":"Wren"},"read":"캡틴 미라 올더스 할로웨이","note":"x"}]';
+    const [r] = api.applyShape(api.parseNames(raw), form);
+    assert.equal(r.name, 'Captain Mira Aldous Holloway "Nightjar" (Wren)');
+    assert.deepEqual([...r.pieces.map(p => p.role)], ['title', 'given', 'middle', 'family', 'codename', 'alias']);
+    assert.equal(r.pieces[3].fixed, true);
+    assert.equal(r.pieces[4].text, 'Nightjar');
+    assert.deepEqual([...api.memoryNames(r)], ['Mira', 'Aldous', 'Nightjar', 'Wren'], 'no title, no kept family name');
+    // A banned part knocks the whole name out; a plain answer still passes.
+    assert.equal(api.filterNames([r], ['aldous']).length, 0);
+    const plain = api.applyShape(api.parseNames('[{"name":"Mira Holloway","note":"y"}]'), form);
+    assert.equal(plain[0].name, 'Mira Holloway');
+    assert.equal(plain[0].pieces, undefined);
+});
+
+test('swapping one part asks for that part only', () => {
+    const { api } = load();
+    const src = { name: 'Mira Holloway', pieces: [{ role: 'given', text: 'Mira' }, { role: 'family', text: 'Holloway' }] };
+    const user = api.buildPieceMessages(src, 'given', { vibe: 'cozy', gender: 'feminine' }, { reading: true, lang: 'en', avoid: ['Lyra'] })[1].content;
+    assert.match(user, /Replace only its given part, now "Mira"/);
+    assert.match(user, /given "Mira", family "Holloway"/);
+    assert.match(user, /Gender feel: feminine/);
+    assert.match(user, /Lyra/);
+    assert.match(user, /"name" is the new part only/);
+    const fam = api.buildPieceMessages(src, 'family', { vibe: 'cozy', gender: 'feminine' }, {})[1].content;
+    assert.doesNotMatch(fam, /Gender feel/);
+});
+
+test('part labels exist in both languages', () => {
+    const { api } = load();
+    for (const lang of ['en', 'ko']) {
+        const L = api.STRINGS[lang];
+        assert.deepEqual(Object.keys(L.pc).sort(), ['family', 'given', 'middle']);
+        assert.equal(Object.keys(L.ex).length, 8);
+        for (const k of ['parts', 'extras', 'fixedFamily', 'fixedFamilyPh', 'copyPiece', 'rerollPiece', 'rerollingPiece', 'pieceRerolled']) assert.ok(L[k], `${lang}.${k}`);
+    }
+});
