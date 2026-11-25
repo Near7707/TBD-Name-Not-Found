@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.5
+// TBD — Name Not Found v0.1.6
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -151,9 +151,12 @@
         shop: ['one invented word', 'The + adjective + noun', "an invented owner's name + 's", 'a short pun on the trade', 'noun & noun', 'an invented word + the kind of shop'],
         item: ['one invented word', 'an invented word + an object noun', '"the … of …"', "an invented maker's name + 's + object", 'a title-like epithet'],
         itemTech: ['a model name with letters or numbers', 'a brand-like invented word', 'an invented word + a tech noun'],
+        // Real place names often use real words, so places mix invented and real-word shapes.
+        place: ['one invented word', 'one invented word', 'two real words joined into one', 'a real word + a place word', 'an invented word + a place word', 'a real word blended with an invented part'],
     };
     function shapesFor(target, vibe) {
         if (target === 'shop') return SHAPES.shop;
+        if (target === 'place') return SHAPES.place;
         if (target === 'item') return vibe === 'scifi' ? [...SHAPES.item, ...SHAPES.itemTech] : SHAPES.item;
         return null;
     }
@@ -335,7 +338,9 @@
         } else if (form.target === 'other') {
             out.push('It must fit what is being named.');
         }
-        if (form.target === 'person' || form.target === 'place' || form.target === 'other') {
+        if (form.target === 'place') {
+            out.push('Place names may use real words: joined real words or a real word plus a place word are welcome. Just never a single bare everyday word on its own (like "Mold" or "Salt").');
+        } else if (form.target === 'person' || form.target === 'other') {
             out.push('Never use a plain existing English word on its own as the name (like "Mold" or "Salt").');
         }
         return out;

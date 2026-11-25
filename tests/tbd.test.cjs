@@ -191,7 +191,12 @@ test('places get place rules, kind and setting-fitting seeds', () => {
     assert.match(user, /not like a person's first name/);
     assert.match(user, /tech or corporate roots/);
     assert.match(user, /setting and what is being named come first/);
-    assert.match(user, /plain existing English word/);
+    assert.match(user, /may use real words/);
+    assert.match(user, /single bare everyday word/);
+    assert.ok(seeds.every(s => s.shape), 'places get a shape too');
+    assert.ok(seeds.some(s => /real word/.test(s.shape)) && seeds.some(s => /invented/.test(s.shape)), 'mix of real-word and invented shapes');
+    const person = api.buildMessages({ ...form, target: 'person' }, api.rollSeeds(1, { ...form, target: 'person' }, seeded(2)), {})[1].content;
+    assert.match(person, /plain existing English word/);
 });
 
 test('custom kind and "other" use the typed text', () => {
