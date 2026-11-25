@@ -241,3 +241,32 @@ test('kind labels exist in both languages for every kind', () => {
         for (const lang of ['en', 'ko']) assert.deepEqual(Object.keys(api.STRINGS[lang].k[target]).sort(), [...keys].sort(), `${lang} ${target}`);
     }
 });
+
+test('old kinds carry over to the new everyday lists', () => {
+    const { api } = load();
+    assert.equal(api.normalizeKind('place', 'castle'), 'fort');
+    assert.equal(api.normalizeKind('shop', 'smithy'), 'weapons');
+    assert.equal(api.normalizeKind('item', 'potion'), 'medicine');
+    assert.equal(api.normalizeKind('item', 'device'), 'device');
+    assert.equal(api.normalizeKind('item', 'staff'), 'any');
+    assert.equal(api.normalizeKind('person', 'city'), 'any');
+    assert.ok(!api.KINDS.item.includes('potion') && !api.KINDS.item.includes('staff'), 'no fantasy-only item kinds left');
+});
+
+test('the details box goes into the prompt', () => {
+    const { api } = load();
+    assert.match(api.targetText({ target: 'item', kind: 'device', kindText: 'a half-broken military drone' }),
+        /specifically an electronic device or gadget\. Details from the user: "a half-broken military drone"/);
+    assert.match(api.targetText({ target: 'place', kind: 'any', kindText: 'an abandoned subway station' }), /Details from the user/);
+    assert.equal(api.targetText({ target: 'shop', kind: 'bar', kindText: '  ' }), 'a shop or business, specifically a bar or pub');
+});
+
+test('one batch does not repeat an ending', () => {
+    const { api } = load();
+    const form = { target: 'place', vibe: 'scifi', kind: 'any', length: 'any', sound: 'any', mustContain: '' };
+    for (let k = 1; k < 30; k++) {
+        const ends = api.rollSeeds(8, form, seeded(k)).map(s => s.ending).filter(Boolean);
+        assert.equal(new Set(ends).size, ends.length, `seed ${k}: ${ends}`);
+    }
+    assert.match(api.buildMessages(form, api.rollSeeds(3, form, seeded(1)), {})[1].content, /no two names may share the same ending/);
+});

@@ -8,11 +8,12 @@ A SillyTavern extension that invents names for people, places, shops and items.
 
 AI models tend to give the same few names no matter which one you use. TBD rolls the randomness itself: every name gets its own seed (start letter, syllable count, ending sound, texture, a random "spark" word), so a batch spreads out instead of clustering around the usual picks. Overused AI names and names you've already received are avoided automatically.
 
-## Features (v0.1.6)
+## Features (v0.1.7)
 
 - Opens from the wand menu (✨) → **TBD: Name generator**
 - Conditions: target (person / place / shop / item / other), vibe (presets or your own words), gender feel, length, sound feel, letters the name must contain
-- Kind for places, shops and items (city, planet, bakery, tavern, ring, potion…) or your own words; "Other" asks what you're naming
+- Kind for places, shops and items, in everyday groups that fit any setting (street, station, repair shop, florist, vehicle, medicine, gadget…) or your own words
+- An optional details box for places, shops and items (e.g. "a half-broken military drone"); "Other" asks what you're naming
 - The vibe leads: random inspiration words are picked per vibe, places are told not to sound like people and may use real words (Blackwater, Salt Flats), and a bare dictionary word on its own is avoided
 - How to read each name, next to it: Korean letters in Korean, a stress respelling in English (e.g. KWIL-uh). Can be turned off
 - 1–30 names per search (default 5), each with a short note
@@ -54,6 +55,7 @@ Find **TBD — Name Not Found** in the Extensions panel, or press ⚙ next to �
 - Name pools by root (Latin, Old English, Norman/French, Germanic, Celtic…) × kind (noble houses, monastic/saints, place names, given names)
 - "Mix" mode that blends several roots into one name, with a ratio slider
 - Random-only mode that works without any API
+- Check a name against Wikipedia, with a Google search link
 - Real names from Wikidata, a "dig deeper into this root" button, favorites, and skipping names already in your chat or lorebook
 - More themes
 

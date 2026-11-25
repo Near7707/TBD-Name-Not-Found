@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.1.6
+// TBD — Name Not Found v0.1.7
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -35,11 +35,12 @@
             rerollBtn: 'Swap just this name', rerolling: 'Finding another…', rerolled: '200 OK — name swapped',
             r: { soft: 'Softer', hard: 'Harder', sharp: 'Sharper', bright: 'Brighter', dark: 'Darker', shorter: 'Shorter', longer: 'Longer' },
             variants: n => `200 OK — ${n} variant${n === 1 ? '' : 's'} found`,
-            kind: 'Kind', kindPh: 'e.g. a lake where a dragon sleeps', otherWhat: 'Name for what?', otherPh: 'e.g. a pirate ship, a guild',
+            kind: 'Kind', detail: 'Details (optional)', otherWhat: 'Name for what?', otherPh: 'e.g. a pirate ship, a guild',
+            detailPh: { place: 'e.g. an abandoned subway station', shop: 'e.g. a repair shop open only at night', item: 'e.g. a half-broken military drone' },
             k: {
-                place: { any: 'Any', country: 'Country / kingdom', city: 'City', village: 'Village', mountain: 'Mountain / hill', water: 'River / lake', forest: 'Forest', sea: 'Sea / island', castle: 'Castle / fort', ruin: 'Dungeon / ruin', planet: 'Planet / station', custom: 'Custom…' },
-                shop: { any: 'Any', restaurant: 'Restaurant', cafe: 'Café / desserts', tavern: 'Tavern / inn', bakery: 'Bakery', smithy: 'Smithy / weapons', clothes: 'Clothing', apothecary: 'Apothecary / magic shop', books: 'Bookshop', general: 'General store', custom: 'Custom…' },
-                item: { any: 'Any', weapon: 'Sword / weapon', armor: 'Shield / armor', jewelry: 'Ring / jewelry', potion: 'Potion', book: 'Book / scroll', gem: 'Gem / stone', staff: 'Staff / wand', device: 'Machine / device', custom: 'Custom…' },
+                place: { any: 'Any', region: 'Country / region', city: 'City', town: 'Town / neighborhood', street: 'Street / district', building: 'Building / facility', transit: 'Station / port / airport', park: 'Park / square', mountain: 'Mountain / hill', water: 'River / lake', forest: 'Forest', sea: 'Sea / island', fort: 'Fort / base', ruins: 'Ruins / abandoned place', planet: 'Planet / station', custom: 'Custom…' },
+                shop: { any: 'Any', restaurant: 'Restaurant', cafe: 'Café / desserts', bakery: 'Bakery', bar: 'Bar / pub', lodging: 'Inn / hotel', store: 'Store / market', clothes: 'Clothing', books: 'Books / stationery', pharmacy: 'Pharmacy / apothecary', repair: 'Repair shop / workshop', electronics: 'Electronics / machines', weapons: 'Weapons / gear', beauty: 'Hair / grooming', florist: 'Florist / plants', antiques: 'Antiques / second-hand', custom: 'Custom…' },
+                item: { any: 'Any', wearable: 'Worn / carried', tool: 'Tool / machine', device: 'Electronics / gadget', vehicle: 'Vehicle', food: 'Food / drink', medicine: 'Medicine / chemical', weapon: 'Weapon', records: 'Book / document / record', furniture: 'Furniture / household', collectible: 'Art / collectible', product: 'Product / brand', custom: 'Custom…' },
             },
             gear: 'Settings', back: 'Back',
             // settings
@@ -83,11 +84,12 @@
             rerollBtn: '이 이름만 다시 뽑기', rerolling: '다른 이름 찾는 중…', rerolled: '200 OK — 이름 바꿈',
             r: { soft: '더 부드럽게', hard: '더 단단하게', sharp: '더 날카롭게', bright: '더 밝게', dark: '더 어둡게', shorter: '더 짧게', longer: '더 길게' },
             variants: n => `200 OK — 변형 ${n}개 찾음`,
-            kind: '종류', kindPh: '예: 용이 잠든 호수', otherWhat: '무엇의 이름?', otherPh: '예: 해적선, 길드',
+            kind: '종류', detail: '자세히 (안 써도 됨)', otherWhat: '무엇의 이름?', otherPh: '예: 해적선, 길드',
+            detailPh: { place: '예: 버려진 지하철역', shop: '예: 밤에만 여는 수리점', item: '예: 반쯤 부서진 군용 드론' },
             k: {
-                place: { any: '상관없음', country: '나라·왕국', city: '도시', village: '마을', mountain: '산·언덕', water: '강·호수', forest: '숲', sea: '바다·섬', castle: '성·요새', ruin: '던전·유적', planet: '행성·우주정거장', custom: '직접 쓰기…' },
-                shop: { any: '상관없음', restaurant: '식당', cafe: '카페·디저트', tavern: '술집·여관', bakery: '빵집', smithy: '대장간·무기점', clothes: '옷가게', apothecary: '약방·마법상점', books: '서점', general: '잡화점', custom: '직접 쓰기…' },
-                item: { any: '상관없음', weapon: '검·무기', armor: '방패·갑옷', jewelry: '반지·장신구', potion: '물약', book: '책·두루마리', gem: '보석·돌', staff: '지팡이', device: '기계·장치', custom: '직접 쓰기…' },
+                place: { any: '상관없음', region: '나라·지역', city: '도시', town: '동네·마을', street: '거리·구역', building: '건물·시설', transit: '역·항구·공항', park: '공원·광장', mountain: '산·언덕', water: '강·호수', forest: '숲', sea: '바다·섬', fort: '요새·기지', ruins: '폐허·버려진 곳', planet: '행성·우주정거장', custom: '직접 쓰기…' },
+                shop: { any: '상관없음', restaurant: '식당', cafe: '카페·디저트', bakery: '빵집', bar: '술집·바', lodging: '숙소(여관·호텔)', store: '마트·잡화점', clothes: '옷가게', books: '서점·문구점', pharmacy: '약국·약방', repair: '수리점·공방', electronics: '전자기기·기계 상점', weapons: '무기·장비점', beauty: '미용실·몸단장', florist: '꽃집·식물', antiques: '골동품·중고', custom: '직접 쓰기…' },
+                item: { any: '상관없음', wearable: '입는 것·지니는 것', tool: '도구·기계', device: '전자기기·장치', vehicle: '탈것', food: '먹을 것·마실 것', medicine: '약·화학품', weapon: '무기', records: '책·문서·기록', furniture: '가구·집 소품', collectible: '예술품·수집품', product: '상품·브랜드', custom: '직접 쓰기…' },
             },
             gear: '설정', back: '돌아가기',
             sTitle: 'TBD — Name Not Found',
@@ -194,6 +196,7 @@
         const endings = endingsFor(target, opts.vibe);
         const shapes = shapesFor(target, opts.vibe);
         const seeds = [];
+        const usedEndings = new Set();
         for (let i = 0; i < count; i++) {
             const seed = {
                 syllables: lo + Math.floor(rnd() * (hi - lo + 1)),
@@ -203,7 +206,12 @@
             // A forced start letter would fight "must contain", so skip it then.
             if (!opts.mustContain) seed.start = pick(START_LETTERS, rnd);
             // Only nudge the ending about half the time; always forcing it sounds samey too.
-            if (endings && rnd() < 0.5) seed.ending = pick(endings, rnd);
+            // Don't hand the same ending to two names in one batch (two "… Array" looked samey).
+            if (endings && rnd() < 0.5) {
+                const fresh = endings.filter(e => !usedEndings.has(e));
+                seed.ending = pick(fresh.length ? fresh : endings, rnd);
+                usedEndings.add(seed.ending);
+            }
             if (shapes) seed.shape = pick(shapes, rnd);
             seeds.push(seed);
         }
@@ -286,32 +294,54 @@
         other: 'something in a story (group, ship, creature, event…)',
     };
     // "Kind" narrows the target (a city, a bakery, a ring…).
+    // Everyday kinds, so a sci-fi or modern story isn't stuck with swords and potions.
     const KIND_DESC = {
         place: {
-            country: 'a country or kingdom', city: 'a city', village: 'a village or small town', mountain: 'a mountain or hill',
-            water: 'a river or lake', forest: 'a forest', sea: 'a sea or island', castle: 'a castle or fortress',
-            ruin: 'a dungeon or ruin', planet: 'a planet, moon or space station',
+            region: 'a country or region', city: 'a city', town: 'a town, village or neighborhood', street: 'a street or district',
+            building: 'a building or facility (a school, hospital, factory…)', transit: 'a station, port or airport',
+            park: 'a park or square', mountain: 'a mountain or hill', water: 'a river or lake', forest: 'a forest',
+            sea: 'a sea or island', fort: 'a fort or base', ruins: 'a ruin or abandoned place', planet: 'a planet, moon or space station',
         },
         shop: {
-            restaurant: 'a restaurant', cafe: 'a café or dessert shop', tavern: 'a tavern or inn', bakery: 'a bakery',
-            smithy: 'a blacksmith or weapon shop', clothes: 'a clothing shop', apothecary: 'an apothecary or magic shop',
-            books: 'a bookshop', general: 'a general store',
+            restaurant: 'a restaurant', cafe: 'a café or dessert shop', bakery: 'a bakery', bar: 'a bar or pub',
+            lodging: 'an inn or hotel', store: 'a general store or market', clothes: 'a clothing shop', books: 'a bookshop or stationery shop',
+            pharmacy: 'a pharmacy or apothecary', repair: 'a repair shop or workshop', electronics: 'an electronics or machine shop',
+            weapons: 'a weapon or gear shop', beauty: 'a hair salon or grooming shop', florist: 'a florist or plant shop',
+            antiques: 'an antique or second-hand shop',
         },
         item: {
-            weapon: 'a sword or other weapon', armor: 'a shield or piece of armor', jewelry: 'a ring or piece of jewelry',
-            potion: 'a potion', book: 'a book or scroll', gem: 'a gem or stone', staff: 'a staff or wand', device: 'a machine or device',
+            wearable: 'something worn or carried (clothing, a bag, jewelry)', tool: 'a tool or machine', device: 'an electronic device or gadget',
+            vehicle: 'a vehicle', food: 'a food or drink', medicine: 'a medicine or chemical', weapon: 'a weapon',
+            records: 'a book, document or record', furniture: 'furniture or a household object', collectible: 'an artwork or collectible',
+            product: 'a product or brand',
         },
     };
     const KINDS = Object.fromEntries(Object.entries(KIND_DESC).map(([t, m]) => [t, ['any', ...Object.keys(m), 'custom']]));
+    // Kinds from v0.1.5–0.1.6 → the closest new one, so a saved choice carries over.
+    const OLD_KINDS = {
+        place: { country: 'region', village: 'town', castle: 'fort', ruin: 'ruins' },
+        shop: { tavern: 'bar', general: 'store', apothecary: 'pharmacy', smithy: 'weapons' },
+        item: { armor: 'wearable', jewelry: 'wearable', potion: 'medicine', book: 'records', gem: 'collectible' },
+    };
+    function normalizeKind(target, kind) {
+        const kinds = KINDS[target];
+        if (!kinds) return 'any';
+        const k = OLD_KINDS[target]?.[kind] || kind;
+        return kinds.includes(k) ? k : 'any';
+    }
+    const DETAIL_MAX = 120;
 
     function targetText(form) {
         const target = TARGET_DESC[form.target] ? form.target : 'other';
-        const own = String(form.kindText || '').trim().slice(0, 80);
+        const own = String(form.kindText || '').trim().slice(0, DETAIL_MAX);
         if (target === 'other') return own ? `something in a story: "${own}"` : TARGET_DESC.other;
         if (target === 'person') return TARGET_DESC.person;
-        if (form.kind === 'custom' && own) return `${TARGET_DESC[target]}, specifically: "${own}"`;
-        const kind = KIND_DESC[target]?.[form.kind];
-        return kind ? `${TARGET_DESC[target]}, specifically ${kind}` : TARGET_DESC[target];
+        const kindId = normalizeKind(target, form.kind);
+        if (kindId === 'custom' && own) return `${TARGET_DESC[target]}, specifically: "${own}"`;
+        const kind = KIND_DESC[target]?.[kindId];
+        const base = kind ? `${TARGET_DESC[target]}, specifically ${kind}` : TARGET_DESC[target];
+        // The optional details box: the name and the note should fit it.
+        return own ? `${base}. Details from the user: "${own}"` : base;
     }
 
     const VIBE_DESC = {
@@ -343,6 +373,7 @@
         } else if (form.target === 'person' || form.target === 'other') {
             out.push('Never use a plain existing English word on its own as the name (like "Mold" or "Salt").');
         }
+        out.push('Across the batch, no two names may share the same ending or the same last word (not two "… Array" or two "-ex").');
         return out;
     }
 
@@ -605,8 +636,10 @@
     function formHtml(form) {
         const L = T();
         const kinds = KINDS[form.target];
-        const kind = kinds && kinds.includes(form.kind) ? form.kind : 'any';
+        const kind = normalizeKind(form.target, form.kind);
         const isOther = form.target === 'other';
+        const detailLabel = isOther ? L.otherWhat : (kinds ? L.detail : '');
+        const detailPh = isOther ? L.otherPh : (L.detailPh[form.target] || '');
         return `<div class="tbd-form">
             <label>${escapeHtml(L.target)}${selectHtml('tbd_target', L.t, form.target)}</label>
             <label>${escapeHtml(L.vibe)}${selectHtml('tbd_vibe', L.v, form.vibe)}</label>
@@ -615,7 +648,7 @@
             ${kinds ? `<label id="tbd_kind_wrap">${escapeHtml(L.kind)}${selectHtml('tbd_kind', L.k[form.target], kind)}</label>` : ''}
             <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
             <label>${escapeHtml(L.sound)}${selectHtml('tbd_sound', L.s, form.sound || 'any')}</label>
-            <label class="tbd-wide" id="tbd_kindtext_wrap"${isOther || kind === 'custom' ? '' : ' hidden'}>${isOther ? escapeHtml(L.otherWhat) : ''}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="80" placeholder="${escapeHtml(isOther ? L.otherPh : L.kindPh)}" value="${escapeHtml(form.kindText || '')}"></label>
+            ${detailLabel ? `<label class="tbd-wide" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
             <label class="tbd-wide">${escapeHtml(L.mustContain)}<input id="tbd_must" class="text_pole" type="text" maxlength="20" placeholder="${escapeHtml(L.mustContainPh)}" value="${escapeHtml(form.mustContain)}"></label>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
         </div>`;
@@ -707,12 +740,11 @@
         const st = settings();
         if (!$('#tbd_target').length) return st.form; // the ⚙ page is showing
         const target = $('#tbd_target').val() || 'person';
-        const kinds = KINDS[target];
         const kindVal = $('#tbd_kind').length ? $('#tbd_kind').val() : st.form.kind;
         st.form = {
             target,
-            kind: kinds && kinds.includes(kindVal) ? kindVal : 'any',
-            kindText: String($('#tbd_kindtext').val() ?? st.form.kindText ?? '').slice(0, 80),
+            kind: normalizeKind(target, kindVal),
+            kindText: String($('#tbd_kindtext').val() ?? st.form.kindText ?? '').slice(0, DETAIL_MAX),
             vibe: $('#tbd_vibe').val() || 'fantasy',
             customVibe: String($('#tbd_custom').val() || '').slice(0, 80),
             gender: $('#tbd_gender').val() || 'any',
@@ -1069,7 +1101,7 @@
         $doc.on('click', '#tbd_go', generate);
         $doc.on('click', '#tbd_again', generate);
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
-        $doc.on('change', '#tbd_kind', function () { $('#tbd_kindtext_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
+        $doc.on('change', '#tbd_kind', () => readForm());
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); readForm(); });
         $doc.on('change', '#tbd_gender, #tbd_length, #tbd_sound, #tbd_custom, #tbd_must, #tbd_kindtext', readForm);
         $doc.on('click', '#tbd_panel .tbd-refine', function () {
@@ -1112,7 +1144,7 @@
     if (globalThis.__TBD_TEST__) {
         globalThis.__TBD_TEST__.api = {
             rollSeeds, buildMessages, buildRefineMessages, REFINE_MODES, parseNames, filterNames, avoidList, rememberNames, detectLang,
-            tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS,
+            tokensFor, insertAtCursor, settings, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
         };
     } else {
         if (typeof $ === 'function' && document.body) settingsSlot();
