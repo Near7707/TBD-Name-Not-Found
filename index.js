@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.7
+// TBD — Name Not Found v0.2.8
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -71,6 +71,7 @@
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
             method: 'Made with', methods: { ai: 'AI', cache: 'Cache', polish: 'Cache + AI' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
             roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse', greek: 'Ancient Greek', slavic: 'Slavic' },
+            rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: 'Each name from one root, taking turns.', merge: 'Each name mixes two roots: one part from each.' },
             aiRootAny: 'Any', aiRootOff: { like: 'Not used now: the "Like this" words lead.', cosmic: 'Not used now: Lovecraftian invented names stay eldritch.' },
             ck: { common: 'Common name', noble: 'Noble house', religious: 'Monastic / saint', royal: 'Royal / ruler', warrior: 'Warrior / byname', scholar: 'Scholar (Latin)' },
             branch: { patron: "father's name", place: 'home place', dwell: 'where they lived', trade: 'trade', looks: 'looks / nickname' },
@@ -168,6 +169,7 @@
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
             method: '만드는 방식', methods: { ai: 'AI', cache: 'Cache', polish: 'Cache + AI' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
             roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽', greek: '고대 그리스', slavic: '슬라브' },
+            rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: '이름마다 뿌리 하나씩, 돌아가며.', merge: '이름마다 뿌리 두 개를 섞어요: 조각 하나씩.' },
             aiRootAny: '상관없음', aiRootOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', cosmic: '지금은 안 써요: 러브크래프트풍 지어낸 이름은 이질적인 이름이라서요.' },
             ck: { common: '일반 인명', noble: '귀족 가문', religious: '수도원·성인', royal: '왕족·군주', warrior: '전사·별칭', scholar: '학자 (라틴식)' },
             branch: { patron: '아버지 이름', place: '출신 지명', dwell: '사는 곳', trade: '직업', looks: '생김새·별명' },
@@ -618,6 +620,8 @@
         const endings = roots.length ? null : endingsFor(target, opts.vibe);
         const familyStyles = !roots.length && shape && shape.roles.includes('family') && !shape.fixed ? (FAMILY_STYLES[familyKey] || ALL_FAMILY_STYLES) : null;
         const rootStart = Math.floor(rnd() * Math.max(1, roots.length));
+        // Merge: each name gets two different roots, in turn through every pair.
+        const pairs = aiMerge(opts) ? rootPairs(roots, rnd) : null;
         const seeds = [];
         const usedEndings = new Set();
         const usedFamily = new Set();
@@ -627,7 +631,8 @@
         for (let i = 0; i < count; i++) {
             const seed = {};
             // Like Cache, each name takes the picked roots in turn.
-            if (roots.length) seed.root = roots[(rootStart + i) % roots.length];
+            if (pairs) { [seed.root, seed.root2] = pairs[i % pairs.length]; }
+            else if (roots.length) seed.root = roots[(rootStart + i) % roots.length];
             // Sound-alike keeps the typed word's rhythm, so no random syllable count then.
             if (like !== 'sound') seed.syllables = lo + Math.floor(rnd() * (hi - lo + 1));
             if (!like && !real) seed.texture = pick(textures, rnd);
@@ -978,6 +983,19 @@
         const k = (Array.isArray(form.ckinds) ? form.ckinds : []).filter(x => CACHE_KINDS.includes(x));
         return k.length ? k : ['common'];
     }
+    // v0.2.8: Split (one root per name, in turn) or Merge (two different roots in each name).
+    // Cache and AI keep their own choice. Only matters with two or more roots.
+    const ROOT_MIXES = ['split', 'merge'];
+    function cacheMerge(form = {}) {
+        return isCache(form) && form.rootMix === 'merge' && cacheRoots(form).length > 1;
+    }
+    // Every ordered pair of two different roots, shuffled: names take them in turn.
+    function rootPairs(roots, rnd = Math.random) {
+        const pairs = [];
+        for (const a of roots) for (const b of roots) if (a !== b) pairs.push([a, b]);
+        for (let i = pairs.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pairs[i], pairs[j]] = [pairs[j], pairs[i]]; }
+        return pairs;
+    }
     // v0.2.1: the AI can follow the same roots. Kept apart from the Cache roots (form.aiRoots),
     // and empty means "any", so nothing changes until a root is picked.
     function aiRoots(form = {}) {
@@ -994,6 +1012,14 @@
     }
     function aiRootsUsed(form = {}) {
         return aiRootsOff(form) ? [] : aiRoots(form);
+    }
+    function aiMerge(form = {}) {
+        return form.aiRootMix === 'merge' && aiRootsUsed(form).length > 1;
+    }
+    // "built from Latin or Celtic" / "blending Latin and Celtic" for the short ✨ and part lines.
+    function rootsPhrase(form, roots, verb) {
+        return aiMerge(form) ? `${verb === 'keep' ? 'Keep it blending' : 'Blend'} ${rootNames(roots, 'and')} name roots in one name.`
+            : `${verb === 'keep' ? 'Keep it built from' : 'Build it from'} ${rootNames(roots)} name roots.`;
     }
     function rootNames(roots, join = 'or') {
         const n = roots.map(r => STRINGS.en.roots[r]);
@@ -1048,26 +1074,36 @@
         const x = dropVowel(a).toLowerCase(), y = b.toLowerCase();
         return x.length >= 3 && y.startsWith(x.slice(0, 4));
     }
+    // Merge: each fragment keeps the root it came from, for the fragments line.
+    function tagRoot(f, r, on) { return on ? { ...f, r } : f; }
     // One given name: head + ending. The two parts never mean the same thing (Wulf + wulf).
-    function cacheGiven(root, g, rnd) {
+    // Merge: the head from one root, the ending from another (root2). Joins follow whichever has the rule.
+    function cacheGiven(root, g, rnd, root2 = '') {
         const R = CACHE[root];
-        const tails = g === 'f' ? R.fem : R.masc;
+        const mix = !!root2 && root2 !== root;
+        const E = mix ? CACHE[root2] : R;
+        const elide = R.elide || E.elide;
+        const tails = g === 'f' ? E.fem : E.masc;
+        const make = (h, t) => ({ text: glue(h.t, t.t, elide), frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root });
         for (let i = 0; i < 20; i++) {
             const h = pick(R.head, rnd);
             const t = pick(tails, rnd);
             if (t.en && h.en === t.en) continue;
             if (sameStem(h.t, t.t)) continue;
-            const text = glue(h.t, t.t, R.elide);
+            const text = glue(h.t, t.t, elide);
             if (!sayable(text)) continue;
-            return { text, frags: [h, t], root };
+            return make(h, t);
         }
-        const h = R.head[0], t = tails[0];
-        return { text: glue(h.t, t.t, R.elide), frags: [h, t], root };
+        return make(R.head[0], tails[0]);
     }
     // A place: head + tail, now and then with "Great …" / "…-on-Sea", or named for a saint (St. Edwin's, Kilbran).
-    function cachePlace(root, cats, rnd, plain = false) {
+    // Merge: the head from one root and the tail from another (root2); no saint's name then.
+    function cachePlace(root, cats, rnd, plain = false, root2 = '') {
         const R = CACHE[root];
-        if (!plain && R.saint && (!cats || cats.includes('town')) && rnd() < 0.07) {
+        const mix = !!root2 && root2 !== root;
+        const E = mix ? CACHE[root2] : R;
+        const elide = R.elide || E.elide, link = R.link || E.link;
+        if (!mix && !plain && R.saint && (!cats || cats.includes('town')) && rnd() < 0.07) {
             const g = rnd() < 0.5 ? 'm' : 'f';
             const who = cacheGiven(root, g, rnd);
             const pattern = R.saint[g];
@@ -1078,7 +1114,7 @@
             if (sayable(text)) return { text, frags: [frag, ...who.frags], root, saint: true };
         }
         const heads = fitCats(R.placeHead, cats);
-        const tails = fitCats(R.placeTail, cats);
+        const tails = fitCats(E.placeTail, cats);
         let base = null;
         for (let i = 0; i < 20; i++) {
             const h = pick(heads, rnd);
@@ -1087,16 +1123,17 @@
             if (h.t.toLowerCase() === t.t.toLowerCase()) continue;
             // Not the same word twice (Castr + castra).
             if (t.t.length > 3 && h.t.length > 3 && (t.t.toLowerCase().startsWith(h.t.toLowerCase()) || h.t.toLowerCase().startsWith(t.t.toLowerCase()))) continue;
-            const text = capFirst(glue(h.t, t.t, R.elide, R.link));
+            const text = capFirst(glue(h.t, t.t, elide, link));
             if (!sayable(text)) continue;
-            base = { text, frags: [h, t], root };
+            base = { text, frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root };
             break;
         }
-        if (!base) base = { text: capFirst(glue(heads[0].t, tails[0].t, R.elide, R.link)), frags: [heads[0], tails[0]], root };
+        if (!base) base = { text: capFirst(glue(heads[0].t, tails[0].t, elide, link)), frags: [tagRoot(heads[0], root, mix), tagRoot(tails[0], root2, mix)], root };
         if (plain || rnd() >= 0.12) return base;
         // Now and then an extra word: before (Great, Ober, Lille) or after (-on-Sea, Magna, am See).
-        const pre = strictCats(R.placePre, cats).filter(f => f.en !== base.frags[0].en);
-        const post = strictCats(R.placePost, cats);
+        // The extra word before comes from the head's root, the one after from the tail's.
+        const pre = strictCats(R.placePre, cats).filter(f => f.en !== base.frags[0].en).map(f => tagRoot(f, root, mix));
+        const post = strictCats(E.placePost, cats).map(f => tagRoot(f, root2, mix));
         const usePre = pre.length && (!post.length || rnd() < 0.5);
         const list = usePre ? pre : post;
         if (!list.length) return base;
@@ -1272,24 +1309,30 @@
         const base = pl.text.replace(/(is|us|um|ia|os)$/i, '');
         return { text: `${dropVowel(base)}ensis`, frags: [...pl.frags, { t: 'ensis', en: 'from', ko: '~ 출신' }], branch: 'place' };
     }
-    // One whole Cache name (one root per name for now).
-    function cacheOne(form, root, kind, rnd = Math.random) {
+    // One whole Cache name. Merge (mix = [A, B]): given names take A's head and B's ending,
+    // places A's head and B's tail; the family name, title and bynames follow `root`, one of the two.
+    function cacheOne(form, root, kind, rnd = Math.random, mix = null) {
+        const pair = Array.isArray(mix) && mix.length === 2 && mix[0] !== mix[1] ? mix : null;
         if (form.target === 'place') {
-            const p = cachePlace(root, PLACE_CATS[normalizeKind('place', form.kind)] || null, rnd);
-            return { name: p.text, frags: p.frags, root, cache: true };
+            const p = pair ? cachePlace(pair[0], PLACE_CATS[normalizeKind('place', form.kind)] || null, rnd, false, pair[1])
+                : cachePlace(root, PLACE_CATS[normalizeKind('place', form.kind)] || null, rnd);
+            return { name: p.text, frags: p.frags, root: pair ? pair[0] : root, ...(pair ? { mix: pair } : {}), cache: true };
         }
         const R = CACHE[root];
         const g = genderOf(form, rnd);
         const parts = (Array.isArray(form.parts) ? form.parts : ['given']).filter(p => NAME_PARTS.includes(p));
         const fixed = parts.includes('family') ? cleanPiece(form.fixedFamily) : '';
         const pieces = [];
-        let given = cacheGiven(root, g, rnd);
+        const mixed = pair ? { mix: pair } : {};
+        // A middle name mixes the same two roots the other way round, for variety.
+        const giv = (flip = false) => (pair ? cacheGiven(flip ? pair[1] : pair[0], g, rnd, flip ? pair[0] : pair[1]) : cacheGiven(root, g, rnd));
+        let given = giv();
         if (kind === 'scholar') given = latinGiven(given, g);
         if (kind === 'religious') pieces.push({ role: 'title', text: pick(R.titles[g], rnd), fixed: true });
         if (kind === 'royal') pieces.push({ role: 'title', text: royalTitle(root, g, rnd), fixed: true });
         if (parts.includes('given') || !parts.length) pieces.push({ role: 'given', text: given.text, frags: given.frags });
         if (parts.includes('middle')) {
-            let m = cacheGiven(root, g, rnd);
+            let m = giv(rnd() < 0.5);
             if (kind === 'scholar') m = latinGiven(m, g);
             pieces.push({ role: 'middle', text: m.text, frags: m.frags });
         }
@@ -1325,9 +1368,9 @@
             else { const f = cacheFamily(root, g, rnd); pieces.push({ role: 'family', text: f.text, frags: f.frags, branch: f.branch }); }
         }
         if (!pieces.some(p => p.role === 'given')) pieces.splice(pieces[0]?.role === 'title' ? 1 : 0, 0, { role: 'given', text: given.text, frags: given.frags });
-        if (pieces.length === 1) return { name: pieces[0].text, frags: pieces[0].frags, root, cache: true };
+        if (pieces.length === 1) return { name: pieces[0].text, frags: pieces[0].frags, root, ...mixed, cache: true };
         // The gender is kept so a swapped part still fits (no "la Belle" after "Roi").
-        return { name: pieces.map(p => p.text).join(' '), pieces, root, cache: true, kind, gender: g };
+        return { name: pieces.map(p => p.text).join(' '), pieces, root, ...mixed, cache: true, kind, gender: g };
     }
     // Sound feel, by letters (no AI here to judge by ear).
     const SOUND_LETTERS = { soft: /[lrmnwy]|[aeiou]/g, hard: /[ktpdgb]|c(?![eiy])|ck/g, sharp: /sh|th|[szxfv]|c(?=[eiy])/g, bright: /[ie]/g, dark: /[oua]/g };
@@ -1351,12 +1394,16 @@
         const out = [];
         const seen = new Set();
         // Each name takes turns through the chosen roots, starting at a random one.
+        // Merge: names take turns through pairs of two different roots instead.
+        const pairs = cacheMerge(form) ? rootPairs(roots, rnd) : null;
         const start = Math.floor(rnd() * roots.length);
         for (let i = 0; i < count; i++) {
-            const root = roots[(start + i) % roots.length];
+            const pair = pairs ? pairs[i % pairs.length] : null;
+            const root = pair ? null : roots[(start + i) % roots.length];
             const pool = [];
             for (let k = 0; k < 60; k++) {
-                const n = cacheOne(form, root, pick(kinds, rnd), rnd);
+                // The family name and title side with either root.
+                const n = pair ? cacheOne(form, pick(pair, rnd), pick(kinds, rnd), rnd, pair) : cacheOne(form, root, pick(kinds, rnd), rnd);
                 const texts = memoryNames(n).map(t => t.toLowerCase());
                 if (seen.has(n.name.toLowerCase()) || texts.some(t => banned.has(t))) continue;
                 pool.push(n);
@@ -1378,6 +1425,11 @@
         }
         return out;
     }
+    // 🔄 on a whole Cache name: the same root, or the same two roots when merged.
+    function rerollForm(src, form) {
+        if (Array.isArray(src.mix) && src.mix.length === 2) return { ...form, roots: [...src.mix], rootMix: 'merge' };
+        return { ...form, roots: [src.root || cacheRoots(form)[0]], rootMix: 'split' };
+    }
     // Swap one part of a Cache name, the Cache way.
     function cachePiece(src, k, form, avoid = [], rnd = Math.random) {
         const p = src.pieces?.[k];
@@ -1389,7 +1441,11 @@
         const banned = new Set([p.text, ...avoid].map(a => String(a).toLowerCase()));
         for (let i = 0; i < 40; i++) {
             let next;
-            if (p.role === 'given' || p.role === 'middle') { next = cacheGiven(root, g, rnd); if (kind === 'scholar') next = latinGiven(next, g); }
+            if (p.role === 'given' || p.role === 'middle') {
+                const pair = Array.isArray(src.mix) && src.mix.length === 2 ? (p.role === 'middle' && rnd() < 0.5 ? [src.mix[1], src.mix[0]] : src.mix) : null;
+                next = pair ? cacheGiven(pair[0], g, rnd, pair[1]) : cacheGiven(root, g, rnd);
+                if (kind === 'scholar') next = latinGiven(next, g);
+            }
             else if (p.role === 'origin') { const pl = cachePlace(root, null, rnd, true); next = { text: withParticle(R.of, pl.text).joined, frags: pl.frags }; }
             else if (p.role === 'epithet') next = kind === 'royal' ? royalEpithet(root, rnd, g) : warEpithet(root, rnd, g);
             else if (p.role === 'family' && kind === 'scholar') next = scholarFamily(root, g, rnd);
@@ -1411,14 +1467,20 @@
         const lang = detectLang();
         const groups = r.pieces ? r.pieces.filter(p => p.frags?.length) : (r.frags ? [{ frags: r.frags }] : []);
         if (!groups.length) return '';
+        const mix = Array.isArray(r.mix) && r.mix.length === 2 && r.mix.every(x => L.roots[x]) ? r.mix : null;
+        // Merged names say which root each fragment came from: "Silv wood (Latin) + wick farm (Old English)".
         const one = f => {
             const mean = lang === 'ko' ? f.ko : f.en;
-            return `<span class="tbd-frag"><b>${escapeHtml(f.t)}</b>${mean ? ` ${escapeHtml(mean)}` : ''}</span>`;
+            const from = mix && L.roots[f.r] ? ` <span class="tbd-frag-root">(${escapeHtml(L.roots[f.r])})</span>` : '';
+            return `<span class="tbd-frag"><b>${escapeHtml(f.t)}</b>${mean ? ` ${escapeHtml(mean)}` : ''}${from}</span>`;
         };
+        // A part made from one root only (the family name of a merged name) says that root once.
+        const side = p => (mix && r.root && L.roots[r.root] && !p.frags.some(f => f.r) ? ` <span class="tbd-frag-root">· ${escapeHtml(L.roots[r.root])}</span>` : '');
         const body = groups.map(p => p.frags.map(one).join(' + ')
-            + (p.branch && L.branch?.[p.branch] ? ` <span class="tbd-frag-root">· ${escapeHtml(L.branch[p.branch])}</span>` : ''))
+            + (p.branch && L.branch?.[p.branch] ? ` <span class="tbd-frag-root">· ${escapeHtml(L.branch[p.branch])}</span>` : '') + side(p))
             .join('<span class="tbd-nick-dot" aria-hidden="true"> / </span>');
-        const root = r.root && L.roots[r.root] ? ` <span class="tbd-frag-root">· ${escapeHtml(L.roots[r.root])}</span>` : '';
+        const rootText = mix ? mix.map(x => L.roots[x]).join(' + ') : (r.root && L.roots[r.root]) || '';
+        const root = rootText ? ` <span class="tbd-frag-root">· ${escapeHtml(rootText)}</span>` : '';
         // After an AI polish, show the name the fragments really made, so the change can be seen.
         const was = r.polished && r.orig && r.orig !== r.name ? ` <span class="tbd-frag-root">· ${escapeHtml(L.polishWas)}: ${escapeHtml(r.orig)}</span>` : '';
         return `<div class="tbd-frags"><span class="tbd-nicks-label">${escapeHtml(L.fragments)}:</span> ${body}${root}${was}</div>`;
@@ -1427,10 +1489,11 @@
     // and a full name goes as one whole name.
     function aiForm(form, src) {
         if (!isCache(form)) return form;
-        const roots = cacheRoots(form).map(r => STRINGS.en.roots[r]).join(' and ');
+        const mix = Array.isArray(src?.mix) && src.mix.length === 2 ? src.mix : null;
+        const roots = (mix || cacheRoots(form)).map(r => STRINGS.en.roots[r]).join(' and ');
         const full = form.target === 'person' && /\s/.test(String(src?.name || ''));
         return {
-            ...form, method: 'ai', vibe: 'custom', customVibe: `built from ${roots} name roots`, realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'],
+            ...form, method: 'ai', vibe: 'custom', customVibe: mix ? `blending ${roots} name roots in one name` : `built from ${roots} name roots`, realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'],
             ...(full ? { target: 'other', kind: 'any', kindText: 'a full name for a person; keep the same number of words and any title or "of …" part' } : {}),
         };
     }
@@ -1447,7 +1510,7 @@
     function buildPolishMessages(list, form, opts = {}) {
         const lang = opts.lang || 'en';
         const place = form.target === 'place';
-        const roots = [...new Set(list.map(n => n.root).filter(Boolean))].map(r => STRINGS.en.roots[r]).join(' and ');
+        const roots = [...new Set(list.flatMap(n => (Array.isArray(n.mix) ? n.mix : [n.root])).filter(Boolean))].map(r => STRINGS.en.roots[r]).join(' and ');
         const full = list.some(n => n.pieces);
         const lines = [];
         lines.push(`These ${place ? 'place names' : 'names for people'} were built by joining real ${roots || 'old'} name elements. Some joins may sound stiff.`);
@@ -1564,7 +1627,7 @@
     const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
     function cleanFrags(list) {
         if (!Array.isArray(list)) return undefined;
-        const out = list.filter(f => f && typeof f.t === 'string').slice(0, 12).map(f => ({ t: str(f.t, 30), en: str(f.en, 60), ko: str(f.ko, 60) }));
+        const out = list.filter(f => f && typeof f.t === 'string').slice(0, 12).map(f => ({ t: str(f.t, 30), en: str(f.en, 60), ko: str(f.ko, 60), ...(CACHE_ROOTS.includes(f.r) ? { r: f.r } : {}) }));
         return out.length ? out : undefined;
     }
     // Only known fields, of the right kind and size (also what makes an imported file safe to keep).
@@ -1582,6 +1645,7 @@
         if (r.polished) e.polished = true;
         const orig = str(r.orig, 120); if (orig && orig !== name) e.orig = orig;
         if (CACHE_ROOTS.includes(r.root)) e.root = r.root;
+        if (Array.isArray(r.mix) && r.mix.length === 2 && r.mix[0] !== r.mix[1] && r.mix.every(x => CACHE_ROOTS.includes(x))) e.mix = [r.mix[0], r.mix[1]];
         const frags = cleanFrags(r.frags); if (frags) e.frags = frags;
         if (typeof r.tag === 'string' && REFINE_DESC[r.tag]) e.tag = r.tag;
         const from = str(typeof r.from === 'object' && r.from ? r.from.name : r.from, 120); if (from) e.from = from;
@@ -1667,7 +1731,7 @@
         extrasOpen: false,
         moreOpen: false,
         wordNames: 'mark',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [] },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [], rootMix: 'split', aiRootMix: 'split' },
     };
 
     // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
@@ -1699,6 +1763,8 @@
         st.form.roots = cacheRoots(st.form);
         st.form.ckinds = cacheKinds(st.form);
         st.form.aiRoots = (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x));
+        if (!ROOT_MIXES.includes(st.form.rootMix)) st.form.rootMix = 'split';
+        if (!ROOT_MIXES.includes(st.form.aiRootMix)) st.form.aiRootMix = 'split';
         st.count = clampInt(st.count, 1, 30, 5);
         if (!Array.isArray(st.found)) st.found = [];
         return st;
@@ -2004,7 +2070,12 @@
         const shape = nameShape(form);
         const what = form.target === 'place' ? 'place-name' : 'name';
         const each = roots.length > 1 ? '; each name below says which' : '';
-        const family = shape && shape.roles.includes('family') && !shape.fixed ? ' Family names follow that root\'s own surname customs too.' : '';
+        const hasFamily = shape && shape.roles.includes('family') && !shape.fixed;
+        if (aiMerge(form)) {
+            const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
+            return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}`;
+        }
+        const family = hasFamily ? ' Family names follow that root\'s own surname customs too.' : '';
         return `Name roots: build each name from ${rootNames(roots)} ${what} elements (word roots, endings and naming customs)${each}.${family}`;
     }
     const ROOT_NOTE_RULE = "Don't state what the name means or where it comes from; describe only its feel.";
@@ -2061,7 +2132,8 @@
         const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
         seeds.forEach((s, i) => {
             const parts = [];
-            if (s.root) parts.push(`${STRINGS.en.roots[s.root]} roots`);
+            if (s.root && s.root2) parts.push(`${STRINGS.en.roots[s.root]} + ${STRINGS.en.roots[s.root2]} roots`);
+            else if (s.root) parts.push(`${STRINGS.en.roots[s.root]} roots`);
             if (s.shape) parts.push(`shape: ${s.shape}`);
             if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
             if (s.syllables) parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
@@ -2106,7 +2178,7 @@
         lines.push(`Make ${count} new variant${count === 1 ? '' : 's'} that keep its overall feel and rough shape, but change it to be ${REFINE_DESC[mode] || REFINE_DESC.soft}.`);
         if (shape) lines.push('Reshape mostly the given and middle names (and other invented parts); keep titles and particles unless they clash.');
         const roots = aiRootsUsed(form);
-        if (roots.length) lines.push(`Keep it built from ${rootNames(roots)} name roots.`);
+        if (roots.length) lines.push(rootsPhrase(form, roots, 'keep'));
         lines.push(SOUND_RULE);
         lines.push('Each variant must be clearly different from the original and from each other. Keep Western, English-readable spelling.');
         lines.push(...shapeRules(form));
@@ -2158,7 +2230,7 @@
         if (form.gender && form.gender !== 'any' && ['given', 'middle', 'title', 'religious'].includes(role)) lines.push(`Gender feel: ${form.gender}.`);
         if (role === 'given') { const likeLine = likeRule(form, 'given name'); if (likeLine) lines.push(likeLine); }
         const roots = aiRootsUsed({ ...form, target: 'person' });
-        if (roots.length && REAL_ROLES.includes(role)) lines.push(`Build it from ${rootNames(roots)} name roots.`);
+        if (roots.length && REAL_ROLES.includes(role)) lines.push(rootsPhrase({ ...form, target: 'person' }, roots, 'build'));
         const real = realPieceRule(form, role);
         if (real) lines.push(real);
         const realAsk = !!real && realMode(form) !== 'invented';
@@ -2462,6 +2534,7 @@
         const kinds = cacheKinds(form);
         return `<div class="tbd-wide tbd-chipset"><div class="tbd-chips-label">${escapeHtml(L.rootsLabel)}</div>
             <div class="tbd-chips">${CACHE_ROOTS.map(v => chipHtml('root', v, L.roots[v], roots.includes(v))).join('')}</div>
+            ${rootMixHtml('rootmix', 'tbd_rootmix', form.rootMix, roots.length > 1)}
             ${form.target === 'person' ? `<div class="tbd-chips-label">${escapeHtml(L.ckLabel)}</div>
             <div class="tbd-chips">${CACHE_KINDS.map(v => chipHtml('ckind', v, L.ck[v], kinds.includes(v))).join('')}</div>` : ''}</div>`;
     }
@@ -2472,7 +2545,15 @@
         const roots = aiRoots(form);
         return `<div class="tbd-wide tbd-chipset tbd-ai-only" id="tbd_airoots"><div class="tbd-chips-label">${escapeHtml(L.rootsLabel)}</div>
             <div class="tbd-chips">${chipHtml('airoot', 'any', L.aiRootAny, !roots.length)}${CACHE_ROOTS.map(v => chipHtml('airoot', v, L.roots[v], roots.includes(v))).join('')}</div>
+            ${rootMixHtml('airootmix', 'tbd_airootmix', form.aiRootMix, roots.length > 1)}
             ${aiRootNoteHtml(form)}</div>`;
+    }
+    // Split / Merge, right under the roots; only shown with two or more roots.
+    function rootMixHtml(group, id, value, show) {
+        const L = T();
+        const v = value === 'merge' ? 'merge' : 'split';
+        return `<div class="tbd-chips tbd-mix" id="${id}"${show ? '' : ' hidden'}>${ROOT_MIXES.map(m =>
+            `<button type="button" class="tbd-chip" data-chip="${group}" data-v="${m}" aria-pressed="${v === m ? 'true' : 'false'}" title="${escapeHtml(L.rootMixTip[m])}">${escapeHtml(L.rootMix[m])}</button>`).join('')}</div>`;
     }
     function aiRootNoteHtml(form) {
         const off = aiRootsOff(form);
@@ -2511,7 +2592,8 @@
         if (like.length) on.push(`${L.like.replace(/\s*\(.*\)\s*$/, '')}: ${like.join(', ')}`);
         if (!isCache(form) && form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
         const roots = aiRoots(form);
-        const rootsBit = roots.length ? `${L.rootsLabel}: ${roots.map(r => L.roots[r]).join(', ')}` : '';
+        const merged = roots.length > 1 && form.aiRootMix === 'merge';
+        const rootsBit = roots.length ? `${L.rootsLabel}: ${roots.map(r => L.roots[r]).join(merged ? ' + ' : ', ')}${merged ? ` (${L.rootMix.merge})` : ''}` : '';
         // Roots another choice overrides show dimmed, so it's clear they're set but not used now.
         const offBit = rootsBit && aiRootsOff(form) ? `<span class="tbd-fold-off" title="${escapeHtml(L.aiRootOff[aiRootsOff(form)])}">${escapeHtml(rootsBit)}</span>` : '';
         if (rootsBit && !offBit) on.push(rootsBit);
@@ -2705,6 +2787,8 @@
             roots: cacheRoots(st.form),
             ckinds: cacheKinds(st.form),
             aiRoots: (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x)),
+            rootMix: st.form.rootMix === 'merge' ? 'merge' : 'split',
+            aiRootMix: st.form.aiRootMix === 'merge' ? 'merge' : 'split',
         };
         save();
         return st.form;
@@ -2845,7 +2929,7 @@
     async function polishReroll(src, st) {
         const form = src.form || st.form;
         const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
-        const [n] = cacheNames({ ...form, roots: [src.root || cacheRoots(form)[0]] }, 1, avoid);
+        const [n] = cacheNames(rerollForm(src, form), 1, avoid);
         if (!n) { status = { kind: 'error', text: T().err(T().cacheEmpty) }; renderResultsOnly(); return; }
         const fresh0 = await polishOne(src, n, st, 'reroll');
         const at = results.indexOf(src);
@@ -2997,7 +3081,7 @@
     function cacheReroll(src, st) {
         const form = src.form || st.form;
         const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
-        const one = { ...form, roots: [src.root || cacheRoots(form)[0]] };
+        const one = rerollForm(src, form);
         const [n] = cacheNames(one, 1, avoid);
         const at = results.indexOf(src);
         if (!n) status = { kind: 'error', text: T().err(T().cacheEmpty) };
@@ -3371,12 +3455,23 @@
                 const set = new Set(v0 === 'any' ? [] : form.aiRoots);
                 if (v0 !== 'any') { if (set.has(v0)) set.delete(v0); else set.add(v0); }
                 form.aiRoots = CACHE_ROOTS.filter(x => set.has(x));
-                $('#tbd_airoots .tbd-chip').each(function () {
+                $('#tbd_airootmix').prop('hidden', form.aiRoots.length < 2);
+                $('#tbd_airoots .tbd-chip[data-chip=airoot]').each(function () {
                     const v = String($(this).data('v'));
                     $(this).attr('aria-pressed', (v === 'any' ? !form.aiRoots.length : set.has(v)) ? 'true' : 'false');
                 });
                 save();
                 refreshAiRoots(form);
+                return;
+            }
+            if (group === 'rootmix' || group === 'airootmix') {
+                const key = group === 'rootmix' ? 'rootMix' : 'aiRootMix';
+                form[key] = v0 === 'merge' ? 'merge' : 'split';
+                $(this).closest('.tbd-mix').find('.tbd-chip').each(function () {
+                    $(this).attr('aria-pressed', String($(this).data('v')) === form[key] ? 'true' : 'false');
+                });
+                save();
+                if (key === 'aiRootMix') refreshAiRoots(form);
                 return;
             }
             if (group === 'root' || group === 'ckind') {
@@ -3386,6 +3481,7 @@
                 if (set.has(v0)) { if (set.size === 1) return; set.delete(v0); } else set.add(v0);
                 form[key] = all.filter(x => set.has(x));
                 $(this).attr('aria-pressed', set.has(v0) ? 'true' : 'false');
+                if (key === 'roots') $('#tbd_rootmix').prop('hidden', form.roots.length < 2);
                 save();
                 return;
             }
@@ -3532,7 +3628,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },

@@ -1463,3 +1463,127 @@ test('sweep: Slavic -ski names, Latin scholars and places come out well-formed',
     assert.equal(api.latinGiven({ text: 'Apollokles', frags: [] }, 'm').text, 'Apollokles');
     assert.equal(api.latinGiven({ text: 'Neolaos', frags: [] }, 'm').text, 'Neolaus');
 });
+
+// ---------- v0.2.8: Split / Merge ----------
+function mergeSweep(api, n = 12) {
+    const rnd = seeded(2028);
+    const people = [], places = [];
+    for (const a of api.CACHE_ROOTS) for (const b of api.CACHE_ROOTS) {
+        if (a === b) continue;
+        for (const kind of api.CACHE_KINDS) for (const gender of ['masculine', 'feminine']) {
+            for (let i = 0; i < n; i++) {
+                const side = rnd() < 0.5 ? a : b;
+                people.push({ root: side, mix: [a, b], kind, g: gender[0], n: api.cacheOne({ target: 'person', parts: ['given', 'middle', 'family'], gender }, side, kind, rnd, [a, b]) });
+            }
+        }
+        for (let i = 0; i < n * 3; i++) places.push({ mix: [a, b], n: api.cacheOne({ target: 'place', kind: 'any' }, a, 'common', rnd, [a, b]) });
+    }
+    return { people, places };
+}
+test('merge: only with two or more roots, and each name gets two different roots', () => {
+    const { api } = load();
+    assert.equal(api.cacheMerge({ target: 'person', method: 'cache', roots: ['latin'], rootMix: 'merge' }), false);
+    assert.equal(api.cacheMerge({ target: 'person', method: 'cache', roots: ['latin', 'norse'], rootMix: 'split' }), false);
+    assert.equal(api.cacheMerge({ target: 'person', method: 'ai', roots: ['latin', 'norse'], rootMix: 'merge' }), false);
+    assert.equal(api.cacheMerge({ target: 'place', method: 'polish', roots: ['latin', 'norse'], rootMix: 'merge' }), true);
+    const pairs = api.rootPairs(['latin', 'norse', 'celtic'], seeded(3));
+    assert.equal(pairs.length, 6);
+    for (const [a, b] of pairs) assert.notEqual(a, b);
+    const form = { target: 'person', method: 'cache', roots: ['latin', 'norse', 'celtic'], rootMix: 'merge', gender: 'any', parts: ['given', 'family'], ckinds: ['common'] };
+    const names = api.cacheNames(form, 12, [], seeded(5));
+    assert.equal(names.length, 12);
+    for (const n of names) {
+        assert.equal(n.mix.length, 2);
+        assert.notEqual(n.mix[0], n.mix[1]);
+        assert.ok(n.mix.includes(n.root), 'family name follows one of the two');
+        const given = n.pieces.find(p => p.role === 'given');
+        assert.deepEqual([...given.frags.map(f => f.r)], [...n.mix]);
+    }
+    // Split stays as it was: one root per name, no mix.
+    for (const n of api.cacheNames({ ...form, rootMix: 'split' }, 6, [], seeded(5))) assert.equal(n.mix, undefined);
+});
+test('merge: places take the head from one root and the tail from the other', () => {
+    const { api } = load();
+    const names = api.cacheNames({ target: 'place', method: 'cache', roots: ['latin', 'oldenglish'], rootMix: 'merge', kind: 'any' }, 10, [], seeded(9));
+    for (const n of names) {
+        assert.equal(n.mix.length, 2);
+        assert.ok(n.frags.length >= 2);
+        assert.ok(n.frags.every(f => n.mix.includes(f.r)), n.name);
+        assert.ok(new Set(n.frags.map(f => f.r)).size === 2, n.name);
+    }
+});
+test('merge: fragments line names each root, and 🔄 keeps the same two roots', () => {
+    const { api } = load({ lang: 'ko' });
+    const n = api.cacheOne({ target: 'place', kind: 'any' }, 'latin', 'common', seeded(4), ['latin', 'oldenglish']);
+    const html = api.fragsHtml(n);
+    assert.match(html, /\(라틴\)/);
+    assert.match(html, /\(옛 영어\)/);
+    assert.match(html, /라틴 \+ 옛 영어/);
+    const f = api.rerollForm(n, { roots: ['greek'] });
+    assert.deepEqual([...f.roots], ['latin', 'oldenglish']);
+    assert.equal(f.rootMix, 'merge');
+    assert.deepEqual([...api.rerollForm({ root: 'greek' }, { roots: ['latin', 'norse'], rootMix: 'merge' }).roots], ['greek']);
+    // Swapping the given name keeps the two roots; the family name stays with its one root.
+    const p = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'masculine' }, 'norse', 'common', seeded(8), ['latin', 'norse']);
+    for (let i = 0; i < 10; i++) {
+        const g = api.cachePiece(p, 0, {}, [], seeded(20 + i));
+        assert.ok(g.frags.every(x => ['latin', 'norse'].includes(x.r)));
+    }
+    const fam = p.pieces.find(x => x.role === 'family');
+    assert.ok(fam.frags.every(x => !x.r));
+    assert.match(api.fragsHtml(p), /· 북유럽/);
+});
+test('merge: Found keeps the two roots, and bad values are dropped', () => {
+    const { api } = load();
+    const e = api.foundEntry({ name: 'Silvwick', target: 'place', cache: true, root: 'latin', mix: ['latin', 'oldenglish'], frags: [{ t: 'Silv', en: 'wood', ko: '숲', r: 'latin' }, { t: 'wick', en: 'farm', ko: '마을', r: 'nope' }] });
+    assert.deepEqual([...e.mix], ['latin', 'oldenglish']);
+    assert.equal(e.frags[0].r, 'latin');
+    assert.equal(e.frags[1].r, undefined);
+    assert.equal(api.foundEntry({ name: 'Silvwick', mix: ['latin', 'latin'] }).mix, undefined);
+    assert.equal(api.foundEntry({ name: 'Silvwick', mix: ['latin', 'x'] }).mix, undefined);
+});
+test('merge sweep: merged names stay sayable and fit the gender', () => {
+    const { api } = load();
+    const { people, places } = mergeSweep(api);
+    for (const { g, n } of people) {
+        for (const p of n.pieces || []) if (['given', 'middle'].includes(p.role)) assert.ok(api.sayable(p.text), n.name);
+        if (g === 'f') {
+            for (const w of n.name.split(/\s+/)) assert.ok(!MALE_ONLY.includes(w), n.name);
+            assert.doesNotMatch(n.name, /\b(le|der) [A-Z]/, n.name);
+            assert.doesNotMatch(n.name, /\b(Roi|Duc|Comte|König|Kaiser|Herzog|Fürst|Graf|King|Prince|Duke|Earl|Jarl|Rex|Imperator|Dux|Princeps|Basileus|Anax|Despotes|Archon|Knyaz|Tsar|Voivode)\b/, n.name);
+        }
+        assert.doesNotMatch(n.name, /(cs|ks|tss)k[aiy]\b|[ck]sk[aiy]\b/, n.name);
+        // A merged given name can be a real one (Gai + ius → Gaius); only Latinized family names must not end -aius.
+        const fam = (n.pieces || []).find(p => p.role === 'family');
+        if (fam) assert.doesNotMatch(fam.text, /aius\b|ovaius\b/, n.name);
+    }
+    for (const { n } of places) {
+        assert.ok(api.sayable(n.name.replace(/[-\s].*$/, '')) || /\s|-/.test(n.name), n.name);
+        if (n.frags.length >= 2) assert.notEqual(n.frags[0].t.toLowerCase(), n.frags[1].t.toLowerCase());
+    }
+});
+test('merge: the AI gets two roots per name, one short rule, and the ✨ line says blend', () => {
+    const { api } = load();
+    const form = { target: 'person', method: 'ai', vibe: 'fantasy', aiRoots: ['latin', 'celtic', 'norse'], aiRootMix: 'merge', parts: ['given'] };
+    assert.equal(api.aiMerge(form), true);
+    assert.equal(api.aiMerge({ ...form, aiRoots: ['latin'] }), false);
+    assert.equal(api.aiMerge({ ...form, likeText: 'Elric' }), false, 'like words switch the roots off');
+    const seeds = api.rollSeeds(6, form, seeded(2));
+    for (const s of seeds) { assert.ok(s.root && s.root2); assert.notEqual(s.root, s.root2); }
+    const msgs = api.buildMessages(form, seeds);
+    const text = msgs.map(m => m.content).join('\n');
+    assert.match(text, /blend two roots in each name/);
+    assert.match(text, /\d\. given name: |\d\. (Latin|Celtic|Norse) \+ (Latin|Celtic|Norse) roots/);
+    assert.match(text, /(Latin|Celtic|Norse) \+ (Latin|Celtic|Norse) roots/);
+    assert.match(api.rootsPhrase(form, ['latin', 'celtic'], 'keep'), /^Keep it blending Latin and Celtic/);
+    assert.match(api.rootsPhrase({ ...form, aiRootMix: 'split' }, ['latin', 'celtic'], 'keep'), /^Keep it built from Latin or Celtic/);
+    // Split: one root per name, as before.
+    for (const s of api.rollSeeds(4, { ...form, aiRootMix: 'split' }, seeded(2))) assert.equal(s.root2, undefined);
+});
+test('merge: settings default to Split and bad values fall back', () => {
+    const { api, extensionSettings } = load({ extensionSettings: { tbd_names: { form: { rootMix: 'weird', aiRootMix: 'merge' } } } });
+    const st = api.settings();
+    assert.equal(st.form.rootMix, 'split');
+    assert.equal(st.form.aiRootMix, 'merge');
+    assert.ok(extensionSettings);
+});
