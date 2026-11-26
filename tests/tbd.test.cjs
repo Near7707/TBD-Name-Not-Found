@@ -1659,3 +1659,77 @@ test('family name and "of a place" never reuse a part of the given name', () => 
         assert.equal(api.sharedStems(n.pieces[0].frags, f.frags), false, `${n.pieces[0].text} ${f.text}`);
     }
 });
+
+// ---------- v0.2.11 ----------
+test('v0.2.11: Greek -os parts count as the same stem (Staninikos Nikodemides)', () => {
+    const { api } = load();
+    assert.equal(api.sharedStems([{ t: 'Stani' }, { t: 'nikos' }], [{ t: 'Niko' }, { t: 'demos' }, { t: 'ides' }]), true);
+    assert.equal(api.sharedStems([{ t: 'Theo' }, { t: 'doros' }], [{ t: 'Philo' }, { t: 'kles' }, { t: 'ides' }]), false);
+    assert.equal(api.sharedStems([{ t: 'Cad' }, { t: 'us' }], [{ t: 'Mac' }, { t: 'us' }]), false, 'a bare -us is too short to count');
+    const rnd = seeded(77);
+    for (let i = 0; i < 400; i++) {
+        const n = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'masculine' }, 'greek', 'common', rnd);
+        const names = n.pieces.filter(p => p.role === 'given').flatMap(p => p.frags || []);
+        const fam = n.pieces.find(p => p.role === 'family');
+        assert.equal(api.sharedStems(names, fam.frags || []), false, n.name);
+    }
+});
+test('v0.2.11: a Roman woman\'s looks name is labelled looks, not trade', () => {
+    const { api } = load();
+    const rnd = seeded(5);
+    for (let i = 0; i < 300; i++) {
+        const f = api.cacheFamily('latin', 'f', rnd);
+        assert.notEqual(f.branch, 'trade', f.text);
+    }
+});
+test('v0.2.11: a nickname is never the name or one of its words', () => {
+    const { api } = load();
+    assert.deepEqual([...api.cleanNicks(['Pell', 'Pelly', 'acerby'], 'Pell Acerby')], ['Pelly']);
+    assert.deepEqual([...api.cleanNicks(['Nuala', 'Nu'], 'Nuala')], ['Nu']);
+});
+test('v0.2.11: "AI polished" only when the spelling changed', () => {
+    const { api } = load();
+    const kept = { name: 'Ferrand', cache: true, polished: true, orig: 'Ferrand', read: 'x' };
+    const changed = { name: 'Ferand', cache: true, polished: true, orig: 'Ferrand' };
+    assert.equal(api.polishChanged(kept), false);
+    assert.equal(api.polishChanged(changed), true);
+    assert.match(api.tagsHtml(kept), />CACHE</);
+    assert.doesNotMatch(api.tagsHtml(kept), /AI polished/);
+    assert.match(api.tagsHtml(changed), /AI polished/);
+    const form = { target: 'person', method: 'polish', parts: ['given'] };
+    assert.match(api.reviewText([{ ...kept, form }]), /CACHE, AI read only/);
+    assert.match(api.reviewText([{ ...changed, form }]), /AI polished/);
+});
+test('v0.2.11: one list never gives the same byname twice, and small ordinals come first', () => {
+    const { api } = load();
+    for (const root of api.CACHE_ROOTS) for (const kind of ['royal', 'warrior']) for (const gender of ['masculine', 'feminine']) {
+        const list = api.cacheNames({ target: 'person', method: 'cache', gender, roots: [root], ckinds: [kind], parts: ['given'] }, 5, [], seeded(9));
+        const epi = list.flatMap(n => n.pieces.filter(p => p.role === 'epithet' && !/^[IVX]+$/.test(p.text)).map(p => p.text));
+        assert.equal(new Set(epi).size, epi.length, `${root} ${kind} ${gender}: ${epi.join(', ')}`);
+    }
+    const rnd = seeded(4), count = {};
+    for (let i = 0; i < 2000; i++) { const t = api.pickOrdinal(rnd).t; count[t] = (count[t] || 0) + 1; }
+    assert.ok(count.II > count.V && count.III > count.VI && count.V > count.IX);
+    assert.ok(count.IX < 2000 * 0.05);
+});
+test('v0.2.11: AI roots drop the inspiration word and ask for new names, not real ones', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    const seeds = api.rollSeeds(10, form, seeded(3));
+    assert.ok(seeds.every(s => !s.spark));
+    const text = api.buildMessages(form, seeds)[1].content;
+    assert.doesNotMatch(text, /inspiration/i);
+    assert.match(text, /not names that already exist\. Any real word in a name comes from those roots' own languages/);
+    const split = { ...form, aiRootMix: 'split', aiRoots: ['celtic'] };
+    const t2 = api.buildMessages(split, api.rollSeeds(5, split, seeded(3)))[1].content;
+    assert.match(t2, /\(word roots and endings\)/);
+    assert.doesNotMatch(t2, /naming customs/);
+    // Real-name modes keep the customs and don't get the "new names" line.
+    const real = { ...split, realNames: 'near' };
+    const t3 = api.buildMessages(real, api.rollSeeds(5, real, seeded(3)))[1].content;
+    assert.match(t3, /naming customs/);
+    assert.doesNotMatch(t3, /not names that already exist/);
+    // No roots: the inspiration word is still there.
+    const plain = { ...form, aiRoots: [] };
+    assert.ok(api.rollSeeds(10, plain, seeded(3)).some(s => s.spark));
+});

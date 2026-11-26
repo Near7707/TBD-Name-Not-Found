@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.10
+// TBD — Name Not Found v0.2.11
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -81,6 +81,7 @@
             cacheEmpty: 'No new names left in the cache for these choices. Try other roots or conditions.',
             needPick: { roots: 'Pick at least one root.', kinds: 'Pick at least one kind of name.' }, needErr: m => `400 — ${m}`,
             polishTag: 'AI polished', polishTip: 'Built from name fragments, then the AI smoothed the sound a little. The meanings are from the cache, not the AI.',
+            keptTip: 'Built from name fragments. The AI read it and left the spelling as it was; the reading and note are from the AI.',
             polishWas: 'was', polishing: 'Polishing…',
             polishFail: '206 — the AI polish failed; showing plain Cache names.',
             polishSome: (n, all) => `206 — ${n} of ${all} polished; the rest are plain Cache names.`,
@@ -181,6 +182,7 @@
             cacheEmpty: '이 조건으론 캐시에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
             needPick: { roots: '뿌리를 하나 이상 골라 주세요.', kinds: '이름 종류를 하나 이상 골라 주세요.' }, needErr: m => `400 — ${m}`,
             polishTag: 'AI 다듬음', polishTip: '이름 조각으로 만든 뒤 AI가 소리를 살짝 다듬었어요. 뜻은 AI가 아니라 캐시 자료예요.',
+            keptTip: '이름 조각으로 만든 이름이에요. AI가 보고 철자는 그대로 뒀어요. 읽는 법과 설명은 AI가 썼어요.',
             polishWas: '원래', polishing: '다듬는 중…',
             polishFail: '206 — AI 다듬기에 실패해서 조각 이름 그대로 보여요.',
             polishSome: (n, all) => `206 — ${all}개 중 ${n}개만 다듬었어요. 나머지는 조각 이름 그대로예요.`,
@@ -317,11 +319,13 @@
     // "nicks" from the answer: a list (or a comma string), a few short name-like bits, not the name itself.
     function cleanNicks(v, name = '') {
         const list = Array.isArray(v) ? v : typeof v === 'string' ? v.split(/[,·/]/) : [];
+        // v0.2.11: not the whole name, and not one of its words either (Pell Acerby → "Pell" is no nickname).
         const own = String(name).trim().toLowerCase();
+        const words = new Set([own, ...own.split(/[\s-]+/).filter(Boolean)]);
         const out = [];
         for (const x of list) {
             const t = cleanPiece(typeof x === 'string' ? x : '');
-            if (!t || t.length > 20 || !looksLikeName(t) || t.toLowerCase() === own) continue;
+            if (!t || t.length > 20 || !looksLikeName(t) || words.has(t.toLowerCase())) continue;
             if (!out.some(o => o.toLowerCase() === t.toLowerCase())) out.push(t);
         }
         return out.slice(0, 3);
@@ -614,7 +618,10 @@
         // Real names come from real use, so the made-up sound nudges (ending, texture, inspiration word) go.
         // The start letter stays: it still spreads the batch over different real names.
         const real = realMode(opts) !== 'invented';
-        const sparks = opts.vibe === 'custom' || typedDetail || like || real ? null : (SPARKS[opts.vibe] || ALL_SPARKS);
+        // v0.2.11: picked roots set the direction too. With an inspiration word the AI put the thing itself
+        // into the name (an orchard word → a Latin "orchard keeper" family name, a wool word → "Carderby").
+        const rootsOn = aiRootsUsed(opts).length > 0;
+        const sparks = opts.vibe === 'custom' || typedDetail || like || real || rootsOn ? null : (SPARKS[opts.vibe] || ALL_SPARKS);
         const textures = texturesFor(opts.vibe);
         const shapes = shapesFor(target, opts.vibe);
         const shape = nameShape(opts);
@@ -944,7 +951,7 @@
             royalEpithets: F('Soter=the Saviour=구원자;Nikator=the Victor=승리자;Megas=the Great=위대한 이;Euergetes=the Benefactor=은인;Kallinikos=gloriously victorious=빛나는 승리자;Philadelphos=sibling-loving=형제를 아끼는 이'),
             royalEpithetsF: F('Soteira=the Saviour=구원자;Megale=the Great=위대한 이;Euergetis=the Benefactor=은인;Kallinike=gloriously victorious=빛나는 승리자;Philadelphos=sibling-loving=형제를 아끼는 이;Philopator=father-loving=아버지를 아끼는 이'),
             noOrdinals: true,
-            war: F('Monophthalmos=one-eyed=애꾸눈;Poliorketes=the Besieger=성을 함락하는 자;Keraunos=thunderbolt=벼락;Nikator=the Victor=승리자;Hoplomachos=armoured fighter=중무장 전사;Leon=the lion=사자'),
+            war: F('Monophthalmos=one-eyed=애꾸눈;Poliorketes=the Besieger=성을 함락하는 자;Keraunos=thunderbolt=벼락;Nikator=the Victor=승리자;Hoplomachos=armoured fighter=중무장 전사;Leon=the lion=사자;Hierax=the hawk=매;Grypos=hook-nosed=매부리코;Monomachos=the lone fighter=홀로 싸우는 이'),
             warF: F('Leaina=the lioness=암사자;Keraunos=thunderbolt=벼락;Nikephoros=victory-bearing=승리를 가져오는 이;Kallinike=gloriously victorious=빛나는 승리자;Thraseia=the bold=대담한 이'),
         },
         slavic: {
@@ -1264,6 +1271,7 @@
         const R = CACHE[root];
         let branch = pickWeighted(R.branches || { place: 1 }, rnd);
         if (R.family === 'greek' && g === 'f') branch = 'place'; // -ides means "son of")
+        if (R.family === 'nomen' && g === 'f' && branch === 'trade') branch = 'looks'; // v0.2.11: show what she really got
         return { ...cacheFamilyBranch(root, branch, g, rnd), root, branch };
     }
     // "de" + a vowel → d'Aubeval.
@@ -1278,11 +1286,17 @@
         if (root !== 'latin' || g !== 'f' || !/us$/.test(f.t)) return f;
         return { ...f, t: f.t.replace(/us$/, 'a') };
     }
+    // v0.2.11: small ordinals are the usual ones (II, III); VII and up stay rare.
+    const ORDINAL_WEIGHTS = [30, 22, 14, 10, 8, 4, 3, 2];
+    const ORDINAL_TEXTS = new Set(ORDINALS.map(o => o.t));
+    function pickOrdinal(rnd) {
+        return ORDINALS[Number(pickWeighted(Object.fromEntries(ORDINAL_WEIGHTS.map((w, i) => [i, w])), rnd))];
+    }
     // Kings and queens: an ordinal (II) or an epithet (the Fair, Magnus, Soter).
     function royalEpithet(root, rnd, g = 'm') {
         const R = CACHE[root];
         const words = (g === 'f' && R.royalEpithetsF) || R.royalEpithets || ROYAL_EN;
-        const f = latinAgree((!R.noOrdinals && rnd() < 0.5) ? pick(ORDINALS, rnd) : pick(words, rnd), root, g);
+        const f = latinAgree((!R.noOrdinals && rnd() < 0.5) ? pickOrdinal(rnd) : pick(words, rnd), root, g);
         return { text: f.t, frags: [f] };
     }
     // The first title (king, queen) half the time; the others (duke, prince…) share the rest.
@@ -1334,7 +1348,12 @@
     // (Veria Veria, Tihomira Mirodragović). Parts compare by stem, 3 letters or more, so endings
     // like -an or -ia that many names share don't count.
     function fragStems(frags = []) {
-        return frags.map(f => dropVowel(String(f.t || '').toLowerCase().replace(/[^a-zà-ÿœæ]/g, ''))).filter(x => x.length >= 3);
+        // v0.2.11: Greek-style endings go too (nikos ~ Niko-), the way the -ides family name drops them.
+        return frags.map(f => {
+            const t = String(f.t || '').toLowerCase().replace(/[^a-zà-ÿœæ]/g, '');
+            const bare = t.replace(/(os|es|as|us)$/, '');
+            return dropVowel(bare.length >= 3 ? bare : t);
+        }).filter(x => x.length >= 3);
     }
     const NAME_SIDE = ['given', 'middle'];
     const HOME_SIDE = ['family', 'origin'];
@@ -1440,6 +1459,9 @@
         // Merge: names take turns through pairs of two different roots instead.
         const pairs = cacheMerge(form) ? rootPairs(roots, rnd) : null;
         const start = Math.floor(rnd() * roots.length);
+        // v0.2.11: one list doesn't give the same byname twice (two "the Conqueror"s). Ordinals may repeat.
+        const usedEpi = new Set();
+        const epithets = n => (n.pieces || []).filter(p => p.role === 'epithet' && !ORDINAL_TEXTS.has(p.text)).map(p => p.text.toLowerCase());
         for (let i = 0; i < count; i++) {
             const pair = pairs ? pairs[i % pairs.length] : null;
             const root = pair ? null : roots[(start + i) % roots.length];
@@ -1453,6 +1475,8 @@
             }
             if (!pool.length) continue;
             let best = pool;
+            const freshEpi = best.filter(n => !epithets(n).some(e => usedEpi.has(e)));
+            if (freshEpi.length) best = freshEpi;
             if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
             if (form.length && form.length !== 'any') {
                 const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
@@ -1463,6 +1487,7 @@
             }
             const n = pick(best, rnd);
             seen.add(n.name.toLowerCase());
+            for (const e of epithets(n)) usedEpi.add(e);
             for (const t of memoryNames(n)) banned.add(t.toLowerCase());
             out.push(n);
         }
@@ -2118,12 +2143,18 @@
         const what = form.target === 'place' ? 'place-name' : 'name';
         const each = roots.length > 1 ? '; each name below says which' : '';
         const hasFamily = shape && shape.roles.includes('family') && !shape.fixed;
+        // v0.2.11: "naming customs" read as "give the culture's usual names" (15 of 20 were real Irish names).
+        const invented = realMode(form) === 'invented';
+        // Any real word in the name stays in the roots' own languages (no English "Weaverby" for Latin + Norse);
+        // this sits fine with the line that lets family names use real words.
+        const fresh = invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '';
         if (aiMerge(form)) {
             const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
-            return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}`;
+            return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}${fresh}`;
         }
         const family = hasFamily ? ' Family names follow that root\'s own surname customs too.' : '';
-        return `Name roots: build each name from ${rootNames(roots)} ${what} elements (word roots, endings and naming customs)${each}.${family}`;
+        const parts = invented ? 'word roots and endings' : 'word roots, endings and naming customs';
+        return `Name roots: build each name from ${rootNames(roots)} ${what} elements (${parts})${each}.${family}${fresh}`;
     }
     const ROOT_NOTE_RULE = "Don't state what the name means or where it comes from; describe only its feel.";
 
@@ -2167,7 +2198,7 @@
         const echoOnly = seeds.length > 0 && seeds.every(s => s.likeFocus && !s.spark);
         // Real names get no inspiration word, so those rules would only be noise there.
         // (Other cases keep them as before: the bread fix in v0.1.9 was checked with them in.)
-        const noSparkRules = realMode(form) !== 'invented' && !seeds.some(s => s.spark);
+        const noSparkRules = (realMode(form) !== 'invented' || roots.length > 0) && !seeds.some(s => s.spark);
         if (!echoOnly && !noSparkRules) {
             lines.push('follow its sound hints. An inspiration word is only a loose mood: bend it to fit what is being named and the setting, and ignore it if it doesn\'t fit.');
             lines.push('Never put the inspiration object itself into the name or the note when it isn\'t part of what is being named (no "bus stop" in the name of a bread).');
@@ -2673,11 +2704,14 @@
     }
 
     // The little marks after a name: variant, CACHE / AI polished, real, plain word, AI favorite, Lovecraft.
+    function polishChanged(r) { return !!(r.polished && r.orig && r.orig !== r.name); }
     function tagsHtml(r, L = T()) {
         const tag = r.tag && L.r[r.tag] ? `<span class="tbd-tag">${escapeHtml(L.r[r.tag])}</span>` : '';
         const words = wordHits(r, r.form);
         const one = (on, tip, text) => (on ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(tip)}">${escapeHtml(text)}</span>` : '');
-        const cacheTag = r.polished ? one(true, L.polishTip, L.polishTag) : one(r.cache, L.cacheTip, L.cacheTag);
+        // v0.2.11: "AI polished" only when the spelling really changed; a name the AI left alone stays CACHE.
+        const cacheTag = polishChanged(r) ? one(true, L.polishTip, L.polishTag)
+            : one(r.cache, r.polished ? L.keptTip : L.cacheTip, L.cacheTag);
         return tag + cacheTag + one(r.real, L.realTip, L.realTag) + (words.length ? one(true, L.wordTip, L.wordTag(words)) : '')
             + one(clicheHit(r), L.clicheTip, L.clicheTag) + one(canonHit(r), L.canonTip, L.canonTag);
     }
@@ -2786,7 +2820,7 @@
             if (formLine !== lastForm) { lines.push('', `[${formLine}]`); lastForm = formLine; }
             const marks = [];
             if (r.tag) marks.push(`variant: ${r.tag}`);
-            if (r.polished) marks.push('AI polished'); else if (r.cache) marks.push('CACHE');
+            if (polishChanged(r)) marks.push('AI polished'); else if (r.polished) marks.push('CACHE, AI read only'); else if (r.cache) marks.push('CACHE');
             if (r.real) marks.push('real');
             if (wordHits(r, r.form).length) marks.push(`plain word: ${wordHits(r, r.form).map(w => w.word).join(', ')}`);
             if (clicheHit(r)) marks.push('AI favorite');
@@ -3762,7 +3796,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, reviewText, reviewFormLine, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
