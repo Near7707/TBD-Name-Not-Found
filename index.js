@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.26
+// TBD — Name Not Found v0.2.27
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1057,6 +1057,8 @@
         },
     };
     const CACHE_ROOTS = Object.keys(CACHE);
+    // First parts of names and places (Chryso-, Zlato-), to spread them out in one list.
+    const HEAD_TEXTS = new Set(CACHE_ROOTS.flatMap(k => [...CACHE[k].head, ...CACHE[k].placeHead].map(f => f.t)));
     const CACHE_KINDS = ['common', 'noble', 'religious', 'royal', 'warrior', 'scholar'];
     const FAMILY_BRANCHES = ['patron', 'place', 'dwell', 'trade', 'looks'];
     // Place kinds → which place fragments fit (none listed = any fragment).
@@ -1331,6 +1333,16 @@
     function dropVowel(text) { return text.replace(/[aeiouy]+$/i, ''); }
     // Place + -ski the way Slavic names really do it: Novica → Novicki, Chernets → Chernecki,
     // Slavovka → Slavovski, Les → Leski (never "-cski" or "-kski").
+    // v0.2.27: -ski can make a place hard to say (Krasnovrh → Krasnovrhska): try another place then.
+    function skiPlace(makePlace) {
+        let pl, text;
+        for (let i = 0; i < 8; i++) {
+            pl = makePlace();
+            text = slavicSki(pl.text);
+            if (sayable(slavicFem(text))) break;
+        }
+        return { pl, text };
+    }
     function slavicSki(place) {
         const b = dropVowel(place);
         if (/ts$/.test(b)) return `${b.slice(0, -2)}cki`;
@@ -1396,9 +1408,9 @@
             }
         }
         if (branch === 'place') {
+            if (R.family === 'slavic') { const { pl, text } = skiPlace(place); return { text: fem(text), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] }; }
             const pl = place();
             if (R.family === 'greek') return { text: `of ${pl.text}`, frags: pl.frags }; // Thales of Miletus
-            if (R.family === 'slavic') return { text: fem(slavicSki(pl.text)), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] };
             return pl;
         }
         if (branch === 'dwell') {
@@ -1578,9 +1590,9 @@
         } else if (parts.includes('family')) {
             if (kind === 'noble' && R.noble === 'ski') {
                 // Slavic nobles take -ski from their estate (no "von" or "de").
-                const pl = cachePlace(root, null, rnd, true);
+                const { pl, text: ski } = skiPlace(() => cachePlace(root, null, rnd, true));
                 pieces.push(fixed ? { role: 'family', text: fixed, fixed: true }
-                    : { role: 'family', text: (g === 'f' ? slavicFem : (s => s))(slavicSki(pl.text)), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] });
+                    : { role: 'family', text: (g === 'f' ? slavicFem : (s => s))(ski), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] });
             } else if (kind === 'noble') {
                 const pl = fixed ? { text: fixed } : cachePlace(root, null, rnd, true);
                 const w = withParticle(R.noble, pl.text);
@@ -1623,6 +1635,9 @@
         const start = Math.floor(rnd() * roots.length);
         // v0.2.11: one list doesn't give the same byname twice (two "the Conqueror"s). Ordinals may repeat.
         const usedEpi = new Set();
+        // v0.2.27: nor the same first part again and again (Chryso- four times) while unused ones are left.
+        const usedHeads = new Set();
+        const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t)).map(f => f.t.toLowerCase());
         const epithets = n => (n.pieces || []).filter(p => p.role === 'epithet' && !ORDINAL_TEXTS.has(p.text)).map(p => p.text.toLowerCase());
         for (let i = 0; i < count; i++) {
             const pair = pairs ? pairs[i % pairs.length] : null;
@@ -1639,6 +1654,8 @@
             let best = pool;
             const freshEpi = best.filter(n => !epithets(n).some(e => usedEpi.has(e)));
             if (freshEpi.length) best = freshEpi;
+            const freshHeads = best.filter(n => !headsOf(n).some(h => usedHeads.has(h)));
+            if (freshHeads.length) best = freshHeads;
             if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
             if (form.length && form.length !== 'any') {
                 const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
@@ -1650,6 +1667,7 @@
             const n = pick(best, rnd);
             seen.add(n.name.toLowerCase());
             for (const e of epithets(n)) usedEpi.add(e);
+            for (const h of headsOf(n)) usedHeads.add(h);
             for (const t of memoryNames(n)) banned.add(t.toLowerCase());
             out.push(n);
         }
@@ -1680,7 +1698,7 @@
             else if (p.role === 'epithet') next = kind === 'royal' ? royalEpithet(root, rnd, g) : warEpithet(root, rnd, g);
             else if (p.role === 'family' && kind === 'scholar') next = scholarFamily(root, g, rnd);
             else if (p.role === 'family' && src.pieces.some(q => q.role === 'particle')) next = cachePlace(root, null, rnd, true);
-            else if (p.role === 'family' && /[sc]k[iya]$/.test(p.text) && kind === 'noble') { const pl = cachePlace(root, null, rnd, true); next = { text: (g === 'f' ? slavicFem(slavicSki(pl.text)) : slavicSki(pl.text)), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] }; }
+            else if (p.role === 'family' && /[sc]k[iya]$/.test(p.text) && kind === 'noble') { const { pl, text: ski } = skiPlace(() => cachePlace(root, null, rnd, true)); next = { text: (g === 'f' ? slavicFem(ski) : ski), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] }; }
             else if (p.role === 'family') next = cacheFamily(root, g, rnd);
             else return null;
             if (banned.has(next.text.toLowerCase()) || banned.has(next.text.replace(/^(de|of|von|af|d')\s?/i, '').toLowerCase())) continue;

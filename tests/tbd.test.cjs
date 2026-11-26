@@ -2182,7 +2182,8 @@ test('v0.2.25: sweep — Archive places and people keep the join rules', () => {
     for (const root of api.CACHE_ROOTS) for (const kind of ['', 'mountain', 'water', 'forest', 'sea', 'fort', 'town']) {
         for (const r of api.cacheNames({ target: 'place', method: 'cache', roots: [root], kind }, 40, [], rnd)) {
             const [h, t] = core(r);
-            if (r.saint || !h || !t) continue;
+            // Saint places are a person's name (Kilgwenwyn, Saint-Roric): the place rules don't apply.
+            if (r.saint || ['saint', 'church of'].includes(r.frags[0].en) || !h || !t) continue;
             assert.ok(!api.sameSound(h.t, t.t), `same sound: ${r.name}`);
             assert.ok(!api.meaningClash(h, t), `same meaning: ${r.name}`);
             assert.ok(!api.twoAdjectives(h, t), `two describing words: ${r.name}`);
@@ -2235,5 +2236,22 @@ test('v0.2.26: Archive — -recki, no swallowed endings or doubled vowels, short
         for (const r of api.cacheNames({ target: 'place', method: 'cache', roots, rootMix: 'merge' }, 20, [], rnd)) {
             if (r.frags.length === 2) assert.ok(!api.newDoubleVowel(r.name, r.frags[0].t, r.frags[1].t), `doubled vowel: ${r.name}`);
         }
+    }
+});
+
+test('v0.2.27: Archive — -ski family names stay sayable, and one list spreads out its first parts', () => {
+    const { api } = load();
+    const rnd = seeded(2030);
+    const HEADS = new Set(api.CACHE_ROOTS.flatMap(k => [...api.CACHE[k].head, ...api.CACHE[k].placeHead].map(f => f.t)));
+    for (const kind of ['common', 'noble']) for (const gender of ['masculine', 'feminine']) {
+        for (const r of api.cacheNames({ target: 'person', method: 'cache', roots: ['slavic'], ckinds: [kind], gender, parts: ['given', 'family'] }, 40, [], rnd)) {
+            for (const p of r.pieces) assert.ok(api.sayable(p.text), `hard to say: ${r.name}`);
+        }
+    }
+    for (const roots of [['greek', 'slavic'], ['latin'], ['norse', 'oldenglish']]) for (const target of ['person', 'place']) {
+        const list = api.cacheNames({ target, method: 'cache', roots, rootMix: 'merge', ckinds: ['common'], parts: ['given', 'family'] }, 20, [], rnd);
+        const count = {};
+        for (const r of list) for (const f of [...(r.frags || []), ...(r.pieces || []).flatMap(p => p.frags || [])]) if (HEADS.has(f.t)) count[f.t] = (count[f.t] || 0) + 1;
+        assert.ok(Math.max(...Object.values(count)) <= 3, `${roots} ${target}: ${JSON.stringify(count)}`);
     }
 });
