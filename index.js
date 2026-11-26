@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.30
+// TBD — Name Not Found v0.2.31
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1670,24 +1670,34 @@
         // v0.2.30: counted, so once every first part is used the least-used ones still come first.
         const usedHeads = new Map();
         const headUse = n => Math.max(0, ...headsOf(n).map(h => usedHeads.get(h) || 0));
-        const leastHeadUse = list => Math.min(...list.map(headUse));
+        // v0.2.31: first parts and endings are weighed together (the least-used first parts alone left
+        // too few names to spread the endings: -lieu four times in 20).
+        // One count for both, so a word used as a first part and as an ending counts as used (Pont…, …pont).
+        const usedEnds = usedHeads;
+        const endUse = n => Math.max(0, ...endsOf(n).map(e => usedEnds.get(e) || 0));
+        // The worse of the two counts first, then the two together (one part used twice beats both used once).
+        const useScore = n => { const h = headUse(n), e = endUse(n); return Math.max(h, e) * 10 + h + e; };
+        const leastUse = list => Math.min(...list.map(useScore));
         // v0.2.28: a place named for a saint counts as one first part too ("saint"), or saints, never
         // "used", win every turn once the place heads run out (Sveti … 10 times in 20).
         const isSaintPlace = n => !!n.saint || (n.frags || []).some(f => f.en === 'saint' || f.en === 'church of');
         const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
         // v0.2.29: places spread out their endings the same way (-magus six times in 20).
-        const usedTails = new Set();
         const tailsOf = n => (n.pieces ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
         // v0.2.30: people spread out their given-name endings too (-mila six times, -ianus five times),
         // and one list doesn't give the same family twice (Chernov and Chernova).
-        const usedGivenTails = new Set();
         const givenTailsOf = n => {
             const g = (n.pieces || []).find(p => p.role === 'given');
             if (!g || !g.frags || g.frags.length < 2) return [];
-            return [g.frags.slice(1).map(f => f.t).join('').toLowerCase().replace(/a$/, '')];
+            return ['g:' + g.frags.slice(1).map(f => f.t).join('').toLowerCase().replace(/a$/, '')];
         };
+        // v0.2.31: and family names built of parts spread out the part before their ending
+        // (-castrensis, -vitov three times): Castr|a + ensis, Miro + vit + ov.
+        const familyTailsOf = n => (n.pieces || []).filter(p => (p.role === 'family' || p.role === 'patronymic') && !p.fixed && (p.frags || []).length >= 3)
+            .map(p => 'f:' + p.frags[p.frags.length - 2].t.toLowerCase());
+        const endsOf = n => [...tailsOf(n), ...givenTailsOf(n), ...familyTailsOf(n)];
         const usedFamilies = new Set();
         const familiesOf = n => (n.pieces || []).filter(p => (p.role === 'family' || p.role === 'patronymic') && !p.fixed)
             .map(p => p.text.toLowerCase().replace(/(sk|ck)a$/, '$1i').replace(/(ov|ev|in)a$/, '$1'));
@@ -1709,22 +1719,18 @@
             let pool = makePool(pair);
             // v0.2.30: when one way round has used up its first parts (Norman has three town heads, so
             // Mesnil… five times in 20), try the pair the other way round (Llanville, Caerbourg).
-            if (pair && pool.length && leastHeadUse(pool) > 0) {
+            if (pair && pool.length && leastUse(pool) > 0) {
                 const other = makePool([pair[1], pair[0]]);
-                if (other.length && leastHeadUse(other) < leastHeadUse(pool)) pool = other;
+                if (other.length && leastUse(other) < leastUse(pool)) pool = other;
             }
             if (!pool.length) continue;
             let best = pool;
             const freshEpi = best.filter(n => !epithets(n).some(e => usedEpi.has(e)));
             if (freshEpi.length) best = freshEpi;
-            const fewest = leastHeadUse(best);
-            best = best.filter(n => headUse(n) === fewest);
-            const freshTails = best.filter(n => !tailsOf(n).some(t => usedTails.has(t)));
-            if (freshTails.length) best = freshTails;
-            const freshGiven = best.filter(n => !givenTailsOf(n).some(t => usedGivenTails.has(t)));
-            if (freshGiven.length) best = freshGiven;
             const freshFamily = best.filter(n => !familiesOf(n).some(f => usedFamilies.has(f)));
             if (freshFamily.length) best = freshFamily;
+            const fewest = leastUse(best);
+            best = best.filter(n => useScore(n) === fewest);
             if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
             if (form.length && form.length !== 'any') {
                 const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
@@ -1737,8 +1743,7 @@
             seen.add(n.name.toLowerCase());
             for (const e of epithets(n)) usedEpi.add(e);
             for (const h of headsOf(n)) usedHeads.set(h, (usedHeads.get(h) || 0) + 1);
-            for (const t of tailsOf(n)) usedTails.add(t);
-            for (const t of givenTailsOf(n)) usedGivenTails.add(t);
+            for (const e of endsOf(n)) usedEnds.set(e, (usedEnds.get(e) || 0) + 1);
             for (const f of familiesOf(n)) usedFamilies.add(f);
             for (const t of memoryNames(n)) banned.add(t.toLowerCase());
             out.push(n);

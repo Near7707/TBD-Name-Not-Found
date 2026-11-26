@@ -2335,3 +2335,23 @@ test('v0.2.30: Archive — given endings and families spread out, Mesnil no long
     // 95: Mesnil… as the first part about three times in 20 at most, on average (was five).
     assert.ok(mesnil / 6 <= 3.5, String(mesnil / 6));
 });
+
+test('v0.2.31: Archive — first parts and endings spread out together, family-name endings too', () => {
+    const { api } = load();
+    const rnd = seeded(2030);
+    let anyMax = 0, famMax = 0;
+    for (let k = 0; k < 6; k++) {
+        // 99: one word (as first part or ending) about three times in 20 at most (Pont…, …lieu).
+        const places = api.cacheNames({ target: 'place', method: 'cache', kind: 'street', roots: ['norman', 'celtic'], rootMix: 'merge' }, 20, [], rnd);
+        const w = {};
+        for (const r of places) for (const f of r.frags) { const t = f.t.toLowerCase().replace(/^-|-$/g, ''); w[t] = (w[t] || 0) + 1; }
+        anyMax += Math.max(...Object.values(w));
+        // 100: scholar family names don't pile up one ending (-castrensis three times).
+        const people = api.cacheNames({ target: 'person', method: 'cache', roots: ['latin'], ckinds: ['scholar'], gender: 'masculine', parts: ['given', 'family'] }, 20, [], rnd);
+        const f = {};
+        for (const r of people) { const p = r.pieces.find(x => x.role === 'family'); if (p.frags.length >= 3) { const t = p.frags[p.frags.length - 2].t; f[t] = (f[t] || 0) + 1; } }
+        famMax += Math.max(0, ...Object.values(f));
+    }
+    assert.ok(anyMax / 6 <= 3.5, `any part ${anyMax / 6}`);
+    assert.ok(famMax / 6 <= 3.2, `family ending ${famMax / 6}`);
+});
