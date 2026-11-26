@@ -2147,3 +2147,68 @@ test('v0.2.24: a family name seen before keeps the name; the given name and the 
     const kept = a2.keepNames([mk('Corvan', 'Lignarius'), mk('Brannoc', 'Faber')], ['Lignarius', 'Faber'], { target: 'person', method: 'ai' });
     assert.deepEqual([...kept.map(n => n.name)], ['Corvan Lignarius']);
 });
+
+test('v0.2.25: Archive joins — small rules, one by one', () => {
+    const { api } = load();
+    // same sound at the join
+    assert.ok(api.sameSound('Gor', 'gorod') && api.sameSound('Stell', 'ella') && api.sameSound('Gwyn', 'wyn') && api.sameSound('Rich', 'rik'));
+    assert.ok(!api.sameSound('Wulf', 'frith') && !api.sameSound('Ed', 'mund'));
+    // same or close meaning
+    assert.ok(api.meaningClash({ en: 'fort' }, { en: 'fort, hill' }) && api.meaningClash({ en: 'stream' }, { en: 'pond' }) && api.meaningClash({ en: 'by the forest' }, { en: 'wood' }));
+    assert.ok(!api.meaningClash({ en: 'oak' }, { en: 'hill' }) && !api.meaningClash({ en: 'land of' }, { en: 'place of' }));
+    // two describing words, but Slavic -ica / -ets are fine
+    assert.ok(api.twoAdjectives({ t: 'Shan', en: 'old' }, { t: 'boy', en: 'yellow' }));
+    assert.ok(!api.twoAdjectives({ t: 'Bel', en: 'white' }, { t: 'ica', en: 'little' }));
+    assert.ok(!api.twoAdjectives({ t: 'Shan', en: 'old' }, { t: 'derry', en: 'oak wood' }));
+    // Slavic adjectives agree
+    assert.equal(api.slavicAgree('Veliki', 'Slavoreka'), 'Velika');
+    assert.equal(api.slavicAgree('Gornji', 'Tikhoselo'), 'Gornje');
+    assert.equal(api.slavicAgree('Stari', 'Lipovo'), 'Staro');
+    assert.equal(api.slavicAgree('Mali', 'Novgrad'), 'Mali');
+    // Latin scholars
+    assert.equal(api.latinGiven({ text: 'Clairienne', frags: [] }, 'f').text, 'Clairiana');
+    assert.equal(api.latinGiven({ text: 'Guéric', frags: [] }, 'm').text, 'Guericus');
+    assert.equal(api.noAccents('Guévalensis'), 'Guevalensis');
+    assert.equal(api.noAccents('Großius'), 'Grossius');
+});
+
+test('v0.2.25: sweep — Archive places and people keep the join rules', () => {
+    const { api } = load();
+    const rnd = seeded(2030);
+    const extraWords = api.CACHE_ROOTS.flatMap(k => [...(api.CACHE[k].placePre || []), ...(api.CACHE[k].placePost || [])]).map(f => f.t)
+        .concat(['Stara', 'Staro', 'Velika', 'Veliko', 'Mala', 'Malo', 'Gornja', 'Gornje', 'Donja', 'Donje']);
+    const core = r => (r.frags || []).filter(f => !extraWords.includes(f.t) && !/^(Saint|Sainte|St\.|Sveti|Sveta|Kil)$/.test(f.t));
+    const KIND_CATS = { mountain: ['hill'], water: ['water'], forest: ['forest'], sea: ['coast', 'water'], fort: ['fort', 'hill'] };
+    for (const root of api.CACHE_ROOTS) for (const kind of ['', 'mountain', 'water', 'forest', 'sea', 'fort', 'town']) {
+        for (const r of api.cacheNames({ target: 'place', method: 'cache', roots: [root], kind }, 40, [], rnd)) {
+            const [h, t] = core(r);
+            if (r.saint || !h || !t) continue;
+            assert.ok(!api.sameSound(h.t, t.t), `same sound: ${r.name}`);
+            assert.ok(!api.meaningClash(h, t), `same meaning: ${r.name}`);
+            assert.ok(!api.twoAdjectives(h, t), `two describing words: ${r.name}`);
+            assert.ok(!/ror/i.test(r.name), `r-o-r: ${r.name}`);
+            assert.ok(!/^(Stari|Veliki|Mali|Gornji|Donji) \S*[aoe]$/.test(r.name), `Slavic agreement: ${r.name}`);
+            const extra = (r.frags || []).find(f => extraWords.includes(f.t));
+            if (extra) assert.ok(![h, t].some(f => api.meaningClash(extra, f)), `extra word says it twice: ${r.name}`);
+            if (KIND_CATS[kind]) assert.ok([h, t].some(f => f.cats && f.cats.some(c => KIND_CATS[kind].includes(c))), `${kind}: ${r.name}`);
+        }
+    }
+    // Old English head + short Latin ending stays out of Merge places
+    for (const r of api.cacheNames({ target: 'place', method: 'cache', roots: ['latin', 'oldenglish'], rootMix: 'merge' }, 120, [], rnd)) {
+        const [h, t] = core(r);
+        if (h && t && h.r === 'oldenglish' && t.r === 'latin') assert.ok(t.t.length > 4, `short Latin ending: ${r.name}`);
+    }
+    // people: given names don't echo, Slavic father's names stay short, scholars write plain Latin
+    for (const root of api.CACHE_ROOTS) for (const ckind of ['common', 'scholar']) for (const gender of ['masculine', 'feminine']) {
+        for (const r of api.cacheNames({ target: 'person', method: 'cache', roots: [root], ckinds: [ckind], gender, parts: ['given', 'family'] }, 30, [], rnd)) {
+            const given = r.pieces.find(p => p.role === 'given');
+            if (given.frags.length >= 2) assert.ok(!api.sameSound(given.frags[0].t, given.frags[1].t), `same sound: ${r.name}`);
+            const fam = r.pieces.find(p => p.role === 'family');
+            if (root === 'slavic' && fam && fam.branch === 'patron') assert.ok(fam.text.length <= 12, `long: ${r.name}`);
+            if (ckind === 'scholar') {
+                assert.ok(!/[\u00c0-\u00e5\u00e7-\u0152\u0154-\u017f]/.test(r.name), `accent: ${r.name}`); // æ and œ are Latin letters
+                assert.ok(!/ienna\b/.test(r.name), `-ienna: ${r.name}`);
+            }
+        }
+    }
+});

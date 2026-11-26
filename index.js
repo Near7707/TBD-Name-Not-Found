@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.24
+// TBD — Name Not Found v0.2.25
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1186,6 +1186,46 @@
         const x = dropVowel(a).toLowerCase(), y = b.toLowerCase();
         return x.length >= 3 && y.startsWith(x.slice(0, 4));
     }
+    // v0.2.25: the head and the ending sound the same at the join (Gor + gorod, Stell + ella, Gwyn + wyn, Iust + ius).
+    function soundKey(t) { return String(t).toLowerCase().replace(/ch/g, 'k').replace(/c/g, 'k'); }
+    function sameSound(a, b) {
+        const x = soundKey(a), y = soundKey(b);
+        if (x.length < 3 || y.length < 3) return false;
+        return x.slice(0, 3) === y.slice(0, 3) || y.startsWith(x) || x.endsWith(y.slice(0, 3));
+    }
+    // v0.2.25: two place fragments that say the same thing (Castro + dunum = fort + fort, Bec + mare = stream + pond).
+    const MEANING_SKIP = new Set(['of', 'the', 'by', 'on', 'at', 'a', 'an', 'to', 'for', 'in', 'near', 'place', 'land', 'belonging', 'having', 'like', 's', 'child']);
+    const MEANING_KIN = {
+        great: 'big', big: 'big', large: 'big', little: 'small', small: 'small',
+        water: 'water', lake: 'water', river: 'water', stream: 'water', sea: 'water', pool: 'water', spring: 'water', pond: 'water', marsh: 'water', well: 'water', brook: 'water',
+        wood: 'wood', woods: 'wood', forest: 'wood', grove: 'wood', woodland: 'wood',
+        hill: 'hill', mountain: 'hill', height: 'hill', ridge: 'hill', peak: 'hill', top: 'hill', topmost: 'hill', upland: 'hill', hillock: 'hill',
+        fort: 'fort', stronghold: 'fort', castle: 'fort', ringfort: 'fort', fortress: 'fort', tower: 'fort', camp: 'fort',
+        town: 'town', city: 'town', village: 'town', homestead: 'town', settlement: 'town', farmstead: 'town', farm: 'town', dwelling: 'town',
+        valley: 'vale', dale: 'vale', glen: 'vale', field: 'field', fields: 'field', meadow: 'field', plain: 'field', island: 'isle',
+    };
+    function meaningKeys(f) {
+        return new Set(((f && f.en) || '').toLowerCase().match(/[a-z]+/g)?.filter(w => !MEANING_SKIP.has(w)).map(w => MEANING_KIN[w] || w) || []);
+    }
+    function meaningClash(a, b) {
+        const x = meaningKeys(a);
+        for (const k of meaningKeys(b)) if (x.has(k)) return true;
+        return false;
+    }
+    // v0.2.25: a place of two describing words and no thing (Shan + boy = old + yellow). Slavic -ica / -ets
+    // ("little") make real place names out of one describing word (Belica, Starets), so they don't count.
+    const ADJ_WORDS = new Set(['great', 'big', 'small', 'little', 'white', 'black', 'red', 'blue', 'blue-green', 'green', 'high', 'old', 'new', 'long', 'fair', 'dark', 'grey', 'light grey', 'yellow', 'speckled', 'rough', 'streaked', 'broad', 'cold', 'brown', 'swift', 'dry', 'wet', 'quiet', 'upper', 'lower', 'beautiful', 'fine', 'holy']);
+    function isAdj(f) { return ADJ_WORDS.has(((f && f.en) || '').split(',')[0].trim().toLowerCase()); }
+    function twoAdjectives(h, t) { return isAdj(h) && isAdj(t) && !(t.en === 'little' && t.t.length <= 3); }
+    // v0.2.25: Slavic "upper / lower / great / little / old" agree with the place (Velika Reka, Gornje Selo, Stari Grad).
+    const SLAVIC_ADJ = { Gornji: 'Gornj', Donji: 'Donj', Veliki: 'Velik', Mali: 'Mal', Stari: 'Star' };
+    function slavicAgree(word, place) {
+        const stem = SLAVIC_ADJ[word];
+        if (!stem) return word;
+        if (/a$/i.test(place)) return `${stem}a`;
+        if (/[oe]$/i.test(place)) return stem + (/j$/.test(stem) ? 'e' : 'o');
+        return word;
+    }
     // Merge: each fragment keeps the root it came from, for the fragments line.
     function tagRoot(f, r, on) { return on ? { ...f, r } : f; }
     // One given name: head + ending. The two parts never mean the same thing (Wulf + wulf).
@@ -1201,7 +1241,7 @@
             const h = pick(R.head, rnd);
             const t = pick(tails, rnd);
             if (t.en && h.en === t.en) continue;
-            if (sameStem(h.t, t.t)) continue;
+            if (sameStem(h.t, t.t) || sameSound(h.t, t.t)) continue;
             const text = glue(h.t, t.t, elide);
             if (!sayable(text)) continue;
             return make(h, t);
@@ -1227,16 +1267,27 @@
         }
         const heads = fitCats(R.placeHead, cats);
         const tails = fitCats(E.placeTail, cats);
+        // v0.2.25: a picked place kind wants one fragment of that kind (no "forest" called Magnana),
+        // unless the root has too few to find one in time.
+        const ofKind = f => !!(f.cats && cats && f.cats.some(c => cats.includes(c)));
+        // v0.2.25: an Old English word + a short Latin ending sounds like a joke (Kingsetum, Birchona).
+        const shortLatin = mix && root === 'oldenglish' && root2 === 'latin';
         let base = null;
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 40; i++) {
             const h = pick(heads, rnd);
             const t = pick(tails, rnd);
             if (t.en && h.en === t.en) continue;
             if (h.t.toLowerCase() === t.t.toLowerCase()) continue;
-            // Not the same word twice (Castr + castra).
+            // Not the same word twice (Castr + castra), nor the same sound (Gor + gorod).
             if (t.t.length > 3 && h.t.length > 3 && (t.t.toLowerCase().startsWith(h.t.toLowerCase()) || h.t.toLowerCase().startsWith(t.t.toLowerCase()))) continue;
+            if (sameSound(h.t, t.t)) continue;
+            if (meaningClash(h, t) || twoAdjectives(h, t)) continue;
+            if (cats && i < 30 && !ofKind(h) && !ofKind(t)) continue;
+            if (shortLatin && t.t.length <= 4) continue;
             const text = capFirst(glue(h.t, t.t, elide, link));
             if (!sayable(text)) continue;
+            // r + vowel + r at the join (Akro + oros → Akroros).
+            if (/ror/i.test(text) && !/ror/i.test(h.t) && !/ror/i.test(t.t)) continue;
             base = { text, frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root };
             break;
         }
@@ -1244,15 +1295,20 @@
         if (plain || rnd() >= 0.12) return base;
         // Now and then an extra word: before (Great, Ober, Lille) or after (-on-Sea, Magna, am See).
         // The extra word before comes from the head's root, the one after from the tail's.
-        const pre = strictCats(R.placePre, cats).filter(f => f.en !== base.frags[0].en).map(f => tagRoot(f, root, mix));
-        const post = strictCats(E.placePost, cats).map(f => tagRoot(f, root2, mix));
+        // Never an extra word that says what the name already says (Grandroche-le-Grand, Magnona Magna).
+        const fresh = f => f.en !== base.frags[0].en && !base.frags.some(b => meaningClash(f, b));
+        const pre = strictCats(R.placePre, cats).filter(fresh).map(f => tagRoot(f, root, mix));
+        const post = strictCats(E.placePost, cats).filter(fresh).map(f => tagRoot(f, root2, mix));
         const usePre = pre.length && (!post.length || rnd() < 0.5);
         const list = usePre ? pre : post;
         if (!list.length) return base;
-        const a = pick(list, rnd);
+        let a = pick(list, rnd);
+        if (SLAVIC_ADJ[a.t]) a = { ...a, t: slavicAgree(a.t, base.text) };
         let text;
         if (usePre) text = a.t.endsWith('-') ? a.t + base.text : `${a.t} ${base.text}`;
         else text = a.t.startsWith('-') ? base.text + a.t : `${base.text} ${a.t}`;
+        // Ashwell + -le-Street runs three l's together: keep the plain name then.
+        if (!sayable(text)) return base;
         return { text, frags: usePre ? [a, ...base.frags] : [...base.frags, a], root };
     }
     const SON = { t: 'son', en: 'son', ko: '아들' };
@@ -1316,10 +1372,13 @@
                 }
                 case 'slavic': { // father's name + -ov / -ović
                     const f = cacheGiven(root, 'm', rnd);
-                    const base = dropVowel(f.text);
                     const end = rnd() < 0.6 ? { t: 'ov', en: "'s (child of)", ko: '~의 (자식)' } : { t: 'ović', en: 'son of', ko: '~의 아들' };
+                    // v0.2.25: a long father's name keeps only its first part (Dragovolodović → Dragović),
+                    // as short forms did (Radović, Vladov).
+                    let base = dropVowel(f.text), frags = f.frags;
+                    if ((base + end.t).length > 11 && f.frags[0]) { base = dropVowel(f.frags[0].t); frags = [f.frags[0]]; }
                     const text = end.t === 'ov' ? fem(base + 'ov') : base + end.t;
-                    return { text, frags: [...f.frags, end] };
+                    return { text, frags: [...frags, end] };
                 }
                 default: return place();
             }
@@ -1403,10 +1462,15 @@
         return { text: 'Ironhand', frags: [WAR_EN.head[0], WAR_EN.tail[0]] };
     }
     // Scholars wrote their names in Latin: Ethelwin → Ethelwinus, Ashford → Ashfordensis (from Ashford).
+    // v0.2.25: Latin has no accents (Guévalensis → Guevalensis).
+    function noAccents(t) { return String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u00df/g, 'ss'); }
     function latinGiven(given, g) {
-        const t = given.text;
+        const t = noAccents(given.text);
+        if (t !== given.text) given = { ...given, text: t };
         if (g === 'f') {
             if (/a$/.test(t)) return given;
+            // -ienne → -iana (Clairienne → Clairiana, not Clairienna).
+            if (/ienne$/.test(t)) return { ...given, text: t.replace(/ienne$/, 'iana'), frags: [...given.frags, LATIN_END('a')] };
             return { ...given, text: `${t.replace(/[eiouy]+$/, '')}a`, frags: [...given.frags, LATIN_END('a')] };
         }
         if (/us$/.test(t)) return given;
@@ -1422,10 +1486,10 @@
         if (rnd() < 0.5) {
             // Latinized from the man's form (Kudryashov, not Kudryashova).
             const f = cacheFamily(root, 'm', rnd);
-            if (['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|[sc]k[aiy]|er)$/.test(f.text)) return { text: `${latinStem(f.text)}ius`, frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
+            if (['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|[sc]k[aiy]|er)$/.test(f.text)) return { text: noAccents(`${latinStem(f.text)}ius`), frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
         }
         const pl = cachePlace(root, null, rnd, true);
-        const base = pl.text.replace(/(is|us|um|ia|os)$/i, '');
+        const base = noAccents(pl.text).replace(/(is|us|um|ia|os)$/i, '');
         return { text: `${dropVowel(base)}ensis`, frags: [...pl.frags, { t: 'ensis', en: 'from', ko: '~ 출신' }], branch: 'place' };
     }
     // One whole Cache name. Merge (mix = [A, B]): given names take A's head and B's ending,
@@ -4018,7 +4082,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
