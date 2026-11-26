@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.20
+// TBD — Name Not Found v0.2.21
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -629,7 +629,10 @@
     const SYLLABLES = { short: [1, 2], medium: [2, 3], long: [3, 4], any: [1, 4] };
 
     // Start letters a root (almost) never uses: a Latin name can't start with W.
-    const ROOT_NO_START = { latin: 'WK', norse: 'CW', celtic: 'WJ', norman: 'K', greek: 'WJQFVY', slavic: 'QX' };
+    // v0.2.21: letters each root's own words (almost) never start with. With one start letter per name and no
+    // repeats in a batch, rare letters always came up, and the AI got stuck on them (a Slavic name starting
+    // with E looped until the answer ran out; Celtic gave Kerallach and Verlanath).
+    const ROOT_NO_START = { latin: 'WK', norse: 'CWP', celtic: 'WJKV', norman: 'K', oldenglish: 'JV', greek: 'WJQFVYU', slavic: 'QXEF' };
     const CELTIC_BRANCHES = ['Welsh', 'Irish', 'Scottish Gaelic'];
     const ROOT_FAMILY_KINDS = ['from a place', "from a father's name", 'from looks or a nickname', 'from a trade'];
     const LIKE_FOCUS = ['its opening sound', 'its vowels', 'its ending', 'its rhythm', 'its consonants'];
@@ -708,10 +711,12 @@
             }
             // A forced start letter would fight "must contain", so skip it then.
             if (!opts.mustContain && !like) {
-                const letters = seed.root ? START_LETTERS.filter(c => !(ROOT_NO_START[seed.root] || '').includes(c)) : START_LETTERS;
+                // Merge: the name may open with either root, so skip letters either one never starts with.
+                const no = (ROOT_NO_START[seed.root] || '') + (ROOT_NO_START[seed.root2] || '');
+                const letters = seed.root ? START_LETTERS.filter(c => !no.includes(c)) : START_LETTERS;
                 const fresh = letters.filter(c => !usedStarts.has(c));
                 seed.start = pick(fresh.length ? fresh : letters, rnd);
-                usedStarts.add(seed.start);
+                if (fresh.length) { usedStarts.add(seed.start); seed.newStart = true; }
             }
             // Only nudge the ending about half the time; always forcing it sounds samey too.
             // Don't hand the same ending to two names in one batch (two "… Array" looked samey).
@@ -730,6 +735,10 @@
                 // A real word brings its own length and ending, so those nudges (and "no v") would only argue with it.
                 seed.word = true;
                 delete seed.syllables; delete seed.ending; delete seed.spark; delete seed.noV;
+                // v0.2.21: "a pretty Slavic word starting with W" is often impossible, and the AI searched until
+                // the answer ran out. The letter goes back to the pool for the other names.
+                if (seed.newStart) usedStarts.delete(seed.start);
+                delete seed.start;
             }
             if (rootFamily) {
                 seed.family = ROOT_FAMILY_KINDS[(familyKindStart + i) % ROOT_FAMILY_KINDS.length];
@@ -746,6 +755,7 @@
                 seed.family = pick(fresh.length ? fresh : familyStyles, rnd);
                 usedFamily.add(seed.family);
             }
+            delete seed.newStart;
             seeds.push(seed);
         }
         return seeds;
@@ -1954,6 +1964,13 @@
         const kept = Array.isArray(st.found) ? st.found.flatMap(memoryNames) : [];
         return [...new Set([...cliches, ...own, ...past, ...kept])];
     }
+    // v0.2.21: the prompt only gets the AI favorites and the user's own list. Matching each new name against
+    // 120+ past and kept names (and "close variants" of them) was the heaviest part of the AI's thinking,
+    // and the extension filters those names out after the answer anyway (avoidList above).
+    function promptAvoid(st = settings(), form = null, extra = []) {
+        const cliches = form && (realMode(form) === 'only' || wordUsed(form) === 'main') ? [] : CLICHES;
+        return [...new Set([...cliches, ...splitList(st.banList), ...extra])];
+    }
     function rememberNames(names, st = settings()) {
         if (!st.rememberHistory || !names.length) return;
         const seen = new Set(st.history.map(n => n.toLowerCase()));
@@ -2088,6 +2105,9 @@
             out.push('Place names may use real words: joined real words or a real word plus a place word are welcome. Just never a single bare everyday word on its own (like "Mold" or "Salt").');
         } else if (['mix', 'only'].includes(realMode(form))) {
             // Real names may be words too (Rose, Hope), so the plain-word rule would fight the real-name choice.
+        } else if (aiRootsUsed(form).length) {
+            // v0.2.21: the roots line already says every real word comes from those roots' own languages,
+            // and English words get the "word" mark after the answer. One rule fewer to check per name.
         } else if (wordUsed(form) === 'main' && !nameShape(form)) {
             // Word names: every name is a real word, so the plain-word rule would only argue with them.
         } else if (nameShape(form)) {
@@ -2104,9 +2124,11 @@
             if (likeSound) {
                 if (!shape.fixed && shape.roles.includes('family')) out.push('Across the batch, no two family names may be the same.');
             } else {
+                // v0.2.21: "no two may share the same ending" made the AI tick every ending off by hand and start over
+                // (an -ir and an -ar clash in round 23). Each name has its own ending seed, so a softer line is enough.
                 out.push(shape.fixed
-                    ? 'Across the batch, no two given names may share the same ending.'
-                    : 'Across the batch, no two given names may share the same ending, and no two family names may be the same.');
+                    ? 'Across the batch, spread the given-name endings out; don\'t let many share one ending.'
+                    : 'Across the batch, spread the given-name endings out; don\'t let many share one ending. No two family names may be the same.');
             }
         } else if (likeSound) {
             // A person's name is one word, so "same last word" only matters for places, shops and items.
@@ -2135,7 +2157,8 @@
         const what = realWhat(roles);
         const mode = realMode(form);
         const out = [];
-        if (mode === 'invented') out.push(`Invent the ${what}; don't hand back names that real people commonly have.${wordExcept(form)}`);
+        // v0.2.21: with AI roots on, the roots line already says "new names, not names that already exist".
+        if (mode === 'invented') { if (!aiRootsUsed(form).length) out.push(`Invent the ${what}; don't hand back names that real people commonly have.${wordExcept(form)}`); }
         else if (mode === 'near') out.push(`Base the ${what} on real names people use in this setting, each changed a little so it is new but still feels familiar.`);
         else if (mode === 'mix') out.push(`Mix real ${what} that people use in this setting with invented ones, roughly half and half.`);
         else out.push(`Use real ${what} that people actually use in this setting, not invented ones.${roles.length > 1 ? " Don't put together a famous person's full name." : ''}`);
@@ -2345,14 +2368,18 @@
         } else {
             lines.push('follow its hint.');
         }
+        // v0.2.21: a seed the roots can't meet (a Slavic word starting with E) sent the AI round in circles until
+        // the answer ran out. A way out works better than more rules.
+        if (roots.length || seeds.some(s => s.word)) lines.push('If a hint doesn\'t fit the name\'s roots or language, use the nearest one that does and move on; don\'t search long.');
         seeds.forEach((s, i) => lines.push(`${i + 1}. ${seedLine(form, s)}`));
-        if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
+        // v0.2.21: this line is for inspiration words, which roots turn off; with roots the AI still redid names over "same image".
+        if (seeds.length > 1 && !echoOnly && !roots.length) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
         // v0.2.14: Latin + Norse put a v sound in 17 of 20 given names (-val, -var, -lv-) and -mund in three.
         // v0.2.20: the "v" example also scared Slavic names off -slav and Vlad- (no v in 20 of 20), so it goes there.
         if (seeds.length > 1 && !echoOnly) lines.push(`Across the batch, vary the sounds too: don't let one sound or word part run through most of the names${aiRootsUsed(form).includes('slavic') ? '' : ' (not a "v" in nearly every name)'}.`);
         if (avoid.length) {
             lines.push('');
-            lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
+            lines.push(`Do NOT use these names: ${avoid.join(', ')}.`);
         }
         lines.push('');
         lines.push(`For each name add a short note (under 12 words) in ${noteLang(lang)} about how it fits this setting. ${roots.length ? ROOT_NOTE_RULE : "Don't claim a real meaning unless you are sure."}`);
@@ -3137,7 +3164,7 @@
         if (isPolish(form)) { await polishGenerate(form, count, avoid, st); return; }
         if (isCache(form)) { cacheGenerate(form, count, avoid, st); return; }
         const seeds = rollSeeds(count, form);
-        const messages = buildMessages(form, seeds, { lang, avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
+        const messages = buildMessages(form, seeds, { lang, avoid: promptAvoid(st, form), reading: !!st.showReading, nicks: nickOn(form, st) });
 
         busy = true;
         controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -3313,7 +3340,7 @@
         const form = aiForm(src.form || st.form, src);
         const base = src.cache ? { ...src, pieces: undefined } : src;
         const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
-        const messages = buildRefineMessages(base, mode, form, { lang: detectLang(), avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
+        const messages = buildRefineMessages(base, mode, form, { lang: detectLang(), avoid: promptAvoid(st, form, results.flatMap(memoryNames)), reading: !!st.showReading, nicks: nickOn(form, st) });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, mode, ctl, kind: 'refine' };
         refining = job;
@@ -3366,10 +3393,11 @@
         const form = aiForm(src.form || st.form, isVariant ? src.from : src);
         const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
         const nicks = nickOn(form, st);
+        const askAvoid = promptAvoid(st, form, results.flatMap(memoryNames));
         const seeds1 = isVariant ? [] : rollSeeds(1, form);
         const messages = isVariant
-            ? buildRefineMessages(from, src.tag, form, { lang, avoid, count: 1, reading: !!st.showReading, nicks })
-            : buildMessages(form, seeds1, { lang, avoid, reading: !!st.showReading, nicks });
+            ? buildRefineMessages(from, src.tag, form, { lang, avoid: askAvoid, count: 1, reading: !!st.showReading, nicks })
+            : buildMessages(form, seeds1, { lang, avoid: askAvoid, reading: !!st.showReading, nicks });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, ctl, kind: 'reroll' };
         refining = job;
@@ -3463,7 +3491,7 @@
         const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
         const reading = !!st.showReading;
         const nicks = nickOn(form, st);
-        const messages = buildPieceMessages(src, piece.role, form, { lang: detectLang(), avoid, reading, nicks });
+        const messages = buildPieceMessages(src, piece.role, form, { lang: detectLang(), avoid: promptAvoid(st, form, results.flatMap(memoryNames)), reading, nicks });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, ctl, kind: 'piece' };
         refining = job;
@@ -3977,7 +4005,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },

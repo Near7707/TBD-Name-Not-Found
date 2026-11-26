@@ -300,7 +300,8 @@ test('full-name prompt lists the parts and asks for parts JSON', () => {
     assert.match(user, /family name: /);
     assert.match(user, /"parts": \{"given": "\.\.\.", "family": "\.\.\.", "epithet": "\.\.\."\}/);
     assert.match(user, /whole full name, with a space/);
-    assert.match(user, /no two family names may be the same/);
+    assert.match(user, /No two family names may be the same/);
+    assert.match(user, /spread the given-name endings out/);
     assert.match(user, /Family names, epithets and titles may use real words/);
     const fixed = api.buildMessages({ ...form, fixedFamily: 'Holloway' }, api.rollSeeds(2, { ...form, fixedFamily: 'Holloway' }, seeded(3)), {})[1].content;
     assert.match(fixed, /always exactly "Holloway"/);
@@ -1904,7 +1905,7 @@ test('v0.2.19: word name seeds — off changes nothing, mix is about 1 in 3, mai
     const mix = [...api.rollSeeds(21, { ...base, wordMode: 'mix' }, seeded(4))];
     assert.equal(mix.filter(s => s.word).length, 7);
     const main = [...api.rollSeeds(10, { ...base, wordMode: 'main' }, seeded(4))];
-    assert.ok(main.every(s => s.word && !s.syllables && !s.ending && !s.spark && s.start));
+    assert.ok(main.every(s => s.word && !s.syllables && !s.ending && !s.spark && !s.start));
     // No roots: any language, English too.
     assert.match(api.seedLine(base, main[0]), /^real word: a pretty word from any language that fits the setting \(English is fine\)/);
     // Roots on: the word comes from those roots' languages, and "no v" is never added to a word.
@@ -1933,7 +1934,8 @@ test('v0.2.19: word name prompt lines — exceptions instead of two rules that f
     assert.doesNotMatch(text({ ...base, wordMode: 'main' }), /plain existing English word/);
     // Full name: the exception is for the given name only.
     const full = text({ ...base, parts: ['given', 'family'], aiRoots: ['latin', 'norse'], aiRootMix: 'merge', wordMode: 'main' });
-    assert.match(full, /must not be plain existing English words.*\(A given name whose seed says "real word" is the exception\.\)/);
+    // v0.2.21: with roots on, the roots line covers English words, so the plain-word line stays home.
+    assert.doesNotMatch(full, /must not be plain existing English words/);
     assert.match(full, /Put new names together from those parts, not names that already exist\. \(A given name whose seed says "real word" is the exception\.\)/);
     // A batch with no word seed (mix can roll none for one name) sends no word lines.
     const one = { ...base, wordMode: 'mix' };
@@ -2056,4 +2058,55 @@ test('v0.2.20: the batch "v" example stays out when Slavic is a root', () => {
     assert.match(t, /vary the sounds too: don't let one sound or word part run through most of the names\.\n/);
     const la = { ...base, aiRoots: ['latin'] };
     assert.match(api.buildMessages(la, api.rollSeeds(5, la, seeded(1)))[1].content, /\(not a "v" in nearly every name\)/);
+});
+
+test('v0.2.21: roots never hand out start letters their own words lack; Merge skips both roots\' letters', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai' };
+    const slav = [...api.rollSeeds(60, { ...base, aiRoots: ['slavic'] }, seeded(5))];
+    assert.ok(slav.every(s => !'EFQX'.includes(s.start)));
+    const celt = [...api.rollSeeds(60, { ...base, aiRoots: ['celtic'] }, seeded(5))];
+    assert.ok(celt.every(s => !'KVWJ'.includes(s.start)));
+    const merge = [...api.rollSeeds(60, { ...base, aiRoots: ['greek', 'slavic'], aiRootMix: 'merge' }, seeded(5))];
+    assert.ok(merge.every(s => !'WJQFVYUEX'.includes(s.start)));
+});
+
+test('v0.2.21: word seeds carry no start letter, and the other names still do not repeat one', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['greek', 'slavic'], aiRootMix: 'merge', wordMode: 'mix' };
+    const seeds = [...api.rollSeeds(20, form, seeded(9))];
+    assert.ok(seeds.some(s => s.word));
+    assert.ok(seeds.filter(s => s.word).every(s => !s.start && !/starts with/.test(api.seedLine(form, s))));
+    const starts = seeds.filter(s => !s.word).map(s => s.start);
+    assert.equal(new Set(starts).size, starts.length);
+    assert.ok(seeds.every(s => !('newStart' in s)));
+});
+
+test('v0.2.21: with roots on, the prompt drops rules the roots already cover and gives a way out', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', length: 'any' };
+    const text = form => api.buildMessages(form, api.rollSeeds(6, form, seeded(2)), { lang: 'en', avoid: ['Elara'] })[1].content;
+    const roots = text({ ...base, aiRoots: ['greek', 'slavic'], aiRootMix: 'merge' });
+    assert.doesNotMatch(roots, /plain existing English words/);
+    assert.doesNotMatch(roots, /Invent the given and family names/);
+    assert.doesNotMatch(roots, /same idea or image/);
+    assert.match(roots, /not names that already exist/);
+    assert.match(roots, /use the nearest one that does and move on/);
+    assert.match(roots, /Do NOT use these names: Elara\./);
+    const plain = text(base);
+    assert.match(plain, /plain existing English words/);
+    assert.match(plain, /Invent the given and family names/);
+    assert.match(plain, /same idea or image/);
+    assert.doesNotMatch(plain, /move on/);
+});
+
+test('v0.2.21: the prompt avoid list is AI favorites and the user\'s own list; past and kept names are only filtered', () => {
+    const { api } = load();
+    const st = { banList: 'Mira, Tobin', history: ['Pastname'], rememberHistory: true, found: [{ target: 'person', name: 'Keptname' }] };
+    const ask = [...api.promptAvoid(st, { target: 'person' })];
+    assert.ok(ask.includes('Mira') && ask.includes('Tobin') && ask.includes(api.CLICHES[0]));
+    assert.ok(!ask.includes('Pastname') && !ask.includes('Keptname'));
+    const all = [...api.avoidList(st, { target: 'person' })];
+    assert.ok(all.includes('Pastname') && all.includes('Keptname'));
+    assert.ok([...api.promptAvoid(st, { target: 'person' }, ['Onscreen'])].includes('Onscreen'));
 });
