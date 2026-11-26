@@ -1019,7 +1019,7 @@ test('v0.2.0: the form shows AI / Cache for people and places, roots and kinds i
     const line = api.fragsHtml(n).replace(/<[^>]+>/g, '');
     assert.match(line, /^fragments: \S+ .+ \+ \S+ .+ · 옛 영어$/);
     api.setResults([{ ...n, form: { target: 'place', method: 'cache' } }]);
-    assert.match(api.resultsHtml(), /CACHE/);
+    assert.match(api.resultsHtml(), /ARCHIVE/);
     assert.equal(api.fragsHtml({ name: 'X' }), '');
 });
 
@@ -1599,9 +1599,9 @@ test('review text: choices once per group, every name with its fragments, in Eng
     const place = { ...api.cacheOne({ target: 'place', kind: 'forest' }, 'celtic', 'common', seeded(2)), form: { target: 'place', method: 'cache', roots: ['celtic'], kind: 'forest' } };
     const ai = { name: 'Morvel', read: '모르벨', note: '부드러운 느낌', real: true, nicks: ['Mor'], form: { target: 'person', method: 'ai', vibe: 'medieval', aiRoots: ['celtic', 'latin'], aiRootMix: 'merge', realNames: 'near', parts: ['given'] } };
     const text = api.reviewText([...names, place, ai]);
-    assert.match(text, /\[Made with: Cache · Target: person · Gender: feminine · Roots: Latin, Norse \(Merge\) · Kind of name: Royal \/ ruler · Parts: given, family\]/);
-    assert.equal(text.split('Made with: Cache · Target: person').length - 1, 1, 'same choices written once');
-    assert.match(text, /\[Made with: Cache · Target: place · Kind: forest · Roots: Celtic\]/);
+    assert.match(text, /\[Made with: Archive · Target: person · Gender: feminine · Roots: Latin, Norse \(Merge\) · Kind of name: Royal \/ ruler · Parts: given, family\]/);
+    assert.equal(text.split('Made with: Archive · Target: person').length - 1, 1, 'same choices written once');
+    assert.match(text, /\[Made with: Archive · Target: place · Kind: forest · Roots: Celtic\]/);
     assert.match(text, /\[Made with: AI · Target: person · Vibe: medieval · Gender: any · Roots: Celtic, Latin \(Merge\) · Real names: near · Parts: given\]/);
     for (const n of names) {
         assert.ok(text.includes(n.name), n.name);
@@ -1696,11 +1696,11 @@ test('v0.2.11: "AI polished" only when the spelling changed', () => {
     const changed = { name: 'Ferand', cache: true, polished: true, orig: 'Ferrand' };
     assert.equal(api.polishChanged(kept), false);
     assert.equal(api.polishChanged(changed), true);
-    assert.match(api.tagsHtml(kept), />CACHE</);
+    assert.match(api.tagsHtml(kept), />ARCHIVE</);
     assert.doesNotMatch(api.tagsHtml(kept), /AI polished/);
     assert.match(api.tagsHtml(changed), /AI polished/);
     const form = { target: 'person', method: 'polish', parts: ['given'] };
-    assert.match(api.reviewText([{ ...kept, form }]), /CACHE, AI read only/);
+    assert.match(api.reviewText([{ ...kept, form }]), /ARCHIVE, AI read only/);
     assert.match(api.reviewText([{ ...changed, form }]), /AI polished/);
 });
 test('v0.2.11: one list never gives the same byname twice, and small ordinals come first', () => {

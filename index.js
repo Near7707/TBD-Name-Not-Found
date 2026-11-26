@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.22
+// TBD — Name Not Found v0.2.23
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -74,21 +74,21 @@
             checkGoogle: 'Search Google', checkAsk: 'Ask the AI too', checkAsking: 'Asking…', checkAiTag: 'AI guess', checkAiEmpty: '(no answer)',
             clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
-            method: 'Made with', methods: { ai: 'AI', cache: 'Cache', polish: 'Cache + AI' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
+            method: 'Made with', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
             roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse', greek: 'Ancient Greek', slavic: 'Slavic' },
             rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: 'Each name from one root, taking turns.', merge: 'Each name mixes two roots: one part from each.' },
             aiRootAny: 'Any', aiRootOff: { like: 'Not used now: the "Like this" words lead.', cosmic: 'Not used now: Lovecraftian invented names stay eldritch.' },
             ck: { common: 'Common name', noble: 'Noble house', religious: 'Monastic / saint', royal: 'Royal / ruler', warrior: 'Warrior / byname', scholar: 'Scholar (Latin)' },
             branch: { patron: "father's name", place: 'home place', dwell: 'where they lived', trade: 'trade', looks: 'looks / nickname' },
-            fragments: 'fragments', cacheTag: 'CACHE', cacheTip: 'Built from name fragments. No AI was used.',
-            foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from cache`,
-            cacheEmpty: 'No new names left in the cache for these choices. Try other roots or conditions.',
+            fragments: 'fragments', cacheTag: 'ARCHIVE', cacheTip: 'Built from name fragments. No AI was used.',
+            foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from the archive`,
+            cacheEmpty: 'No new names left in the archive for these choices. Try other roots or conditions.',
             needPick: { roots: 'Pick at least one root.', kinds: 'Pick at least one kind of name.' }, needErr: m => `400 — ${m}`,
-            polishTag: 'AI polished', polishTip: 'Built from name fragments, then the AI smoothed the sound a little. The meanings are from the cache, not the AI.',
+            polishTag: 'AI polished', polishTip: 'Built from name fragments, then the AI smoothed the sound a little. The meanings are from the archive, not the AI.',
             keptTip: 'Built from name fragments. The AI read it and left the spelling as it was; the reading and note are from the AI.',
             polishWas: 'was', polishing: 'Polishing…',
-            polishFail: '206 — the AI polish failed; showing plain Cache names.',
-            polishSome: (n, all) => `206 — ${n} of ${all} polished; the rest are plain Cache names.`,
+            polishFail: '206 — the AI polish failed; showing plain Archive names.',
+            polishSome: (n, all) => `206 — ${n} of ${all} polished; the rest are plain Archive names.`,
             nicks: 'Nicknames', nickCopy: 'Copy this nickname',
             copyPiece: 'Copy this part', rerollPiece: 'Swap just this part', rerollingPiece: 'Swapping one part…', pieceRerolled: '200 OK — part swapped',
             gear: 'Settings', back: 'Back',
@@ -179,17 +179,17 @@
             checkGoogle: '구글에서 보기', checkAsk: 'AI에게도 묻기', checkAsking: '묻는 중…', checkAiTag: 'AI 추정', checkAiEmpty: '(답 없음)',
             clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
-            method: '만드는 방식', methods: { ai: 'AI', cache: 'Cache', polish: 'Cache + AI' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
+            method: '만드는 방식', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
             roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽', greek: '고대 그리스', slavic: '슬라브' },
             rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: '이름마다 뿌리 하나씩, 돌아가며.', merge: '이름마다 뿌리 두 개를 섞어요: 조각 하나씩.' },
             aiRootAny: '상관없음', aiRootOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', cosmic: '지금은 안 써요: 러브크래프트풍 지어낸 이름은 이질적인 이름이라서요.' },
             ck: { common: '일반 인명', noble: '귀족 가문', religious: '수도원·성인', royal: '왕족·군주', warrior: '전사·별칭', scholar: '학자 (라틴식)' },
             branch: { patron: '아버지 이름', place: '출신 지명', dwell: '사는 곳', trade: '직업', looks: '생김새·별명' },
-            fragments: 'fragments', cacheTag: 'CACHE', cacheTip: '이름 조각으로 만든 이름이에요. AI는 안 썼어요.',
-            foundCache: n => `200 OK — 캐시에서 이름 ${n}개 찾음`,
-            cacheEmpty: '이 조건으론 캐시에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
+            fragments: 'fragments', cacheTag: 'ARCHIVE', cacheTip: '이름 조각으로 만든 이름이에요. AI는 안 썼어요.',
+            foundCache: n => `200 OK — 아카이브에서 이름 ${n}개 찾음`,
+            cacheEmpty: '이 조건으론 아카이브에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
             needPick: { roots: '뿌리를 하나 이상 골라 주세요.', kinds: '이름 종류를 하나 이상 골라 주세요.' }, needErr: m => `400 — ${m}`,
-            polishTag: 'AI 다듬음', polishTip: '이름 조각으로 만든 뒤 AI가 소리를 살짝 다듬었어요. 뜻은 AI가 아니라 캐시 자료예요.',
+            polishTag: 'AI 다듬음', polishTip: '이름 조각으로 만든 뒤 AI가 소리를 살짝 다듬었어요. 뜻은 AI가 아니라 아카이브 자료예요.',
             keptTip: '이름 조각으로 만든 이름이에요. AI가 보고 철자는 그대로 뒀어요. 읽는 법과 설명은 AI가 썼어요.',
             polishWas: '원래', polishing: '다듬는 중…',
             polishFail: '206 — AI 다듬기에 실패해서 조각 이름 그대로 보여요.',
@@ -3014,7 +3014,7 @@
             if (formLine !== lastForm) { lines.push('', `[${formLine}]`); lastForm = formLine; }
             const marks = [];
             if (r.tag) marks.push(`variant: ${r.tag}`);
-            if (polishChanged(r)) marks.push('AI polished'); else if (r.polished) marks.push('CACHE, AI read only'); else if (r.cache) marks.push('CACHE');
+            if (polishChanged(r)) marks.push('AI polished'); else if (r.polished) marks.push('ARCHIVE, AI read only'); else if (r.cache) marks.push('ARCHIVE');
             if (r.real) marks.push('real');
             if (r.word) marks.push(`word: ${[r.word.meaning, r.word.lang].filter(Boolean).join(', ')}`);
             else if (wordHits(r, r.form).length) marks.push(`plain word: ${wordHits(r, r.form).map(w => w.word).join(', ')}`);
