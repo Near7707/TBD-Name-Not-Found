@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.4
+// TBD — Name Not Found v0.2.5
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -2565,7 +2565,7 @@
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
-                    <button class="tbd-icon-btn tbd-star${star ? ' tbd-on' : ''}" title="${escapeHtml(star ? L.starRemove : L.starAdd)}" aria-label="${escapeHtml(star ? L.starRemove : L.starAdd)}" aria-pressed="${star}"><i class="fa-${star ? 'solid' : 'regular'} fa-star"></i></button>
+                    <button class="tbd-icon-btn tbd-star${star ? ' tbd-on' : ''}" title="${escapeHtml(star ? L.starRemove : L.starAdd)}" aria-label="${escapeHtml(star ? L.starRemove : L.starAdd)}" aria-pressed="${star}"><i class="fa-solid fa-star"></i></button>
                     <button class="tbd-icon-btn tbd-check-btn${r.check && !r.check.hidden && !r.check.quiet ? ' tbd-on' : ''}" title="${escapeHtml(L.checkBtn)}" aria-label="${escapeHtml(L.checkBtn)}"><i class="fa-solid fa-magnifying-glass"></i></button>
                 </div>${checkHtml(r)}${piecesHtml(r)}${menu}${working}
             </div>`;

@@ -751,7 +751,9 @@
 #tbd_panel .tbd-tab[aria-selected="true"] { color: var(--tbd-name); border-bottom-color: var(--tbd-accent); font-weight: bold; }
 #tbd_panel .tbd-tab .fa-star { color: var(--tbd-accent); font-size: 11px; }
 .tbd-tab-n { font-size: 11px; opacity: .8; }
-.tbd-icon-btn.tbd-star.tbd-on { color: var(--tbd-accent); }
+/* SillyTavern only ships the solid icon font (fa-regular shows filled), so "off" is drawn as an outline. */
+#tbd_panel .tbd-icon-btn.tbd-star:not(.tbd-on) i { color: transparent; -webkit-text-stroke: 1.5px var(--tbd-dim); }
+#tbd_panel .tbd-icon-btn.tbd-star.tbd-on i { color: var(--tbd-accent); -webkit-text-stroke: 0; }
 .tbd-found-filter { padding: 10px 14px 6px; margin: 0; }
 .tbd-found .tbd-results { border-top: 1px dashed var(--tbd-line); }
 .tbd-found .tbd-foot { flex-wrap: wrap; }
