@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.9
+// TBD — Name Not Found v0.2.10
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -79,6 +79,7 @@
             fragments: 'fragments', cacheTag: 'CACHE', cacheTip: 'Built from name fragments. No AI was used.',
             foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from cache`,
             cacheEmpty: 'No new names left in the cache for these choices. Try other roots or conditions.',
+            needPick: { roots: 'Pick at least one root.', kinds: 'Pick at least one kind of name.' }, needErr: m => `400 — ${m}`,
             polishTag: 'AI polished', polishTip: 'Built from name fragments, then the AI smoothed the sound a little. The meanings are from the cache, not the AI.',
             polishWas: 'was', polishing: 'Polishing…',
             polishFail: '206 — the AI polish failed; showing plain Cache names.',
@@ -178,6 +179,7 @@
             fragments: 'fragments', cacheTag: 'CACHE', cacheTip: '이름 조각으로 만든 이름이에요. AI는 안 썼어요.',
             foundCache: n => `200 OK — 캐시에서 이름 ${n}개 찾음`,
             cacheEmpty: '이 조건으론 캐시에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
+            needPick: { roots: '뿌리를 하나 이상 골라 주세요.', kinds: '이름 종류를 하나 이상 골라 주세요.' }, needErr: m => `400 — ${m}`,
             polishTag: 'AI 다듬음', polishTip: '이름 조각으로 만든 뒤 AI가 소리를 살짝 다듬었어요. 뜻은 AI가 아니라 캐시 자료예요.',
             polishWas: '원래', polishing: '다듬는 중…',
             polishFail: '206 — AI 다듬기에 실패해서 조각 이름 그대로 보여요.',
@@ -977,6 +979,21 @@
     function isPolish(form = {}) {
         return form.method === 'polish' && isCache(form);
     }
+    // v0.2.10: the chips can all be off (to switch from one to another in any order). The raw picks are
+    // what the chips show; cacheRoots / cacheKinds still fall back to a default wherever a name is made.
+    function pickedRoots(form = {}) {
+        return Array.isArray(form.roots) ? form.roots.filter(x => CACHE_ROOTS.includes(x)) : ['oldenglish'];
+    }
+    function pickedKinds(form = {}) {
+        return Array.isArray(form.ckinds) ? form.ckinds.filter(x => CACHE_KINDS.includes(x)) : ['common'];
+    }
+    // What's missing before a Cache name can be made ('' when nothing is).
+    function cacheNeed(form = {}) {
+        if (!isCache(form)) return '';
+        if (!pickedRoots(form).length) return 'roots';
+        if (form.target === 'person' && !pickedKinds(form).length) return 'kinds';
+        return '';
+    }
     function cacheRoots(form = {}) {
         const r = (Array.isArray(form.roots) ? form.roots : []).filter(x => CACHE_ROOTS.includes(x));
         return r.length ? r : ['oldenglish'];
@@ -1313,7 +1330,31 @@
     }
     // One whole Cache name. Merge (mix = [A, B]): given names take A's head and B's ending,
     // places A's head and B's tail; the family name, title and bynames follow `root`, one of the two.
+    // v0.2.10: the family name (or "of a place") never reuses a part of the given or middle name
+    // (Veria Veria, Tihomira Mirodragović). Parts compare by stem, 3 letters or more, so endings
+    // like -an or -ia that many names share don't count.
+    function fragStems(frags = []) {
+        return frags.map(f => dropVowel(String(f.t || '').toLowerCase().replace(/[^a-zà-ÿœæ]/g, ''))).filter(x => x.length >= 3);
+    }
+    const NAME_SIDE = ['given', 'middle'];
+    const HOME_SIDE = ['family', 'origin'];
+    function sharedStems(a = [], b = []) {
+        const x = new Set(fragStems(a));
+        return fragStems(b).some(t => x.has(t));
+    }
+    function piecesClash(pieces = []) {
+        const names = pieces.filter(p => NAME_SIDE.includes(p.role)).flatMap(p => p.frags || []);
+        return pieces.some(p => HOME_SIDE.includes(p.role) && !p.fixed && sharedStems(names, p.frags || []));
+    }
     function cacheOne(form, root, kind, rnd = Math.random, mix = null) {
+        let n;
+        for (let i = 0; i < 12; i++) {
+            n = cacheOneRaw(form, root, kind, rnd, mix);
+            if (!n.pieces || !piecesClash(n.pieces)) return n;
+        }
+        return n;
+    }
+    function cacheOneRaw(form, root, kind, rnd = Math.random, mix = null) {
         const pair = Array.isArray(mix) && mix.length === 2 && mix[0] !== mix[1] ? mix : null;
         if (form.target === 'place') {
             const p = pair ? cachePlace(pair[0], PLACE_CATS[normalizeKind('place', form.kind)] || null, rnd, false, pair[1])
@@ -1457,6 +1498,10 @@
             else return null;
             if (banned.has(next.text.toLowerCase()) || banned.has(next.text.replace(/^(de|of|von|af|d')\s?/i, '').toLowerCase())) continue;
             const out = { ...p, text: next.text, frags: next.frags };
+            // A swapped part still mustn't echo the other side of the name (only the new part is checked).
+            const others = src.pieces.filter((q, j) => j !== k);
+            if (NAME_SIDE.includes(out.role) && sharedStems(others.filter(q => HOME_SIDE.includes(q.role) && !q.fixed).flatMap(q => q.frags || []), out.frags || [])) continue;
+            if (HOME_SIDE.includes(out.role) && sharedStems(others.filter(q => NAME_SIDE.includes(q.role)).flatMap(q => q.frags || []), out.frags || [])) continue;
             if (next.branch) out.branch = next.branch; else delete out.branch;
             return out;
         }
@@ -1762,8 +1807,8 @@
         if (!REASONING_LEVELS.includes(st.reasoning)) st.reasoning = 'default';
         if (!REAL_MODES.includes(st.form.realNames)) st.form.realNames = 'invented';
         if (!METHODS.includes(st.form.method)) st.form.method = 'ai';
-        st.form.roots = cacheRoots(st.form);
-        st.form.ckinds = cacheKinds(st.form);
+        st.form.roots = pickedRoots(st.form);
+        st.form.ckinds = pickedKinds(st.form);
         st.form.aiRoots = (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x));
         if (!ROOT_MIXES.includes(st.form.rootMix)) st.form.rootMix = 'split';
         if (!ROOT_MIXES.includes(st.form.aiRootMix)) st.form.aiRootMix = 'split';
@@ -2532,13 +2577,16 @@
     // Roots (and, for people, kinds of name). Several can be on; the last one stays on.
     function cacheChipsHtml(form) {
         const L = T();
-        const roots = cacheRoots(form);
-        const kinds = cacheKinds(form);
+        const roots = pickedRoots(form);
+        const kinds = pickedKinds(form);
+        const need = (id, key, on) => `<div class="tbd-note" id="${id}"${on ? '' : ' hidden'}>${escapeHtml(L.needPick[key])}</div>`;
         return `<div class="tbd-wide tbd-chipset"><div class="tbd-chips-label">${escapeHtml(L.rootsLabel)}</div>
             <div class="tbd-chips">${CACHE_ROOTS.map(v => chipHtml('root', v, L.roots[v], roots.includes(v))).join('')}</div>
+            ${need('tbd_root_need', 'roots', !roots.length)}
             ${rootMixHtml('rootmix', 'tbd_rootmix', form.rootMix, roots.length > 1)}
             ${form.target === 'person' ? `<div class="tbd-chips-label">${escapeHtml(L.ckLabel)}</div>
-            <div class="tbd-chips">${CACHE_KINDS.map(v => chipHtml('ckind', v, L.ck[v], kinds.includes(v))).join('')}</div>` : ''}</div>`;
+            <div class="tbd-chips">${CACHE_KINDS.map(v => chipHtml('ckind', v, L.ck[v], kinds.includes(v))).join('')}</div>
+            ${need('tbd_ckind_need', 'kinds', !kinds.length)}` : ''}</div>`;
     }
 
     // Roots for the AI: "Any" (default) or one or more roots. Tells when another choice wins.
@@ -2857,8 +2905,8 @@
             extras: Array.isArray(st.form.extras) ? st.form.extras : [],
             fixedFamily: String($('#tbd_fixed').val() ?? st.form.fixedFamily ?? '').slice(0, 40),
             method: METHODS.includes(st.form.method) ? st.form.method : 'ai',
-            roots: cacheRoots(st.form),
-            ckinds: cacheKinds(st.form),
+            roots: pickedRoots(st.form),
+            ckinds: pickedKinds(st.form),
             aiRoots: (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x)),
             rootMix: st.form.rootMix === 'merge' ? 'merge' : 'split',
             aiRootMix: st.form.aiRootMix === 'merge' ? 'merge' : 'split',
@@ -2877,6 +2925,13 @@
         const lang = detectLang();
         const count = st.count;
         const avoid = avoidList(st, form);
+        const need = cacheNeed(form);
+        if (need) {
+            status = { kind: 'error', text: T().needErr(T().needPick[need]) };
+            rawOpen = false;
+            renderResultsOnly();
+            return;
+        }
         if (isPolish(form)) { await polishGenerate(form, count, avoid, st); return; }
         if (isCache(form)) { cacheGenerate(form, count, avoid, st); return; }
         const messages = buildMessages(form, rollSeeds(count, form), { lang, avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
@@ -3554,11 +3609,13 @@
             if (group === 'root' || group === 'ckind') {
                 const key = group === 'root' ? 'roots' : 'ckinds';
                 const all = group === 'root' ? CACHE_ROOTS : CACHE_KINDS;
-                const set = new Set(form[key]);
-                if (set.has(v0)) { if (set.size === 1) return; set.delete(v0); } else set.add(v0);
+                // The last one can go off too: switching roots is then "off, on" in any order.
+                const set = new Set(key === 'roots' ? pickedRoots(form) : pickedKinds(form));
+                if (set.has(v0)) set.delete(v0); else set.add(v0);
                 form[key] = all.filter(x => set.has(x));
                 $(this).attr('aria-pressed', set.has(v0) ? 'true' : 'false');
-                if (key === 'roots') $('#tbd_rootmix').prop('hidden', form.roots.length < 2);
+                if (key === 'roots') { $('#tbd_rootmix').prop('hidden', form.roots.length < 2); $('#tbd_root_need').prop('hidden', form.roots.length > 0); }
+                else $('#tbd_ckind_need').prop('hidden', form.ckinds.length > 0);
                 save();
                 return;
             }
@@ -3705,7 +3762,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, reviewText, reviewFormLine, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, reviewText, reviewFormLine, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },

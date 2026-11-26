@@ -1612,3 +1612,50 @@ test('review text: choices once per group, every name with its fragments, in Eng
     // English meanings, not the Korean ones, even on a Korean screen.
     assert.doesNotMatch(text.split('Morvel')[0], /[가-힣]/);
 });
+
+// ---------- v0.2.10: chips can all go off · no shared part between name and family ----------
+test('roots and kinds can all be off; finding then asks for one (400)', () => {
+    const { api } = load();
+    const form = { target: 'person', method: 'cache', roots: [], ckinds: ['common'] };
+    assert.deepEqual([...api.pickedRoots(form)], []);
+    assert.equal(api.cacheNeed(form), 'roots');
+    assert.equal(api.cacheNeed({ ...form, roots: ['latin'], ckinds: [] }), 'kinds');
+    assert.equal(api.cacheNeed({ ...form, target: 'place', roots: ['latin'], ckinds: [] }), '', 'places have no kinds of name');
+    assert.equal(api.cacheNeed({ ...form, method: 'ai' }), '', 'AI mode is never blocked by Cache chips');
+    assert.equal(api.cacheNeed({ ...form, roots: ['latin'] }), '');
+    // Settings keep an empty pick (it isn't refilled), and an old save with no list gets the default.
+    const { api: a2 } = load({ extensionSettings: { tbd_names: { form: { roots: [], ckinds: [] } } } });
+    assert.deepEqual([...a2.settings().form.roots], []);
+    const { api: a3 } = load({ extensionSettings: { tbd_names: { form: {} } } });
+    assert.deepEqual([...a3.settings().form.roots], ['oldenglish']);
+    // Making a name still never breaks: an empty list falls back where names are made.
+    assert.equal(api.cacheNames(form, 2, [], seeded(1)).length, 2);
+    // The chips show nothing on, with the note.
+    const html = api.cacheChipsHtml(form);
+    assert.doesNotMatch(html, /data-chip="root"[^>]*aria-pressed="true"/);
+    assert.match(html, /id="tbd_root_need"(?! hidden)/);
+});
+test('family name and "of a place" never reuse a part of the given name', () => {
+    const { api } = load();
+    assert.equal(api.sharedStems([{ t: 'Ver' }, { t: 'ia' }], [{ t: 'Ver' }, { t: 'ia' }]), true);
+    assert.equal(api.sharedStems([{ t: 'Tiho' }, { t: 'mira' }], [{ t: 'Miro' }, { t: 'drag' }, { t: 'ović' }]), true);
+    assert.equal(api.sharedStems([{ t: 'Cad' }, { t: 'an' }], [{ t: 'Mac' }, { t: 'Gov' }, { t: 'an' }]), false, 'short endings like -an don\'t count');
+    assert.equal(api.sharedStems([{ t: 'Fid' }, { t: 'ia' }], [{ t: 'Ver' }, { t: 'ia' }]), false);
+    const rnd = seeded(2030);
+    for (const root of api.CACHE_ROOTS) for (const kind of api.CACHE_KINDS) for (const gender of ['masculine', 'feminine']) {
+        for (let i = 0; i < 40; i++) {
+            const n = api.cacheOne({ target: 'person', parts: ['given', 'middle', 'family'], gender }, root, kind, rnd);
+            const names = (n.pieces || []).filter(p => ['given', 'middle'].includes(p.role)).flatMap(p => p.frags || []);
+            for (const p of n.pieces || []) {
+                if (['family', 'origin'].includes(p.role) && !p.fixed) assert.equal(api.sharedStems(names, p.frags || []), false, n.name);
+            }
+        }
+    }
+    // Swapping the family name keeps to the rule too.
+    const n = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'feminine' }, 'latin', 'common', seeded(3));
+    const k = n.pieces.findIndex(p => p.role === 'family');
+    for (let i = 0; i < 20; i++) {
+        const f = api.cachePiece(n, k, {}, [], seeded(40 + i));
+        assert.equal(api.sharedStems(n.pieces[0].frags, f.frags), false, `${n.pieces[0].text} ${f.text}`);
+    }
+});
