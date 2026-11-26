@@ -1771,7 +1771,7 @@ test('v0.2.15: AI roots with a family name give each name its own kind of family
     const seeds = [...api.rollSeeds(4, form, seeded(3))];
     assert.deepEqual([...new Set(seeds.map(s => s.family))].sort(), ["from a father's name", 'from a place', 'from a trade', 'from looks or a nickname']);
     const text = api.buildMessages(form, seeds)[1].content;
-    assert.match(text, /; family name: from a (place|trade|father's name|looks or a nickname)/);
+    assert.match(text, /; family name: (Latin|Norse) words, from (a place|a trade|a father's name|looks or a nickname)/);
     // The old batch-wide line is gone.
     assert.doesNotMatch(text, /mix kinds of family names/);
     // No family name or a fixed one: no kind seed. No roots: the vibe's own family styles as before.
@@ -1802,4 +1802,22 @@ test('v0.2.14: Korean notes ask for Hangul only, English notes stay plain', () =
     assert.match(e, /note \(under 12 words\) in English about/);
     assert.doesNotMatch(e, /Hangul only/);
     assert.match(ko.buildCheckMessages('Pell', 'ko')[1].content, /Hangul only/);
+});
+
+test('v0.2.16: the family-name seed says which root its words come from', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    const seeds = [...api.rollSeeds(20, form, seeded(3))];
+    // Merge: one of the name's two roots, and both roots show up for every kind of family name.
+    assert.ok(seeds.every(s => [s.root, s.root2].includes(s.familyRoot)));
+    for (const kind of new Set(seeds.map(s => s.family))) {
+        assert.deepEqual([...new Set(seeds.filter(s => s.family === kind).map(s => s.familyRoot))].sort(), ['latin', 'norse'], kind);
+    }
+    const text = api.buildMessages(form, seeds.slice(0, 4))[1].content;
+    assert.match(text, /; family name: (Latin|Norse) words, from /);
+    // Split: the name's own root.
+    const split = { ...form, aiRootMix: 'split' };
+    assert.ok([...api.rollSeeds(8, split, seeded(3))].every(s => s.familyRoot === s.root));
+    // No roots: no root in the family seed.
+    assert.ok([...api.rollSeeds(4, { ...form, aiRoots: [] }, seeded(3))].every(s => !s.familyRoot));
 });

@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.15
+// TBD — Name Not Found v0.2.16
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -680,7 +680,15 @@
                 usedEndings.add(seed.ending);
             }
             if (shapes) seed.shape = pick(shapes, rnd);
-            if (rootFamily) seed.family = ROOT_FAMILY_KINDS[(familyKindStart + i) % ROOT_FAMILY_KINDS.length];
+            if (rootFamily) {
+                seed.family = ROOT_FAMILY_KINDS[(familyKindStart + i) % ROOT_FAMILY_KINDS.length];
+                // v0.2.16: a bare English kind ("from a trade") came back as English words (Ropewright, Redwhisker),
+                // so the seed names the root too. Merge takes its two roots in turn.
+                // Split keeps the name's own root. Merge picks one of its two, shifted each round of kinds,
+                // so "trade" isn't always Latin.
+                const want = roots[(i + Math.floor(i / ROOT_FAMILY_KINDS.length)) % roots.length];
+                seed.familyRoot = seed.root2 && want === seed.root2 ? seed.root2 : seed.root;
+            }
             if (familyStyles) {
                 const fresh = familyStyles.filter(f => !usedFamily.has(f));
                 seed.family = pick(fresh.length ? fresh : familyStyles, rnd);
@@ -2236,7 +2244,7 @@
             if (s.likeFocus) parts.push(`echo the "like" word${likeWords(form).length > 1 ? 's' : ''} mostly in ${s.likeFocus}`);
             if (!parts.length) parts.push('follow the "like" words above');
             if (s.spark) parts.push(`inspiration: "${s.spark}"`);
-            lines.push(`${i + 1}. ${main}${parts.join(', ')}${s.family ? `; family name: ${s.family}` : ''}`);
+            lines.push(`${i + 1}. ${main}${parts.join(', ')}${s.family ? `; family name: ${s.familyRoot ? `${STRINGS.en.roots[s.familyRoot]} words, ` : ''}${s.family}` : ''}`);
         });
         if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
         // v0.2.14: Latin + Norse put a v sound in 17 of 20 given names (-val, -var, -lv-) and -mund in three.
