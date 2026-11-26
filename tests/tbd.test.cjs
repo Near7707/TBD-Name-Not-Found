@@ -2212,3 +2212,28 @@ test('v0.2.25: sweep — Archive places and people keep the join rules', () => {
         }
     }
 });
+
+test('v0.2.26: Archive — -recki, no swallowed endings or doubled vowels, short Greek father names, no great + little', () => {
+    const { api } = load();
+    assert.equal(api.slavicSki('Poloreka'), 'Polorecki');
+    assert.equal(api.slavicSki('Polovka'), 'Polovski');
+    assert.equal(api.slavicSki('Lipets'), 'Lipecki');
+    assert.ok(api.twoAdjectives({ t: 'Megalo', en: 'great' }, { t: 'ets', en: 'little' }));
+    assert.ok(!api.twoAdjectives({ t: 'Bel', en: 'white' }, { t: 'ets', en: 'little' }));
+    assert.ok(api.newDoubleVowel('Neevo', 'Nea', 'evo') && !api.newDoubleVowel('Leukozero', 'Leuko', 'ozero'));
+    const rnd = seeded(2030);
+    const R = api.CACHE_ROOTS;
+    for (let i = 0; i < R.length; i++) for (let j = i; j < R.length; j++) {
+        const roots = i === j ? [R[i]] : [R[i], R[j]];
+        for (const r of api.cacheNames({ target: 'person', method: 'cache', roots, rootMix: 'merge', ckinds: ['common'], parts: ['given', 'family'] }, 20, [], rnd)) {
+            const g = r.pieces.find(p => p.role === 'given');
+            assert.notEqual(g.text.toLowerCase(), g.frags[0].t.toLowerCase(), `swallowed ending: ${r.name}`);
+            assert.ok(!api.newDoubleVowel(g.text, g.frags[0].t, g.frags[1].t), `doubled vowel: ${r.name}`);
+            const f = r.pieces.find(p => p.role === 'family');
+            if (f && /ides$/.test(f.text)) assert.ok(f.text.length <= 12, `long: ${r.name}`);
+        }
+        for (const r of api.cacheNames({ target: 'place', method: 'cache', roots, rootMix: 'merge' }, 20, [], rnd)) {
+            if (r.frags.length === 2) assert.ok(!api.newDoubleVowel(r.name, r.frags[0].t, r.frags[1].t), `doubled vowel: ${r.name}`);
+        }
+    }
+});

@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.25
+// TBD — Name Not Found v0.2.26
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1216,7 +1216,13 @@
     // ("little") make real place names out of one describing word (Belica, Starets), so they don't count.
     const ADJ_WORDS = new Set(['great', 'big', 'small', 'little', 'white', 'black', 'red', 'blue', 'blue-green', 'green', 'high', 'old', 'new', 'long', 'fair', 'dark', 'grey', 'light grey', 'yellow', 'speckled', 'rough', 'streaked', 'broad', 'cold', 'brown', 'swift', 'dry', 'wet', 'quiet', 'upper', 'lower', 'beautiful', 'fine', 'holy']);
     function isAdj(f) { return ADJ_WORDS.has(((f && f.en) || '').split(',')[0].trim().toLowerCase()); }
-    function twoAdjectives(h, t) { return isAdj(h) && isAdj(t) && !(t.en === 'little' && t.t.length <= 3); }
+    // v0.2.26: …but never "great" + "little" (Megalets).
+    function twoAdjectives(h, t) { return isAdj(h) && isAdj(t) && (!(t.en === 'little' && t.t.length <= 3) || /^(great|big)\b/.test(h.en)); }
+    // v0.2.26: dropping a vowel left the same vowel twice (Nea + evo → Neevo, Dio + ippe → Diippe).
+    function newDoubleVowel(text, h, t) {
+        const d = /(aa|ee|ii|oo|uu)/i;
+        return d.test(text) && !d.test(h) && !d.test(t);
+    }
     // v0.2.25: Slavic "upper / lower / great / little / old" agree with the place (Velika Reka, Gornje Selo, Stari Grad).
     const SLAVIC_ADJ = { Gornji: 'Gornj', Donji: 'Donj', Veliki: 'Velik', Mali: 'Mal', Stari: 'Star' };
     function slavicAgree(word, place) {
@@ -1244,6 +1250,8 @@
             if (sameStem(h.t, t.t) || sameSound(h.t, t.t)) continue;
             const text = glue(h.t, t.t, elide);
             if (!sayable(text)) continue;
+            // v0.2.26: the ending must still be there (Mega + a → Mega) and not leave a doubled vowel.
+            if (text.toLowerCase() === h.t.toLowerCase() || newDoubleVowel(text, h.t, t.t)) continue;
             return make(h, t);
         }
         return make(R.head[0], tails[0]);
@@ -1285,7 +1293,7 @@
             if (cats && i < 30 && !ofKind(h) && !ofKind(t)) continue;
             if (shortLatin && t.t.length <= 4) continue;
             const text = capFirst(glue(h.t, t.t, elide, link));
-            if (!sayable(text)) continue;
+            if (!sayable(text) || newDoubleVowel(text, h.t, t.t)) continue;
             // r + vowel + r at the join (Akro + oros → Akroros).
             if (/ror/i.test(text) && !/ror/i.test(h.t) && !/ror/i.test(t.t)) continue;
             base = { text, frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root };
@@ -1327,6 +1335,8 @@
         const b = dropVowel(place);
         if (/ts$/.test(b)) return `${b.slice(0, -2)}cki`;
         if (/[cs]$/.test(b)) return `${b}ki`;
+        // v0.2.26: a vowel + k (reka) softens: Polorecki, Zarecki. After a consonant (Polovka) the k just drops: Polovski.
+        if (/[aeiouy]k$/.test(b)) return `${b.slice(0, -1)}cki`;
         if (/k$/.test(b)) return `${b.slice(0, -1)}ski`;
         return `${b}ski`;
     }
@@ -1367,8 +1377,10 @@
                 }
                 case 'greek': { // father's name + -ides (Theodorides)
                     const f = cacheGiven(root, 'm', rnd);
-                    const base = f.text.replace(/(os|es|as|is|on)$/, '');
-                    return { text: `${dropVowel(base)}ides`, frags: [...f.frags, { t: 'ides', en: 'son of', ko: '~의 아들' }] };
+                    let base = dropVowel(f.text.replace(/(os|es|as|is|on)$/, '')), frags = f.frags;
+                    // v0.2.26: a long father's name keeps only its first part (Aristostratides → Aristides).
+                    if ((base + 'ides').length > 12 && f.frags[0]) { base = dropVowel(f.frags[0].t); frags = [f.frags[0]]; }
+                    return { text: `${base}ides`, frags: [...frags, { t: 'ides', en: 'son of', ko: '~의 아들' }] };
                 }
                 case 'slavic': { // father's name + -ov / -ović
                     const f = cacheGiven(root, 'm', rnd);
@@ -4082,7 +4094,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
