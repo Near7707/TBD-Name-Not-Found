@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.18
+// TBD — Name Not Found v0.2.19
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -64,6 +64,10 @@
             fixedFamily: 'Keep this family name (optional)', fixedFamilyPh: 'e.g. Holloway',
             realNames: 'Real names', realOpts: { invented: 'Invented only', near: 'Close to real names', mix: 'Mix in real names', only: 'Real names only' },
             realTag: 'real', realTip: 'The AI says real people use this name. It can be wrong: check with 🔎.',
+            wordMode: 'Word names', wordModes: { avoid: 'Avoid', mix: 'Mix in', main: 'Mostly' },
+            wordModeTip: { avoid: 'Invented names, not plain words (as before).', mix: 'About one name in three is made from a pretty real word.', main: 'Nearly every name is made from a pretty real word.' },
+            wordOff: { like: 'Not used now: the "Like this" words lead.', real: 'Not used now: "Real names only" leads.' },
+            wordMeanTag: (m, lang) => `word: ${[m, lang].filter(Boolean).join(' · ')}`, wordMeanTip: "Made from a real word. The meaning and language are the AI's guess.",
             checkBtn: 'Check this name (Wikipedia)', checking: 'Checking Wikipedia…', checkFail: "Couldn't reach Wikipedia.",
             checkNone: '✓ no page', checkMany: 'several pages with this name', checkNamePage: 'a page about the name (people use it)',
             checkFull: 'Full', checkWiki: 'Wikipedia', checkEn: 'English Wikipedia', checkKo: 'Korean Wikipedia',
@@ -165,6 +169,10 @@
             fixedFamily: '성 고정 (안 써도 됨)', fixedFamilyPh: '예: Holloway',
             realNames: '실제 이름', realOpts: { invented: '지어낸 이름만', near: '실제 이름 비슷하게', mix: '실제 이름도 섞기', only: '실제 이름만' },
             realTag: '실제', realTip: 'AI가 실제로 쓰는 이름이라고 했어요. 틀릴 수 있으니 🔎로 확인해 보세요.',
+            wordMode: '낱말 이름', wordModes: { avoid: '피하기', mix: '섞기', main: '위주로' },
+            wordModeTip: { avoid: '낱말이 아닌 지어낸 이름(지금까지와 같음).', mix: '3개 중 1개쯤은 예쁜 진짜 낱말로 만들어요.', main: '거의 다 예쁜 진짜 낱말로 만들어요.' },
+            wordOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', real: '지금은 안 써요: "실제 이름만"을 따라가요.' },
+            wordMeanTag: (m, lang) => `낱말: ${[m, lang].filter(Boolean).join(' · ')}`, wordMeanTip: '진짜 낱말로 만든 이름이에요. 뜻과 언어는 AI 추정이에요.',
             checkBtn: '이름 확인 (위키백과)', checking: '위키백과 찾는 중…', checkFail: '위키백과에 연결하지 못했어요',
             checkNone: '✓ 없음', checkMany: '같은 이름 여러 개', checkNamePage: '이름 문서 (실제로 쓰는 이름)',
             checkFull: '전체', checkWiki: '위키백과', checkEn: '영어 위키', checkKo: '한국어 위키',
@@ -290,6 +298,22 @@
     function realMode(form = {}) {
         return form.target === 'person' && REAL_MODES.includes(form.realNames) ? form.realNames : 'invented';
     }
+    // v0.2.19 word names (people, AI only): avoid (as before) / mix (about 1 in 3) / main (nearly all).
+    // A pretty real word from any language, as it is or lightly changed; with roots on, from those roots' languages.
+    const WORD_MODES = ['avoid', 'mix', 'main'];
+    function wordMode(form = {}) {
+        return form.target === 'person' && !isCache(form) && WORD_MODES.includes(form.wordMode) ? form.wordMode : 'avoid';
+    }
+    // Choices that win over word names: the "like" words, and "real names only".
+    function wordOff(form = {}) {
+        if (wordMode(form) === 'avoid') return '';
+        if (likeWords(form).length) return 'like';
+        if (realMode(form) === 'only') return 'real';
+        return '';
+    }
+    function wordUsed(form = {}) {
+        return wordOff(form) ? 'avoid' : wordMode(form);
+    }
     function realRoles(form) {
         if (form.target !== 'person') return [];
         const shape = nameShape(form);
@@ -334,7 +358,7 @@
     // In a real-names mode, a name the AI called real stays even then (Rose is both a word and a real name).
     function keepNames(list, avoid, form, st = settings()) {
         const out = filterNames(list, avoid).filter(n => !isLikeCopy(n, form || {}));
-        if (st.wordNames !== 'filter') return out;
+        if (st.wordNames !== 'filter' || wordUsed(form || {}) !== 'avoid') return out;
         const realOk = realMode(form || {}) !== 'invented';
         return out.filter(n => !wordHits(n, form).length || (realOk && n.real));
     }
@@ -656,6 +680,10 @@
         // (-var- in 7), so about half the names get their own "no v" nudge. Per-name seeds are what the AI follows.
         // The 0,1,1,0 beat keeps it off the Merge pair order, which flips every name.
         const noVStart = Math.floor(rnd() * 2);
+        // v0.2.19 word names: "main" marks every name, "mix" about one in three. No extra random draws when off,
+        // so the seeds stay exactly as before for everyone else.
+        const wm = wordUsed(opts);
+        const wordStart = wm === 'mix' && count > 1 ? Math.floor(rnd() * 3) : 0;
         for (let i = 0; i < count; i++) {
             const seed = {};
             // Like Cache, each name takes the picked roots in turn.
@@ -685,6 +713,11 @@
             }
             if (shapes) seed.shape = pick(shapes, rnd);
             if (rootsOn && !like && (i + Math.floor(i / 2) + noVStart) % 2 === 0 && !'VW'.includes(seed.start || '')) seed.noV = true;
+            if (wm === 'main' || (wm === 'mix' && (count > 1 ? (i + wordStart) % 3 === 0 : rnd() < 1 / 3))) {
+                // A real word brings its own length and ending, so those nudges (and "no v") would only argue with it.
+                seed.word = true;
+                delete seed.syllables; delete seed.ending; delete seed.spark; delete seed.noV;
+            }
             if (rootFamily) {
                 seed.family = ROOT_FAMILY_KINDS[(familyKindStart + i) % ROOT_FAMILY_KINDS.length];
                 // v0.2.16: a bare English kind ("from a trade") came back as English words (Ropewright, Redwhisker),
@@ -819,6 +852,7 @@
             if (pieces.some(p => p.real)) out.real = true;
             if (n.nicks?.length) out.nicks = n.nicks;
             if (n.seed) out.seed = n.seed;
+            if (n.word) out.word = n.word;
             return out;
         }).filter(n => n && n.name.length <= 120);
     }
@@ -1593,7 +1627,7 @@
         const roots = (mix || cacheRoots(form)).map(r => STRINGS.en.roots[r]).join(' and ');
         const full = form.target === 'person' && /\s/.test(String(src?.name || ''));
         return {
-            ...form, method: 'ai', vibe: 'custom', customVibe: mix ? `blending ${roots} name roots in one name` : `built from ${roots} name roots`, realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'],
+            ...form, method: 'ai', vibe: 'custom', customVibe: mix ? `blending ${roots} name roots in one name` : `built from ${roots} name roots`, realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'], wordMode: 'avoid',
             ...(full ? { target: 'other', kind: 'any', kindText: 'a full name for a person; keep the same number of words and any title or "of …" part' } : {}),
         };
     }
@@ -1741,6 +1775,7 @@
         const note = str(r.note, 200); if (note) e.note = note;
         if (Array.isArray(r.nicks)) { const n = cleanNicks(r.nicks, name); if (n.length) e.nicks = n; }
         if (r.real) e.real = true;
+        const word = wordFrom(r.word); if (word) e.word = word;
         if (r.cache) e.cache = true;
         if (r.polished) e.polished = true;
         const orig = str(r.orig, 120); if (orig && orig !== name) e.orig = orig;
@@ -1831,7 +1866,7 @@
         extrasOpen: false,
         moreOpen: false,
         wordNames: 'mark',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [], rootMix: 'split', aiRootMix: 'split' },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [], rootMix: 'split', aiRootMix: 'split', wordMode: 'avoid' },
     };
 
     // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
@@ -1859,6 +1894,7 @@
         if (st.wordNames !== 'filter') st.wordNames = 'mark';
         if (!REASONING_LEVELS.includes(st.reasoning)) st.reasoning = 'default';
         if (!REAL_MODES.includes(st.form.realNames)) st.form.realNames = 'invented';
+        if (!WORD_MODES.includes(st.form.wordMode)) st.form.wordMode = 'avoid';
         if (!METHODS.includes(st.form.method)) st.form.method = 'ai';
         st.form.roots = pickedRoots(st.form);
         st.form.ckinds = pickedKinds(st.form);
@@ -1898,7 +1934,8 @@
     function avoidList(st = settings(), form = null) {
         const own = splitList(st.banList);
         const past = st.rememberHistory ? st.history.slice(-80) : [];
-        const cliches = form && realMode(form) === 'only' ? [] : CLICHES;
+        // Word names "mostly": Luna or Aurora can be the word itself, so they are only marked then.
+        const cliches = form && (realMode(form) === 'only' || wordUsed(form) === 'main') ? [] : CLICHES;
         // Names kept in Found never come back as new ones.
         const kept = Array.isArray(st.found) ? st.found.flatMap(memoryNames) : [];
         return [...new Set([...cliches, ...own, ...past, ...kept])];
@@ -2037,10 +2074,12 @@
             out.push('Place names may use real words: joined real words or a real word plus a place word are welcome. Just never a single bare everyday word on its own (like "Mold" or "Salt").');
         } else if (['mix', 'only'].includes(realMode(form))) {
             // Real names may be words too (Rose, Hope), so the plain-word rule would fight the real-name choice.
+        } else if (wordUsed(form) === 'main' && !nameShape(form)) {
+            // Word names: every name is a real word, so the plain-word rule would only argue with them.
         } else if (nameShape(form)) {
-            out.push('The given and middle names must not be plain existing English words (like "Mold" or "Salt"). Family names, epithets and titles may use real words (trades, places, deeds).');
+            out.push(`The given and middle names must not be plain existing English words (like "Mold" or "Salt"). Family names, epithets and titles may use real words (trades, places, deeds).${wordExcept(form)}`);
         } else if (form.target === 'person' || form.target === 'other') {
-            out.push('Never use a plain existing English word on its own as the name (like "Mold" or "Salt").');
+            out.push(`Never use a plain existing English word on its own as the name (like "Mold" or "Salt").${wordExcept(form)}`);
         }
         // Only "given" picked: the family-name button is off, so no surname tagging along.
         if (form.target === 'person' && !nameShape(form)) out.push('Give only the given name, with no family name after it.');
@@ -2082,7 +2121,7 @@
         const what = realWhat(roles);
         const mode = realMode(form);
         const out = [];
-        if (mode === 'invented') out.push(`Invent the ${what}; don't hand back names that real people commonly have.`);
+        if (mode === 'invented') out.push(`Invent the ${what}; don't hand back names that real people commonly have.${wordExcept(form)}`);
         else if (mode === 'near') out.push(`Base the ${what} on real names people use in this setting, each changed a little so it is new but still feels familiar.`);
         else if (mode === 'mix') out.push(`Mix real ${what} that people use in this setting with invented ones, roughly half and half.`);
         else out.push(`Use real ${what} that people actually use in this setting, not invented ones.${roles.length > 1 ? " Don't put together a famous person's full name." : ''}`);
@@ -2098,9 +2137,21 @@
         const shape = nameShape(form);
         return !shape || shape.roles.includes('given');
     }
+    // One short exception on the lines that say "invent" or "no plain words", so they don't fight word names.
+    function wordExcept(form) {
+        if (wordUsed(form) === 'avoid') return '';
+        return nameShape(form) ? ' (A given name whose seed says "real word" is the exception.)' : ' (Names whose seed says "real word" are the exception.)';
+    }
+    function wordRule(form, lang) {
+        const what = nameShape(form) ? 'given name' : 'name';
+        return [
+            `A ${what} whose seed says "real word" is made from a pretty real word with a nice meaning or sound, kept as it is or lightly changed so it reads as a name. A word people already use as a name is fine too.${nameShape(form) ? ' The other parts follow their own seeds and rules.' : ''}`,
+            `For those names also add "word": {"meaning": "...", "lang": "..."}: what the ${what} word means and which language it comes from, both in ${noteLang(lang)}. Leave "word" out for the other names.`,
+        ];
+    }
     const NICK_RULE = 'Also add "nicks": 2 or 3 short nicknames for the given name, made the way English speakers shorten names (a clipped front or end, or -y/-ie added).';
     // The JSON to answer in, with the extra fields that are switched on.
-    function answerJson(shape, { reading, real, nicks } = {}) {
+    function answerJson(shape, { reading, real, nicks, word } = {}) {
         const bits = [];
         if (shape) bits.push(`"parts": {${shape.roles.map(r => `"${r}": "..."`).join(', ')}}`);
         else bits.push('"name": "..."');
@@ -2108,6 +2159,7 @@
         bits.push('"note": "..."');
         if (real) bits.push(shape ? '"real": ["..."]' : '"real": false');
         if (nicks) bits.push('"nicks": ["...", "..."]');
+        if (word) bits.push('"word": {"meaning": "...", "lang": "..."}');
         return `[{${bits.join(', ')}}]`;
     }
 
@@ -2179,7 +2231,7 @@
         // v0.2.18: Latin trade and looks family names came back as -a (Coriara, Lanaria, Hispida on a man's name).
         const latinFamily = hasFamily ? ' A Latin family name from a trade or from looks keeps its -us, -ius or -arius form (not -a), unless it belongs to a woman.' : '';
         const latinNote = roots.includes('latin') ? ` Latin means classical Latin forms (endings like -us, -ius, -a, -ia), not Italian or French ones.${latinFamily}` : '';
-        const fresh = latinNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
+        const fresh = latinNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist.${wordExcept(form)} Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
         if (aiMerge(form)) {
             const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
             return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}${fresh}`;
@@ -2198,7 +2250,12 @@
         const shape = nameShape(form);
         const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
         const parts = [];
-        if (s.root && s.root2) parts.push(`${STRINGS.en.roots[s.root]} + ${STRINGS.en.roots[s.root2]} roots`);
+        // A word name says which language the word comes from: a bare "real word" seed would pull English (like v0.2.16).
+        if (s.word) {
+            const from = s.root && s.root2 ? `${STRINGS.en.roots[s.root]} or ${STRINGS.en.roots[s.root2]}` : s.root ? STRINGS.en.roots[s.root] : '';
+            parts.push(from ? `real word: a pretty ${from} word, as it is or lightly changed`
+                : 'real word: a pretty word from any language that fits the setting (English is fine), as it is or lightly changed');
+        } else if (s.root && s.root2) parts.push(`${STRINGS.en.roots[s.root]} + ${STRINGS.en.roots[s.root2]} roots`);
         else if (s.root) parts.push(`${STRINGS.en.roots[s.root]} roots`);
         if (s.shape) parts.push(`shape: ${s.shape}`);
         if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
@@ -2277,8 +2334,10 @@
         lines.push(`For each name add a short note (under 12 words) in ${noteLang(lang)} about how it fits this setting. ${roots.length ? ROOT_NOTE_RULE : "Don't claim a real meaning unless you are sure."}`);
         if (opts.reading) lines.push(`Also add ${readingRule(lang, !!shape)}.`);
         if (opts.nicks) lines.push(NICK_RULE);
+        const words = seeds.some(s => s.word);
+        if (words) lines.push(...wordRule(form, lang));
         lines.push('Reply with ONLY a JSON array, nothing else:');
-        lines.push(answerJson(shape, { reading: opts.reading, real: mode !== 'invented' && realRoles(form).length > 0, nicks: opts.nicks }));
+        lines.push(answerJson(shape, { reading: opts.reading, real: mode !== 'invented' && realRoles(form).length > 0, nicks: opts.nicks, word: words }));
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused, cliché names.' },
             { role: 'user', content: lines.join('\n') },
@@ -2426,6 +2485,18 @@
         return parts.length ? { real: true, realParts: parts } : {};
     }
 
+    // "word": {"meaning", "lang"} for a name made from a real word (a plain string is taken as the meaning).
+    // Short plain text only: JSON bits or brackets mean the answer got mixed up.
+    function wordFrom(v) {
+        const clean = x => (typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, 40) : '');
+        const ok = x => x && !/[{}\[\]"]/.test(x);
+        const w = typeof v === 'string' ? { meaning: clean(v), lang: '' } : v && typeof v === 'object' && !Array.isArray(v) ? { meaning: clean(v.meaning), lang: clean(v.lang ?? v.language) } : null;
+        if (!w) return null;
+        const out = {};
+        if (ok(w.meaning)) out.meaning = w.meaning;
+        if (ok(w.lang)) out.lang = w.lang;
+        return out.meaning || out.lang ? out : null;
+    }
     function parseNames(raw) {
         const text = stripThinking(raw).replace(/```(?:json)?/gi, '');
         const out = [];
@@ -2444,6 +2515,7 @@
                     out.push({
                         name: String(it.name ?? ''), note: String(it.note ?? it.meaning ?? ''), read: String(it.read ?? it.reading ?? it.pronunciation ?? ''),
                         ...(parts ? { parts } : {}), ...realFrom(it.real), ...(it.nicks ?? it.nicknames ? { nicks: it.nicks ?? it.nicknames } : {}),
+                        ...(wordFrom(it.word) ? { word: wordFrom(it.word) } : {}),
                     });
                 }
             }
@@ -2469,6 +2541,7 @@
                 return {
                     name, note: n.note.trim(), read: read.slice(0, 80), ...(n.parts ? { parts: n.parts } : {}),
                     ...(n.real ? { real: true } : {}), ...(n.realParts ? { realParts: n.realParts } : {}), ...(nicks.length ? { nicks } : {}),
+                    ...(n.word ? { word: n.word } : {}),
                 };
             })
             .filter(n => n.parts || (n.name && n.name.length <= 40 && looksLikeName(n.name)));
@@ -2637,6 +2710,7 @@
             <label class="tbd-ai-only">${escapeHtml(L.like)}<input id="tbd_like" class="text_pole" type="text" maxlength="${LIKE_MAX}" placeholder="${escapeHtml(L.likePh)}" value="${escapeHtml(form.likeText || '')}"></label>
             <label class="tbd-ai-only">${escapeHtml(L.likeMode)}${selectHtml('tbd_likemode', L.likeModes, form.likeMode === 'feel' ? 'feel' : 'sound')}</label>
             ${form.target === 'person' ? `<label class="tbd-wide tbd-ai-only" id="tbd_real_wrap">${escapeHtml(L.realNames)}${selectHtml('tbd_realnames', L.realOpts, realMode(form))}</label>` : ''}
+            ${form.target === 'person' ? wordModeHtml(form) : ''}
             ${canCache ? aiRootsHtml(form) : ''}
             </div>
             <button id="tbd_go" class="tbd-go menu_button">${escapeHtml(busy ? L.cancel : L.find)}</button>
@@ -2684,6 +2758,17 @@
         return `<div class="tbd-chips tbd-mix" id="${id}"${show ? '' : ' hidden'}>${ROOT_MIXES.map(m =>
             `<button type="button" class="tbd-chip" data-chip="${group}" data-v="${m}" aria-pressed="${v === m ? 'true' : 'false'}" title="${escapeHtml(L.rootMixTip[m])}">${escapeHtml(L.rootMix[m])}</button>`).join('')}</div>`;
     }
+    function wordModeHtml(form) {
+        const L = T();
+        const m = wordMode(form);
+        return `<div class="tbd-wide tbd-chipset tbd-ai-only" id="tbd_wordmode"><div class="tbd-chips-label">${escapeHtml(L.wordMode)}</div>
+            <div class="tbd-chips">${WORD_MODES.map(v => `<button type="button" class="tbd-chip" data-chip="wordmode" data-v="${v}" aria-pressed="${m === v ? 'true' : 'false'}" title="${escapeHtml(L.wordModeTip[v])}">${escapeHtml(L.wordModes[v])}</button>`).join('')}</div>
+            ${wordNoteHtml(form)}</div>`;
+    }
+    function wordNoteHtml(form) {
+        const off = wordOff(form);
+        return `<div class="tbd-note" id="tbd_word_note"${off ? '' : ' hidden'}>${off ? escapeHtml(T().wordOff[off]) : ''}</div>`;
+    }
     function aiRootNoteHtml(form) {
         const off = aiRootsOff(form);
         return `<div class="tbd-note" id="tbd_airoot_note"${off ? '' : ' hidden'}>${off ? escapeHtml(T().aiRootOff[off]) : ''}</div>`;
@@ -2692,6 +2777,7 @@
     function refreshAiRoots(form) {
         $('#tbd_more_fold').replaceWith(moreFoldHtml(form));
         $('#tbd_airoot_note').replaceWith(aiRootNoteHtml(form));
+        $('#tbd_word_note').replaceWith(wordNoteHtml(form));
     }
 
     // Toggle buttons for what a person's name is made of, plus the kept family name.
@@ -2720,13 +2806,17 @@
         const like = isCache(form) ? [] : likeWords(form);
         if (like.length) on.push(`${L.like.replace(/\s*\(.*\)\s*$/, '')}: ${like.join(', ')}`);
         if (!isCache(form) && form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
+        const wm = wordMode(form);
+        const wordBit = wm !== 'avoid' ? `${L.wordMode}: ${L.wordModes[wm]}` : '';
+        if (wordBit && !wordOff(form)) on.push(wordBit);
         const roots = aiRoots(form);
         const merged = roots.length > 1 && form.aiRootMix === 'merge';
         const rootsBit = roots.length ? `${L.rootsLabel}: ${roots.map(r => L.roots[r]).join(merged ? ' + ' : ', ')}${merged ? ` (${L.rootMix.merge})` : ''}` : '';
         // Roots another choice overrides show dimmed, so it's clear they're set but not used now.
         const offBit = rootsBit && aiRootsOff(form) ? `<span class="tbd-fold-off" title="${escapeHtml(L.aiRootOff[aiRootsOff(form)])}">${escapeHtml(rootsBit)}</span>` : '';
         if (rootsBit && !offBit) on.push(rootsBit);
-        const text = [escapeHtml(on.join(' · ')), offBit].filter(Boolean).join(' · ');
+        const wordOffBit = wordBit && wordOff(form) ? `<span class="tbd-fold-off" title="${escapeHtml(L.wordOff[wordOff(form)])}">${escapeHtml(wordBit)}</span>` : '';
+        const text = [escapeHtml(on.join(' · ')), wordOffBit, offBit].filter(Boolean).join(' · ');
         const sum = !open && text ? `<span class="tbd-fold-sum">: ${text}</span>` : '';
         return `<button type="button" id="tbd_more_fold" class="tbd-fold tbd-wide" aria-expanded="${open ? 'true' : 'false'}"><i class="fa-solid fa-chevron-${open ? 'down' : 'right'}" aria-hidden="true"></i><span>${escapeHtml(L.more)}${sum}</span></button>`;
     }
@@ -2760,7 +2850,9 @@
         // v0.2.11: "AI polished" only when the spelling really changed; a name the AI left alone stays CACHE.
         const cacheTag = polishChanged(r) ? one(true, L.polishTip, L.polishTag)
             : one(r.cache, r.polished ? L.keptTip : L.cacheTip, L.cacheTag);
-        return tag + cacheTag + one(r.real, L.realTip, L.realTag) + (words.length ? one(true, L.wordTip, L.wordTag(words)) : '')
+        // A word name shows its own meaning and language; the plain English word mark would say the same thing twice.
+        const wordName = r.word && (r.word.meaning || r.word.lang) ? one(true, L.wordMeanTip, L.wordMeanTag(r.word.meaning, r.word.lang)) : '';
+        return tag + cacheTag + one(r.real, L.realTip, L.realTag) + (wordName || (words.length ? one(true, L.wordTip, L.wordTag(words)) : ''))
             + one(clicheHit(r), L.clicheTip, L.clicheTag) + one(canonHit(r), L.canonTip, L.canonTag);
     }
     function nicksHtml(r, L = T()) {
@@ -2849,6 +2941,7 @@
             if (roots.length) bits.push(`Roots: ${roots.map(r => en.roots[r]).join(', ')}${roots.length > 1 ? ` (${form.aiRootMix === 'merge' ? 'Merge' : 'Split'})` : ''}${aiRootsOff(form) ? ' [not used now]' : ''}`);
             if (form.target === 'person' && realMode(form) !== 'invented') bits.push(`Real names: ${realMode(form)}`);
             if (likeWords(form).length) bits.push(`Like: ${likeWords(form).join(', ')} (${form.likeMode === 'feel' ? 'feel' : 'sound'})`);
+            if (wordMode(form) !== 'avoid') bits.push(`Word names: ${wordMode(form)}${wordOff(form) ? ' [not used now]' : ''}`);
         }
         if (form.target === 'person') bits.push(`Parts: ${(Array.isArray(form.parts) ? form.parts : ['given']).join(', ')}${form.fixedFamily ? ` (family kept: ${form.fixedFamily})` : ''}`);
         if (form.length && form.length !== 'any') bits.push(`Length: ${form.length}`);
@@ -2870,7 +2963,8 @@
             if (r.tag) marks.push(`variant: ${r.tag}`);
             if (polishChanged(r)) marks.push('AI polished'); else if (r.polished) marks.push('CACHE, AI read only'); else if (r.cache) marks.push('CACHE');
             if (r.real) marks.push('real');
-            if (wordHits(r, r.form).length) marks.push(`plain word: ${wordHits(r, r.form).map(w => w.word).join(', ')}`);
+            if (r.word) marks.push(`word: ${[r.word.meaning, r.word.lang].filter(Boolean).join(', ')}`);
+            else if (wordHits(r, r.form).length) marks.push(`plain word: ${wordHits(r, r.form).map(w => w.word).join(', ')}`);
             if (clicheHit(r)) marks.push('AI favorite');
             if (canonHit(r)) marks.push('Lovecraft');
             if (r.gender === 'm' || r.gender === 'f') marks.push(r.gender === 'm' ? 'male' : 'female');
@@ -2993,6 +3087,7 @@
             aiRoots: (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x)),
             rootMix: st.form.rootMix === 'merge' ? 'merge' : 'split',
             aiRootMix: st.form.aiRootMix === 'merge' ? 'merge' : 'split',
+            wordMode: WORD_MODES.includes(st.form.wordMode) ? st.form.wordMode : 'avoid',
         };
         save();
         return st.form;
@@ -3266,8 +3361,8 @@
             if (!parsed.length) status = { kind: 'error', text: failText(raw, L), raw };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered), raw };
             else if (at !== -1) {
-                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces, real: kept[0].real, nicks: kept[0].nicks, seed: kept[0].seed };
-                for (const k of ['pieces', 'real', 'nicks', 'seed']) if (!fresh[k]) delete fresh[k];
+                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces, real: kept[0].real, nicks: kept[0].nicks, seed: kept[0].seed, word: kept[0].word };
+                for (const k of ['pieces', 'real', 'nicks', 'seed', 'word']) if (!fresh[k]) delete fresh[k];
                 delete fresh.check; // the old name's check is not about this one
                 // Variants hanging under the old name no longer fit, so they go with it.
                 const depth = src.depth || 0;
@@ -3381,6 +3476,7 @@
                 src.name = joinPieces(src.pieces);
                 delete src.check;
                 delete src.seed; // the seed was for the old whole name
+                if (piece.role === 'given') delete src.word; // the word was the old given name
                 src.read = reading ? String(parsed[0].read || '').slice(0, 80) : '';
                 if (NAME_ROLES.includes(piece.role)) { rememberNames([text], st); refreshHistory(); }
                 save();
@@ -3682,6 +3778,15 @@
                 refreshAiRoots(form);
                 return;
             }
+            if (group === 'wordmode') {
+                form.wordMode = WORD_MODES.includes(v0) ? v0 : 'avoid';
+                $('#tbd_wordmode .tbd-chip').each(function () {
+                    $(this).attr('aria-pressed', String($(this).data('v')) === form.wordMode ? 'true' : 'false');
+                });
+                save();
+                refreshAiRoots(form);
+                return;
+            }
             if (group === 'rootmix' || group === 'airootmix') {
                 const key = group === 'rootmix' ? 'rootMix' : 'aiRootMix';
                 form[key] = v0 === 'merge' ? 'merge' : 'split';
@@ -3848,7 +3953,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },

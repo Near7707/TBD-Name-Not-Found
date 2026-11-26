@@ -1873,3 +1873,111 @@ test('v0.2.18: Latin trade and looks family names keep -us / -ius / -arius, not 
     assert.doesNotMatch(api.rootRule(form, ['norse', 'celtic']), /-arius/);
     assert.doesNotMatch(api.rootRule({ ...form, fixedFamily: 'Ostrand' }, ['latin']), /-arius/);
 });
+
+test('v0.2.19: word names mode — who it is for and what wins over it', () => {
+    const { api } = load();
+    const p = { target: 'person', method: 'ai', wordMode: 'mix' };
+    assert.equal(api.wordMode(p), 'mix');
+    assert.equal(api.wordMode({ ...p, wordMode: 'nonsense' }), 'avoid');
+    assert.equal(api.wordMode({ target: 'person' }), 'avoid', 'off by default');
+    assert.equal(api.wordMode({ ...p, target: 'place' }), 'avoid', 'people only');
+    assert.equal(api.wordMode({ ...p, method: 'cache' }), 'avoid', 'AI only');
+    assert.equal(api.wordMode({ ...p, method: 'polish' }), 'avoid', 'not Cache + AI either');
+    assert.equal(api.wordOff({ ...p, likeText: 'Pellam' }), 'like');
+    assert.equal(api.wordOff({ ...p, realNames: 'only' }), 'real');
+    assert.equal(api.wordOff({ ...p, realNames: 'mix' }), '', 'mixing real names is fine');
+    assert.equal(api.wordUsed({ ...p, realNames: 'only' }), 'avoid');
+    // The Cache ✨ path builds its own AI form: no word names there.
+    assert.equal(api.aiForm({ ...p, method: 'cache', roots: ['latin'] }, { name: 'Pellam' }).wordMode, 'avoid');
+    // The chips, with the "not used now" note only when another choice wins.
+    assert.match(api.wordModeHtml(p), /data-chip="wordmode" data-v="mix" aria-pressed="true"/);
+    assert.match(api.wordModeHtml(p), /id="tbd_word_note" hidden/);
+    assert.doesNotMatch(api.wordModeHtml({ ...p, likeText: 'Pellam' }), /id="tbd_word_note" hidden/);
+});
+
+test('v0.2.19: word name seeds — off changes nothing, mix is about 1 in 3, main is all', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'fantasy', parts: ['given'], extras: [], method: 'ai' };
+    // Off: exactly the same seeds as before (no extra random draws).
+    assert.deepEqual(JSON.parse(JSON.stringify(api.rollSeeds(12, { ...base, wordMode: 'avoid' }, seeded(4)))),
+        JSON.parse(JSON.stringify(api.rollSeeds(12, base, seeded(4)))));
+    const mix = [...api.rollSeeds(21, { ...base, wordMode: 'mix' }, seeded(4))];
+    assert.equal(mix.filter(s => s.word).length, 7);
+    const main = [...api.rollSeeds(10, { ...base, wordMode: 'main' }, seeded(4))];
+    assert.ok(main.every(s => s.word && !s.syllables && !s.ending && !s.spark && s.start));
+    // No roots: any language, English too.
+    assert.match(api.seedLine(base, main[0]), /^real word: a pretty word from any language that fits the setting \(English is fine\)/);
+    // Roots on: the word comes from those roots' languages, and "no v" is never added to a word.
+    const roots = { ...base, parts: ['given', 'family'], aiRoots: ['latin', 'norse'], aiRootMix: 'merge', wordMode: 'main' };
+    const rs = [...api.rollSeeds(8, roots, seeded(4))];
+    assert.ok(rs.every(s => s.word && !s.noV && s.family));
+    assert.match(api.seedLine(roots, rs[0]), /^given name: real word: a pretty (Latin or Norse|Norse or Latin) word, as it is or lightly changed/);
+    assert.match(api.seedLine(roots, rs[0]), /; family name: (Latin|Norse) words, from /);
+    // "Real names only" wins: no word seeds.
+    assert.ok([...api.rollSeeds(6, { ...base, wordMode: 'main', realNames: 'only' }, seeded(4))].every(s => !s.word));
+});
+
+test('v0.2.19: word name prompt lines — exceptions instead of two rules that fight', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'fantasy', parts: ['given'], extras: [], method: 'ai' };
+    const text = (form, n = 6) => api.buildMessages(form, api.rollSeeds(n, form, seeded(2)), { lang: 'ko' })[1].content;
+    const off = text(base);
+    assert.doesNotMatch(off, /real word|"word"/);
+    assert.match(off, /Never use a plain existing English word on its own as the name \(like "Mold" or "Salt"\)\.\n/);
+    const mix = text({ ...base, wordMode: 'mix' });
+    assert.match(mix, /plain existing English word.*\(Names whose seed says "real word" are the exception\.\)/);
+    assert.match(mix, /Invent the given names.*\(Names whose seed says "real word" are the exception\.\)/);
+    assert.match(mix, /add "word": \{"meaning": "...", "lang": "..."\}.*both in Korean/);
+    assert.match(mix, /"word": \{"meaning": "...", "lang": "..."\}\}\]/);
+    // "Mostly" with a given name only: the plain-word rule goes away entirely.
+    assert.doesNotMatch(text({ ...base, wordMode: 'main' }), /plain existing English word/);
+    // Full name: the exception is for the given name only.
+    const full = text({ ...base, parts: ['given', 'family'], aiRoots: ['latin', 'norse'], aiRootMix: 'merge', wordMode: 'main' });
+    assert.match(full, /must not be plain existing English words.*\(A given name whose seed says "real word" is the exception\.\)/);
+    assert.match(full, /Put new names together from those parts, not names that already exist\. \(A given name whose seed says "real word" is the exception\.\)/);
+    // A batch with no word seed (mix can roll none for one name) sends no word lines.
+    const one = { ...base, wordMode: 'mix' };
+    const plain = api.buildMessages(one, [{ start: 'D', syllables: 2 }], { lang: 'en' })[1].content;
+    assert.doesNotMatch(plain, /add "word"/);
+});
+
+test('v0.2.19: the word comes back, shows as a mark, and is kept', () => {
+    const { api } = load();
+    const raw = JSON.stringify([
+        { name: 'Stellan', note: 'a', word: { meaning: '별', lang: '라틴어' } },
+        { name: 'Voreth', note: 'b' },
+        { name: 'Wren', note: 'c', word: '굴뚝새' },
+        { name: 'Pell', note: 'd', word: { meaning: '{"x": 1}', lang: '' } },
+    ]);
+    const list = api.parseNames(raw);
+    assert.deepEqual({ ...list[0].word }, { meaning: '별', lang: '라틴어' });
+    assert.equal(list[1].word, undefined);
+    assert.deepEqual({ ...list[2].word }, { meaning: '굴뚝새' });
+    assert.equal(list[3].word, undefined, 'JSON bits are not a meaning');
+    // Full names in parts keep the word too.
+    const form = { target: 'person', parts: ['given', 'family'], extras: [], method: 'ai', wordMode: 'main' };
+    const shaped = api.applyShape(api.parseNames(JSON.stringify([{ parts: { given: 'Aster', family: 'Holm' }, note: 'n', word: { meaning: '별', lang: '그리스어' } }])), form);
+    assert.equal(shaped[0].word.lang, '그리스어');
+    // The mark: our own word tag, not the plain English word tag as well.
+    const wren = { ...list[2], form: { target: 'person' } };
+    const tags = api.tagsHtml(wren, api.STRINGS.ko);
+    assert.match(tags, /낱말: 굴뚝새/);
+    assert.equal((tags.match(/tbd-word-tag/g) || []).length, 1);
+    assert.match(api.tagsHtml({ ...list[0], form: {} }, api.STRINGS.en), /word: 별 · 라틴어/);
+    // Copy for review and Found.
+    const review = api.reviewText([{ ...list[0], form: { ...form, parts: ['given'] } }]);
+    assert.match(review, /Stellan  \{word: 별, 라틴어\}/);
+    assert.match(review, /Word names: main/);
+    assert.deepEqual({ ...api.foundEntry({ ...list[0], form }).word }, { meaning: '별', lang: '라틴어' });
+});
+
+test('v0.2.19: word names are never filtered as plain words, and "mostly" only marks AI favorites', () => {
+    const { api } = load();
+    const st = { wordNames: 'filter', banList: '', rememberHistory: false, history: [], found: [] };
+    const list = [{ name: 'Wren', note: '' }, { name: 'Voreth', note: '' }];
+    assert.deepEqual([...api.keepNames(list, [], { target: 'person' }, st).map(n => n.name)], ['Voreth'], 'as before when off');
+    assert.equal(api.keepNames(list, [], { target: 'person', wordMode: 'mix' }, st).length, 2);
+    const fav = api.CLICHES[0];
+    assert.ok(api.avoidList(st, { target: 'person', wordMode: 'mix' }).includes(fav), 'mix still avoids them');
+    assert.ok(!api.avoidList(st, { target: 'person', wordMode: 'main' }).includes(fav), 'mostly: marked only');
+});
