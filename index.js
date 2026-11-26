@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.3
+// TBD — Name Not Found v0.2.4
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -18,6 +18,13 @@
             find: 'Find names', cancel: 'Cancel', again: 'Roll again',
             copy: 'Copy', close: 'Close',
             copied: 'Copied', copyFail: "Couldn't copy. Select the text and copy it yourself.",
+            tabFind: 'Find names', tabFound: 'Found', starAdd: 'Keep in Found', starRemove: 'Take out of Found',
+            foundEmpty: 'Nothing here yet. Tap ☆ next to a name to keep it here.', foundAll: 'All', foundFrom: 'from',
+            foundRemove: 'Remove from Found', foundExport: 'Export', foundImport: 'Import',
+            foundExportTip: 'Save Found as a file, as a backup or to move it.', foundImportTip: 'Add names from a Found file. Names you already have are skipped.',
+            foundImported: n => `Added ${n} name${n === 1 ? '' : 's'} to Found`, foundImportBad: "Couldn't read that file.",
+            foundFull: n => `Found is full (${n}). Remove some names first.`,
+            foundHint: 'Names in Found are also kept off new results.',
             empty: 'Pick your conditions and press "Find names".',
             parseFail: "The AI's answer couldn't be read. Try again.",
             allFiltered: 'Every name was on the avoid list. Try again.',
@@ -108,6 +115,13 @@
             find: '이름 찾기', cancel: '취소', again: '다시 뽑기',
             copy: '복사', close: '닫기',
             copied: '복사했어요', copyFail: '복사가 안 됐어요. 글자를 직접 골라서 복사해 주세요.',
+            tabFind: '이름 찾기', tabFound: 'Found', starAdd: 'Found에 넣기', starRemove: 'Found에서 빼기',
+            foundEmpty: '아직 비어 있어요. 이름 옆 ☆를 누르면 여기 모여요.', foundAll: '전부', foundFrom: '원래 이름',
+            foundRemove: 'Found에서 빼기', foundExport: '내보내기', foundImport: '불러오기',
+            foundExportTip: 'Found를 파일로 저장해요. 백업하거나 옮길 때 써요.', foundImportTip: 'Found 파일에서 이름을 더해요. 이미 있는 이름은 건너뛰어요.',
+            foundImported: n => `Found에 이름 ${n}개를 더했어요`, foundImportBad: '파일을 읽지 못했어요.',
+            foundFull: n => `Found가 꽉 찼어요(${n}개). 몇 개 빼고 넣어 주세요.`,
+            foundHint: 'Found에 넣은 이름은 새 결과에도 다시 안 나와요.',
             empty: '조건을 고르고 "이름 찾기"를 눌러 보세요.',
             parseFail: 'AI 답을 읽지 못했어요. 다시 해 보세요.',
             allFiltered: '나온 이름이 전부 피할 목록에 있었어요. 다시 해 보세요.',
@@ -1497,6 +1511,98 @@
         return { names, done, raw };
     }
 
+    // ---------- Found ⭐ (kept names) ----------
+    // Saved in SillyTavern's settings. Each entry keeps what was shown for the name, without live state.
+    const FOUND_MAX = 500;
+    const FOUND_TARGETS = ['person', 'place', 'shop', 'item', 'other'];
+    function foundKey(r) {
+        return `${FOUND_TARGETS.includes(r.target) ? r.target : (r.form?.target || 'other')}|${String(r.name || '').toLowerCase()}`;
+    }
+    const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+    function cleanFrags(list) {
+        if (!Array.isArray(list)) return undefined;
+        const out = list.filter(f => f && typeof f.t === 'string').slice(0, 12).map(f => ({ t: str(f.t, 30), en: str(f.en, 60), ko: str(f.ko, 60) }));
+        return out.length ? out : undefined;
+    }
+    // Only known fields, of the right kind and size (also what makes an imported file safe to keep).
+    function foundEntry(r, at = Date.now()) {
+        if (typeof r.name !== 'string') return null;
+        const name = cleanPiece(r.name).slice(0, 120);
+        if (!name || !looksLikeName(name)) return null;
+        const target = FOUND_TARGETS.includes(r.target) ? r.target : FOUND_TARGETS.includes(r.form?.target) ? r.form.target : 'other';
+        const e = { name, target, at: Number.isFinite(Number(r.at)) ? Number(r.at) : at };
+        const read = str(r.read, 80); if (read) e.read = read;
+        const note = str(r.note, 200); if (note) e.note = note;
+        if (Array.isArray(r.nicks)) { const n = cleanNicks(r.nicks, name); if (n.length) e.nicks = n; }
+        if (r.real) e.real = true;
+        if (r.cache) e.cache = true;
+        if (r.polished) e.polished = true;
+        const orig = str(r.orig, 120); if (orig && orig !== name) e.orig = orig;
+        if (CACHE_ROOTS.includes(r.root)) e.root = r.root;
+        const frags = cleanFrags(r.frags); if (frags) e.frags = frags;
+        if (typeof r.tag === 'string' && REFINE_DESC[r.tag]) e.tag = r.tag;
+        const from = str(typeof r.from === 'object' && r.from ? r.from.name : r.from, 120); if (from) e.from = from;
+        if (Array.isArray(r.pieces)) {
+            const pieces = r.pieces.filter(p => p && typeof p.role === 'string' && typeof p.text === 'string').slice(0, 12).map(p => {
+                const q = { role: str(p.role, 20), text: str(p.text, 60) };
+                if (p.fixed) q.fixed = true;
+                if (p.real) q.real = true;
+                const f = cleanFrags(p.frags); if (f) q.frags = f;
+                if (typeof p.branch === 'string') q.branch = str(p.branch, 20);
+                return q;
+            });
+            if (pieces.length) e.pieces = pieces;
+        }
+        if (r.form && typeof r.form === 'object') {
+            // The choices it was made with: small, plain values only.
+            const f = {};
+            for (const [k, v] of Object.entries(r.form)) {
+                if (typeof v === 'string') f[k] = v.slice(0, 120);
+                else if (Array.isArray(v)) f[k] = v.filter(x => typeof x === 'string').slice(0, 12).map(x => x.slice(0, 30));
+            }
+            e.form = f;
+        }
+        return e;
+    }
+    function isFound(r, st = settings()) {
+        const key = foundKey({ ...r, target: r.form?.target || r.target });
+        return st.found.some(e => foundKey(e) === key);
+    }
+    // ⭐ on a result: in or out. Returns 'in', 'out' or 'full'.
+    function toggleFound(r, st = settings()) {
+        const key = foundKey({ ...r, target: r.form?.target || r.target });
+        const at = st.found.findIndex(e => foundKey(e) === key);
+        if (at !== -1) { st.found.splice(at, 1); save(); return 'out'; }
+        if (st.found.length >= FOUND_MAX) return 'full';
+        const e = foundEntry(r);
+        if (!e) return 'out';
+        st.found.push(e);
+        save();
+        return 'in';
+    }
+    function foundExportText(st = settings()) {
+        return JSON.stringify({ app: 'TBD-Name-Not-Found', type: 'found', version: 1, items: st.found }, null, 2);
+    }
+    // Adds what isn't there yet. Returns how many were added, or -1 when the file isn't a Found file.
+    function foundImport(text, st = settings()) {
+        let data;
+        try { data = JSON.parse(String(text)); } catch { return -1; }
+        const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : null;
+        if (!items) return -1;
+        const have = new Set(st.found.map(foundKey));
+        let added = 0;
+        for (const it of items) {
+            if (st.found.length >= FOUND_MAX) break;
+            const e = it && typeof it === 'object' ? foundEntry(it) : null;
+            if (!e || have.has(foundKey(e))) continue;
+            st.found.push(e);
+            have.add(foundKey(e));
+            added++;
+        }
+        if (added) save();
+        return added;
+    }
+
     // ---------- settings ----------
     const DEFAULTS = {
         language: 'auto',
@@ -1510,6 +1616,7 @@
         reasoning: 'default',
         historySize: 200,
         history: [],
+        found: [],
         banList: '',
         showReading: true,
         nicknames: false,
@@ -1550,6 +1657,7 @@
         st.form.ckinds = cacheKinds(st.form);
         st.form.aiRoots = (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x));
         st.count = clampInt(st.count, 1, 30, 5);
+        if (!Array.isArray(st.found)) st.found = [];
         return st;
     }
     function save() { ctx().saveSettingsDebounced(); }
@@ -1582,7 +1690,9 @@
         const own = splitList(st.banList);
         const past = st.rememberHistory ? st.history.slice(-80) : [];
         const cliches = form && realMode(form) === 'only' ? [] : CLICHES;
-        return [...new Set([...cliches, ...own, ...past])];
+        // Names kept in Found never come back as new ones.
+        const kept = Array.isArray(st.found) ? st.found.flatMap(memoryNames) : [];
+        return [...new Set([...cliches, ...own, ...past, ...kept])];
     }
     function rememberNames(names, st = settings()) {
         if (!st.rememberHistory || !names.length) return;
@@ -2213,7 +2323,8 @@
     let loadingTimer = null;
     let menuFor = null;   // the result whose reshape menu is open
     let refining = null;  // { src, mode, ctl } while a reshape request runs
-    let view = 'form';    // 'form' or 'settings' (the ⚙ page inside the window)
+    let view = 'form';    // 'form', 'found' (kept names) or 'settings' (the ⚙ page inside the window)
+    let foundFilter = 'all';
 
     // ---------- the panel ----------
     function optionList(map, current) {
@@ -2386,6 +2497,51 @@
         }).join('')}</div>`;
     }
 
+    // The little marks after a name: variant, CACHE / AI polished, real, plain word, AI favorite, Lovecraft.
+    function tagsHtml(r, L = T()) {
+        const tag = r.tag && L.r[r.tag] ? `<span class="tbd-tag">${escapeHtml(L.r[r.tag])}</span>` : '';
+        const words = wordHits(r, r.form);
+        const one = (on, tip, text) => (on ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(tip)}">${escapeHtml(text)}</span>` : '');
+        const cacheTag = r.polished ? one(true, L.polishTip, L.polishTag) : one(r.cache, L.cacheTip, L.cacheTag);
+        return tag + cacheTag + one(r.real, L.realTip, L.realTag) + (words.length ? one(true, L.wordTip, L.wordTag(words)) : '')
+            + one(clicheHit(r), L.clicheTip, L.clicheTag) + one(canonHit(r), L.canonTip, L.canonTag);
+    }
+    function nicksHtml(r, L = T()) {
+        return `<div class="tbd-nicks"><span class="tbd-nicks-label">${escapeHtml(L.nicks)}:</span>${r.nicks.map((n, k) =>
+            `${k ? '<span class="tbd-nick-dot" aria-hidden="true">·</span>' : ''}<button type="button" class="tbd-nick" data-n="${k}" title="${escapeHtml(L.nickCopy)}">${escapeHtml(n)}</button>`).join('')}</div>`;
+    }
+    // [Find names] [Found ⭐ 12] under the top.
+    function tabsHtml(st = settings()) {
+        const L = T();
+        const tab = (id, label, on) => `<button type="button" class="tbd-tab" id="tbd_tab_${id}" data-tab="${id}" role="tab" aria-selected="${on}">${label}</button>`;
+        return `<div class="tbd-tabs" role="tablist">${tab('form', escapeHtml(L.tabFind), view === 'form')}${tab('found', `${escapeHtml(L.tabFound)} <i class="fa-solid fa-star" aria-hidden="true"></i> <span class="tbd-tab-n">${st.found.length}</span>`, view === 'found')}</div>`;
+    }
+    function foundHtml(st = settings()) {
+        const L = T();
+        const reading = !!st.showReading;
+        const counts = { all: st.found.length };
+        for (const e of st.found) counts[e.target] = (counts[e.target] || 0) + 1;
+        if (foundFilter !== 'all' && !counts[foundFilter]) foundFilter = 'all';
+        const chips = ['all', ...FOUND_TARGETS.filter(t => counts[t])].map(t =>
+            chipHtml('foundf', t, `${t === 'all' ? L.foundAll : L.t[t]} ${counts[t] || 0}`, foundFilter === t)).join('');
+        // Newest first.
+        const list = st.found.map((e, i) => ({ e, i })).filter(x => foundFilter === 'all' || x.e.target === foundFilter).reverse();
+        const rows = list.map(({ e, i }) => `<div class="tbd-row tbd-frow" data-f="${i}">
+                <div class="tbd-row-main">
+                    <div class="tbd-row-text"><div class="tbd-name">${escapeHtml(e.name)}${reading && e.read ? `<span class="tbd-read">${escapeHtml(e.read)}</span>` : ''}${tagsHtml(e, L)}</div>${e.from ? `<div class="tbd-note">↳ ${escapeHtml(L.foundFrom)}: ${escapeHtml(e.from)}</div>` : ''}${st.nicknames && e.nicks?.length ? nicksHtml(e, L) : ''}${fragsHtml(e)}${e.note ? `<div class="tbd-note">${escapeHtml(e.note)}</div>` : ''}</div>
+                    <button class="tbd-icon-btn tbd-fcopy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
+                    <button class="tbd-icon-btn tbd-fdel" title="${escapeHtml(L.foundRemove)}" aria-label="${escapeHtml(L.foundRemove)}"><i class="fa-solid fa-xmark"></i></button>
+                </div></div>`).join('');
+        return `<div class="tbd-found">
+            ${st.found.length ? `<div class="tbd-chips tbd-found-filter">${chips}</div>` : ''}
+            <div class="tbd-results">${rows || `<div class="tbd-empty">${escapeHtml(L.foundEmpty)}</div>`}</div>
+            <div class="tbd-foot"><span class="tbd-status">${escapeHtml(L.foundHint)}</span>
+                <button id="tbd_found_export" class="tbd-small-btn" title="${escapeHtml(L.foundExportTip)}"${st.found.length ? '' : ' disabled'}><i class="fa-solid fa-file-export"></i> ${escapeHtml(L.foundExport)}</button>
+                <button id="tbd_found_import" class="tbd-small-btn" title="${escapeHtml(L.foundImportTip)}"><i class="fa-solid fa-file-import"></i> ${escapeHtml(L.foundImport)}</button>
+                <input type="file" id="tbd_found_file" accept=".json,application/json" hidden></div>
+        </div>`;
+    }
+
     function resultsHtml() {
         const L = T();
         if (busy) return `<div class="tbd-log" id="tbd_log"></div>`;
@@ -2394,16 +2550,10 @@
         const showNicks = !!settings().nicknames;
         return results.map((r, i) => {
             const depth = r.depth || 0;
-            const tag = r.tag && L.r[r.tag] ? `<span class="tbd-tag">${escapeHtml(L.r[r.tag])}</span>` : '';
-            const words = wordHits(r);
-            const wordTag = words.length ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.wordTip)}">${escapeHtml(L.wordTag(words))}</span>` : '';
-            const realTag = r.real ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.realTip)}">${escapeHtml(L.realTag)}</span>` : '';
-            const clicheTag = clicheHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.clicheTip)}">${escapeHtml(L.clicheTag)}</span>` : '';
-            const canonTag = canonHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.canonTip)}">${escapeHtml(L.canonTag)}</span>` : '';
-            const cacheTag = r.polished ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.polishTip)}">${escapeHtml(L.polishTag)}</span>`
-                : r.cache ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.cacheTip)}">${escapeHtml(L.cacheTag)}</span>` : '';
-            const nicks = showNicks && r.nicks?.length ? `<div class="tbd-nicks"><span class="tbd-nicks-label">${escapeHtml(L.nicks)}:</span>${r.nicks.map((n, k) =>
-                `${k ? '<span class="tbd-nick-dot" aria-hidden="true">·</span>' : ''}<button type="button" class="tbd-nick" data-n="${k}" title="${escapeHtml(L.nickCopy)}">${escapeHtml(n)}</button>`).join('')}</div>` : '';
+            const tags = tagsHtml(r, L);
+            const star = isFound(r);
+            const nicks = showNicks && r.nicks?.length ? nicksHtml(r, L) : '';
+
             const menu = menuFor === r ? `<div class="tbd-refine-menu">${REFINE_MODES.map(m =>
                 `<button class="tbd-small-btn tbd-refine-pick" data-mode="${m}">${escapeHtml(L.r[m])}</button>`).join('')}</div>` : '';
             const working = refining && refining.src === r
@@ -2411,10 +2561,11 @@
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
-                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tag}${cacheTag}${realTag}${wordTag}${clicheTag}${canonTag}</div>${nicks}${fragsHtml(r)}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
+                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tags}</div>${nicks}${fragsHtml(r)}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
                     <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
+                    <button class="tbd-icon-btn tbd-star${star ? ' tbd-on' : ''}" title="${escapeHtml(star ? L.starRemove : L.starAdd)}" aria-label="${escapeHtml(star ? L.starRemove : L.starAdd)}" aria-pressed="${star}"><i class="fa-${star ? 'solid' : 'regular'} fa-star"></i></button>
                     <button class="tbd-icon-btn tbd-check-btn${r.check && !r.check.hidden && !r.check.quiet ? ' tbd-on' : ''}" title="${escapeHtml(L.checkBtn)}" aria-label="${escapeHtml(L.checkBtn)}"><i class="fa-solid fa-magnifying-glass"></i></button>
                 </div>${checkHtml(r)}${piecesHtml(r)}${menu}${working}
             </div>`;
@@ -2447,7 +2598,11 @@
             fillProfileSelects();
             return;
         }
-        $p.html(`${headerHtml(st.theme)}${formHtml(st.form)}
+        if (view === 'found') {
+            $p.html(`${headerHtml(st.theme)}${tabsHtml(st)}${foundHtml(st)}`);
+            return;
+        }
+        $p.html(`${headerHtml(st.theme)}${tabsHtml(st)}${formHtml(st.form)}
             <div class="tbd-results" id="tbd_results">${resultsHtml()}</div>
             <div class="tbd-foot" id="tbd_foot">${footerHtml()}</div>`);
         if (busy) runLoadingLog();
@@ -3160,6 +3315,7 @@
             const form = readForm();
             const group = String($(this).data('chip'));
             const v0 = String($(this).data('v'));
+            if (group === 'foundf') { foundFilter = ['all', ...FOUND_TARGETS].includes(v0) ? v0 : 'all'; render(); return; }
             if (group === 'method') {
                 if (form.method === v0) return;
                 form.method = METHODS.includes(v0) ? v0 : 'ai';
@@ -3210,7 +3366,8 @@
             else toastr.warning(T().copyFail, 'TBD');
         });
         $doc.on('click', '#tbd_panel .tbd-nick', async function () {
-            const r = results[Number($(this).closest('.tbd-row').data('i'))];
+            const $row = $(this).closest('.tbd-row');
+            const r = $row.hasClass('tbd-frow') ? settings().found[Number($row.data('f'))] : results[Number($row.data('i'))];
             const n = r?.nicks?.[Number($(this).data('n'))];
             if (!n) return;
             if (await copyText(n)) toastr.success(T().copied, 'TBD');
@@ -3255,6 +3412,67 @@
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
             if (r) askAiCheck(r);
         });
+        // ---------- Found ⭐ ----------
+        $doc.on('click', '#tbd_panel .tbd-star', function () {
+            const r = results[Number($(this).closest('.tbd-row').data('i'))];
+            if (!r) return;
+            const st = settings();
+            if (toggleFound(r, st) === 'full') toastr.warning(T().foundFull(FOUND_MAX), 'TBD');
+            renderResultsOnly();
+            $('#tbd_tab_found .tbd-tab-n').text(st.found.length);
+        });
+        $doc.on('click', '#tbd_panel .tbd-tab', function () {
+            const to = String($(this).data('tab')) === 'found' ? 'found' : 'form';
+            if (to === view) return;
+            if (view === 'form') readForm();
+            view = to;
+            menuFor = null;
+            render();
+        });
+        $doc.on('click', '#tbd_panel .tbd-fcopy', async function () {
+            const e = settings().found[Number($(this).closest('.tbd-row').data('f'))];
+            if (!e) return;
+            if (await copyText(e.name)) toastr.success(T().copied, 'TBD');
+            else toastr.warning(T().copyFail, 'TBD');
+        });
+        $doc.on('click', '#tbd_panel .tbd-fdel', function () {
+            const st = settings();
+            const k = Number($(this).closest('.tbd-row').data('f'));
+            if (!st.found[k]) return;
+            st.found.splice(k, 1);
+            save();
+            render();
+        });
+        $doc.on('click', '#tbd_found_export', () => {
+            const st = settings();
+            if (!st.found.length) return;
+            const blob = new Blob([foundExportText(st)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tbd-found-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+        $doc.on('click', '#tbd_found_import', () => $('#tbd_found_file').trigger('click'));
+        $doc.on('change', '#tbd_found_file', function () {
+            const file = this.files?.[0];
+            this.value = '';
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const st = settings();
+                const n = foundImport(reader.result, st);
+                if (n < 0) toastr.warning(T().foundImportBad, 'TBD');
+                else toastr.success(T().foundImported(n), 'TBD');
+                if (n > 0 && st.found.length >= FOUND_MAX) toastr.warning(T().foundFull(FOUND_MAX), 'TBD');
+                render();
+            };
+            reader.onerror = () => toastr.warning(T().foundImportBad, 'TBD');
+            reader.readAsText(file);
+        });
         $doc.on('click', '#tbd_panel .tbd-copy', async function () {
             const r = results[Number($(this).closest('.tbd-row').data('i'))];
             if (!r) return;
@@ -3272,7 +3490,7 @@
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml,
-            CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
+            CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
         };

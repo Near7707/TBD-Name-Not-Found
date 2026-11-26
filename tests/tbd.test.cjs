@@ -1329,3 +1329,64 @@ test('one-part polish only touches that part', () => {
     assert.equal(p.name, 'Edwin Ashforde');
     assert.equal(p.polishOnly, undefined);
 });
+
+// ---------- v0.2.4 Found ⭐ ----------
+test('Found keeps a clean copy and toggles in and out', () => {
+    const ext = {};
+    const { api } = load({ extensionSettings: ext });
+    const st = api.settings();
+    const r = { name: 'Mirelda Thornby', read: '미렐다', note: 'soft', form: { target: 'person', vibe: 'fantasy', parts: ['given', 'family'] },
+        pieces: [{ role: 'given', text: 'Mirelda' }, { role: 'family', text: 'Thornby' }], check: { state: 'done' }, nicks: ['Mira'], from: { name: 'Mirella' }, tag: 'soft' };
+    assert.equal(api.toggleFound(r, st), 'in');
+    assert.equal(st.found.length, 1);
+    const e = st.found[0];
+    assert.equal(e.target, 'person');
+    assert.equal(e.from, 'Mirella');
+    assert.equal(e.check, undefined);
+    assert.equal(api.isFound(r, st), true);
+    // Kept names stay off new results.
+    const avoid = api.avoidList(st, r.form);
+    assert.ok(avoid.includes('Mirelda') && avoid.includes('Thornby'));
+    assert.equal(api.toggleFound(r, st), 'out');
+    assert.equal(st.found.length, 0);
+    assert.ok(!api.avoidList(st, r.form).includes('Mirelda'));
+});
+
+test('the same name can be kept once per target, and Found has a cap', () => {
+    const { api } = load({ extensionSettings: {} });
+    const st = api.settings();
+    api.toggleFound({ name: 'Vellow', form: { target: 'person' } }, st);
+    api.toggleFound({ name: 'Vellow', form: { target: 'place' } }, st);
+    assert.equal(st.found.length, 2);
+    st.found = Array.from({ length: api.FOUND_MAX }, (_, i) => ({ name: `N${i}`, target: 'other' }));
+    assert.equal(api.toggleFound({ name: 'Extra', form: { target: 'other' } }, st), 'full');
+});
+
+test('Found export / import round-trips, skips repeats and junk', () => {
+    const { api } = load({ extensionSettings: {} });
+    const st = api.settings();
+    api.toggleFound({ name: 'Calderwick', form: { target: 'place' }, cache: true, root: 'oldenglish', frags: [{ t: 'Calder', en: 'rocky water', ko: '바위 물' }] }, st);
+    const text = api.foundExportText(st);
+    st.found = [];
+    assert.equal(api.foundImport(text, st), 1);
+    assert.equal(st.found[0].frags[0].t, 'Calder');
+    assert.equal(api.foundImport(text, st), 0);
+    assert.equal(api.foundImport('not json', st), -1);
+    assert.equal(api.foundImport('{"x":1}', st), -1);
+    const junk = JSON.stringify({ items: [{ name: '[{"parts' }, { name: 42 }, { name: 'Ossley', target: 'evil', pieces: 'no', onclick: 'x' }] });
+    assert.equal(api.foundImport(junk, st), 1);
+    const o = st.found.find(e => e.name === 'Ossley');
+    assert.equal(o.target, 'other');
+    assert.equal(o.onclick, undefined);
+    assert.equal(o.pieces, undefined);
+});
+
+test('Found list shows names newest first and escapes text', () => {
+    const { api } = load({ extensionSettings: {} });
+    const st = api.settings();
+    st.found = [{ name: 'Ashmere', target: 'place', at: 1 }, { name: 'Bryn<b>', target: 'person', at: 2 }];
+    const html = api.foundHtml(st);
+    assert.ok(html.indexOf('Bryn&lt;b&gt;') < html.indexOf('Ashmere'));
+    assert.doesNotMatch(html, /Bryn<b>/);
+    assert.match(api.tabsHtml(st), /tbd-tab-n">2</);
+});

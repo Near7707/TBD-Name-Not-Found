@@ -729,3 +729,31 @@
 
 /* v0.2.1: roots that another choice overrides stay visible in the fold line, dimmed */
 #tbd_panel .tbd-fold-sum .tbd-fold-off { opacity: 0.55; text-decoration: line-through; font-weight: normal; }
+
+/* ---------- Found ⭐ ---------- */
+/* Two tabs under the top: [Find names] [Found ⭐ 12]. */
+.tbd-tabs { display: flex; gap: 0; padding: 0 14px; border-bottom: 1px solid var(--tbd-line); }
+#tbd_panel .tbd-tab {
+    flex: 1 1 0;
+    min-height: 38px;
+    padding: 6px 10px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: transparent;
+    color: var(--tbd-dim);
+    font-family: inherit;
+    font-size: 13px;
+    white-space: nowrap;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+#tbd_panel .tbd-tab[aria-selected="true"] { color: var(--tbd-name); border-bottom-color: var(--tbd-accent); font-weight: bold; }
+#tbd_panel .tbd-tab .fa-star { color: var(--tbd-accent); font-size: 11px; }
+.tbd-tab-n { font-size: 11px; opacity: .8; }
+.tbd-icon-btn.tbd-star.tbd-on { color: var(--tbd-accent); }
+.tbd-found-filter { padding: 10px 14px 6px; margin: 0; }
+.tbd-found .tbd-results { border-top: 1px dashed var(--tbd-line); }
+.tbd-found .tbd-foot { flex-wrap: wrap; }
+.tbd-found .tbd-foot .tbd-status { flex: 1 1 100%; color: var(--tbd-dim); font-size: 11px; }
+.tbd-small-btn[disabled] { opacity: .4; cursor: default; }
