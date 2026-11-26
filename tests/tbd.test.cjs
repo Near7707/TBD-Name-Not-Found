@@ -1044,7 +1044,7 @@ test('v0.2.1: picked roots reach the AI per name, and "Any" changes nothing', ()
     const text = api.buildMessages(form, seeds)[1].content;
     assert.match(text, /Name roots: build each name from Celtic or Norse name elements .*each name below says which\. Family names follow/);
     assert.match(text, /name roots: they decide the sounds/);
-    assert.match(text, /1\. given name: (Celtic|Norse) roots, /);
+    assert.match(text, /1\. given name: (Welsh|Irish|Scottish Gaelic|Norse) roots, /);
     assert.match(text, /Don't state what the name means or where it comes from/);
     assert.ok(!/Don't claim a real meaning/.test(text));
 });
@@ -1980,4 +1980,80 @@ test('v0.2.19: word names are never filtered as plain words, and "mostly" only m
     const fav = api.CLICHES[0];
     assert.ok(api.avoidList(st, { target: 'person', wordMode: 'mix' }).includes(fav), 'mix still avoids them');
     assert.ok(!api.avoidList(st, { target: 'person', wordMode: 'main' }).includes(fav), 'mostly: marked only');
+});
+
+test('v0.2.20: word names spread over three Split roots and both Merge orders', () => {
+    const { api } = load();
+    for (const n of [1, 2, 3, 4, 5]) {
+        const split = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', wordMode: 'mix', aiRoots: ['oldenglish', 'norman', 'germanic'] };
+        const seeds = api.rollSeeds(20, split, seeded(n));
+        const words = seeds.filter(s => s.word);
+        assert.ok(words.length >= 6 && words.length <= 7, `about one in three (${words.length})`);
+        assert.ok(new Set(words.map(s => s.root)).size === 3, 'word names land on every root');
+        const merge = { ...split, aiRoots: ['greek', 'slavic'], aiRootMix: 'merge' };
+        const ms = api.rollSeeds(20, merge, seeded(n)).filter(s => s.word);
+        assert.ok(new Set(ms.map(s => s.root)).size === 2, 'word names land on both Merge orders');
+    }
+});
+
+test('v0.2.20: Slavic names get no "no v" seed; others still do', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai' };
+    const sl = api.rollSeeds(20, { ...base, aiRoots: ['greek', 'slavic'], aiRootMix: 'merge' }, seeded(2));
+    assert.ok(sl.every(s => !s.noV));
+    const split = api.rollSeeds(20, { ...base, aiRoots: ['latin', 'slavic'] }, seeded(2));
+    assert.ok(split.filter(s => s.root === 'slavic').every(s => !s.noV));
+    assert.ok(split.some(s => s.root === 'latin' && s.noV));
+});
+
+test('v0.2.20: each Celtic name gets one language, and a Germanic word says German', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['celtic'] };
+    const seeds = api.rollSeeds(9, form, seeded(4));
+    assert.deepEqual([...new Set(seeds.map(s => s.celtic))].sort(), ['Irish', 'Scottish Gaelic', 'Welsh']);
+    for (const s of seeds) {
+        const line = api.seedLine(form, s);
+        assert.ok(line.startsWith(`given name: ${s.celtic} roots`), line);
+        assert.ok(line.includes(`family name: ${s.celtic} words, `), line);
+        assert.ok(!/Celtic/.test(line));
+    }
+    const text = api.buildMessages(form, seeds)[1].content;
+    assert.match(text, /Celtic means Welsh, Irish or Scottish Gaelic .*keep the whole name, family name too, in that one language, with no English or Scots words\./);
+    const merge = { ...form, aiRoots: ['celtic', 'norse'], aiRootMix: 'merge' };
+    assert.match(api.rootRule(merge, ['celtic', 'norse']), /its Celtic parts stay in that one language/);
+    assert.ok(!/Celtic means/.test(api.rootRule({ ...form, aiRoots: ['latin'] }, ['latin'])));
+    // Germanic: plain roots stay "Germanic", a word name asks for a German word.
+    assert.match(api.seedLine(form, { root: 'germanic', start: 'A' }), /^given name: Germanic roots/);
+    assert.match(api.seedLine(form, { root: 'germanic', word: true }), /a pretty German word/);
+    assert.match(api.seedLine(form, { root: 'germanic', root2: 'norman', word: true }), /a pretty German or Norman \/ French word/);
+});
+
+test('v0.2.20: Slavic family names take the feminine form for women', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai' };
+    assert.match(api.rootRule({ ...base, aiRoots: ['slavic'] }, ['slavic']), /Slavic family name takes its feminine form \(-ova, -eva, -ina, -ska\)/);
+    assert.ok(!/feminine form/.test(api.rootRule({ ...base, parts: ['given'], aiRoots: ['slavic'] }, ['slavic'])), 'no family name, no line');
+    assert.ok(!/feminine form/.test(api.rootRule({ ...base, aiRoots: ['greek'] }, ['greek'])));
+});
+
+test('v0.2.20: one batch never repeats a start letter until the letters run out', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai' };
+    for (const n of [1, 2, 3]) {
+        const starts = api.rollSeeds(20, base, seeded(n)).map(s => s.start);
+        assert.equal(new Set(starts).size, 20);
+        // Greek leaves out six letters, so 16 come first, then repeats.
+        const gr = api.rollSeeds(20, { ...base, aiRoots: ['greek'] }, seeded(n)).map(s => s.start);
+        assert.equal(new Set(gr.slice(0, 16)).size, 16);
+    }
+});
+
+test('v0.2.20: the batch "v" example stays out when Slavic is a root', () => {
+    const { api } = load();
+    const base = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai' };
+    const sl = { ...base, aiRoots: ['slavic'] };
+    const t = api.buildMessages(sl, api.rollSeeds(5, sl, seeded(1)))[1].content;
+    assert.match(t, /vary the sounds too: don't let one sound or word part run through most of the names\.\n/);
+    const la = { ...base, aiRoots: ['latin'] };
+    assert.match(api.buildMessages(la, api.rollSeeds(5, la, seeded(1)))[1].content, /\(not a "v" in nearly every name\)/);
 });

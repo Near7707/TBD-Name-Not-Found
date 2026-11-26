@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.19
+// TBD — Name Not Found v0.2.20
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -630,6 +630,7 @@
 
     // Start letters a root (almost) never uses: a Latin name can't start with W.
     const ROOT_NO_START = { latin: 'WK', norse: 'CW', celtic: 'WJ', norman: 'K', greek: 'WJQFVY', slavic: 'QX' };
+    const CELTIC_BRANCHES = ['Welsh', 'Irish', 'Scottish Gaelic'];
     const ROOT_FAMILY_KINDS = ['from a place', "from a father's name", 'from looks or a nickname', 'from a trade'];
     const LIKE_FOCUS = ['its opening sound', 'its vowels', 'its ending', 'its rhythm', 'its consonants'];
 
@@ -684,6 +685,12 @@
         // so the seeds stay exactly as before for everyone else.
         const wm = wordUsed(opts);
         const wordStart = wm === 'mix' && count > 1 ? Math.floor(rnd() * 3) : 0;
+        // v0.2.20: "Celtic" is several languages, and the AI filled the gaps with English and Scots
+        // (Nailor, Souter, Dunwrinkle) and mixed Irish with Welsh (mac Branwyn). Each Celtic name gets one language.
+        const celticStart = roots.includes('celtic') ? Math.floor(rnd() * CELTIC_BRANCHES.length) : 0;
+        let celticCount = 0;
+        // v0.2.20: start letters were drawn with repeats (four W, four O, four K in one batch of 20).
+        const usedStarts = new Set();
         for (let i = 0; i < count; i++) {
             const seed = {};
             // Like Cache, each name takes the picked roots in turn.
@@ -702,7 +709,9 @@
             // A forced start letter would fight "must contain", so skip it then.
             if (!opts.mustContain && !like) {
                 const letters = seed.root ? START_LETTERS.filter(c => !(ROOT_NO_START[seed.root] || '').includes(c)) : START_LETTERS;
-                seed.start = pick(letters, rnd);
+                const fresh = letters.filter(c => !usedStarts.has(c));
+                seed.start = pick(fresh.length ? fresh : letters, rnd);
+                usedStarts.add(seed.start);
             }
             // Only nudge the ending about half the time; always forcing it sounds samey too.
             // Don't hand the same ending to two names in one batch (two "… Array" looked samey).
@@ -712,8 +721,12 @@
                 usedEndings.add(seed.ending);
             }
             if (shapes) seed.shape = pick(shapes, rnd);
-            if (rootsOn && !like && (i + Math.floor(i / 2) + noVStart) % 2 === 0 && !'VW'.includes(seed.start || '')) seed.noV = true;
-            if (wm === 'main' || (wm === 'mix' && (count > 1 ? (i + wordStart) % 3 === 0 : rnd() < 1 / 3))) {
+            // v0.2.20: no "no v" for Slavic: -slav, Vlad- and -vit are its core parts (0 of 20 names had a v).
+            const slavic = seed.root === 'slavic' || seed.root2 === 'slavic';
+            if (rootsOn && !like && !slavic && (i + Math.floor(i / 2) + noVStart) % 2 === 0 && !'VW'.includes(seed.start || '')) seed.noV = true;
+            // v0.2.20: plain (i + start) % 3 ran in step with three roots taken in turn, so every word name
+            // went to one root. The extra i/3 shift spreads them over the roots and still hits one in three.
+            if (wm === 'main' || (wm === 'mix' && (count > 1 ? (i + Math.floor(i / 3) + wordStart) % 3 === 0 : rnd() < 1 / 3))) {
                 // A real word brings its own length and ending, so those nudges (and "no v") would only argue with it.
                 seed.word = true;
                 delete seed.syllables; delete seed.ending; delete seed.spark; delete seed.noV;
@@ -727,6 +740,7 @@
                 const want = roots[(i + Math.floor(i / ROOT_FAMILY_KINDS.length)) % roots.length];
                 seed.familyRoot = seed.root2 && want === seed.root2 ? seed.root2 : seed.root;
             }
+            if (seed.root === 'celtic' || seed.root2 === 'celtic') seed.celtic = CELTIC_BRANCHES[(celticStart + celticCount++) % CELTIC_BRANCHES.length];
             if (familyStyles) {
                 const fresh = familyStyles.filter(f => !usedFamily.has(f));
                 seed.family = pick(fresh.length ? fresh : familyStyles, rnd);
@@ -2231,7 +2245,13 @@
         // v0.2.18: Latin trade and looks family names came back as -a (Coriara, Lanaria, Hispida on a man's name).
         const latinFamily = hasFamily ? ' A Latin family name from a trade or from looks keeps its -us, -ius or -arius form (not -a), unless it belongs to a woman.' : '';
         const latinNote = roots.includes('latin') ? ` Latin means classical Latin forms (endings like -us, -ius, -a, -ia), not Italian or French ones.${latinFamily}` : '';
-        const fresh = latinNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist.${wordExcept(form)} Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
+        // v0.2.20: Celtic family names came back as English and Scots words (Nailor, Souter, Cochmarsh),
+        // and Slavic women got the men's form (Kalina Kudrev).
+        const celticNote = !roots.includes('celtic') ? ''
+            : aiMerge(form) ? ' Celtic means Welsh, Irish or Scottish Gaelic (each name below says which); its Celtic parts stay in that one language, with no English or Scots words.'
+            : ` Celtic means Welsh, Irish or Scottish Gaelic (each name below says which); keep the whole name${hasFamily ? ', family name too,' : ''} in that one language, with no English or Scots words.`;
+        const slavicNote = roots.includes('slavic') && hasFamily ? ' A Slavic family name takes its feminine form (-ova, -eva, -ina, -ska) when the name belongs to a woman.' : '';
+        const fresh = latinNote + celticNote + slavicNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist.${wordExcept(form)} Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
         if (aiMerge(form)) {
             const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
             return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}${fresh}`;
@@ -2251,12 +2271,15 @@
         const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
         const parts = [];
         // A word name says which language the word comes from: a bare "real word" seed would pull English (like v0.2.16).
+        // v0.2.20: Celtic names say their one language (Welsh / Irish / Scottish Gaelic), and a Germanic
+        // word says German: "a pretty Germanic word" came back English (Clove) and Norwegian (Tusse).
+        const rn = (r, word) => r === 'celtic' && s.celtic ? s.celtic : word && r === 'germanic' ? 'German' : STRINGS.en.roots[r];
         if (s.word) {
-            const from = s.root && s.root2 ? `${STRINGS.en.roots[s.root]} or ${STRINGS.en.roots[s.root2]}` : s.root ? STRINGS.en.roots[s.root] : '';
+            const from = s.root && s.root2 ? `${rn(s.root, true)} or ${rn(s.root2, true)}` : s.root ? rn(s.root, true) : '';
             parts.push(from ? `real word: a pretty ${from} word, as it is or lightly changed`
                 : 'real word: a pretty word from any language that fits the setting (English is fine), as it is or lightly changed');
-        } else if (s.root && s.root2) parts.push(`${STRINGS.en.roots[s.root]} + ${STRINGS.en.roots[s.root2]} roots`);
-        else if (s.root) parts.push(`${STRINGS.en.roots[s.root]} roots`);
+        } else if (s.root && s.root2) parts.push(`${rn(s.root)} + ${rn(s.root2)} roots`);
+        else if (s.root) parts.push(`${rn(s.root)} roots`);
         if (s.shape) parts.push(`shape: ${s.shape}`);
         if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
         if (s.syllables) parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
@@ -2266,7 +2289,7 @@
         if (s.likeFocus) parts.push(`echo the "like" word${likeWords(form).length > 1 ? 's' : ''} mostly in ${s.likeFocus}`);
         if (!parts.length) parts.push('follow the "like" words above');
         if (s.spark) parts.push(`inspiration: "${s.spark}"`);
-        return `${main}${parts.join(', ')}${s.family ? `; family name: ${s.familyRoot ? `${STRINGS.en.roots[s.familyRoot]} words, ` : ''}${s.family}` : ''}`;
+        return `${main}${parts.join(', ')}${s.family ? `; family name: ${s.familyRoot ? `${rn(s.familyRoot)} words, ` : ''}${s.family}` : ''}`;
     }
     // Answers come back in seed order, so the n-th answer gets the n-th seed (before any filtering).
     function withSeeds(list, form, seeds) {
@@ -2325,7 +2348,8 @@
         seeds.forEach((s, i) => lines.push(`${i + 1}. ${seedLine(form, s)}`));
         if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
         // v0.2.14: Latin + Norse put a v sound in 17 of 20 given names (-val, -var, -lv-) and -mund in three.
-        if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, vary the sounds too: don\'t let one sound or word part run through most of the names (not a "v" in nearly every name).');
+        // v0.2.20: the "v" example also scared Slavic names off -slav and Vlad- (no v in 20 of 20), so it goes there.
+        if (seeds.length > 1 && !echoOnly) lines.push(`Across the batch, vary the sounds too: don't let one sound or word part run through most of the names${aiRootsUsed(form).includes('slavic') ? '' : ' (not a "v" in nearly every name)'}.`);
         if (avoid.length) {
             lines.push('');
             lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
