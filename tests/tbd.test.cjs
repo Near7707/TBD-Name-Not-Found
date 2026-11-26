@@ -1157,13 +1157,13 @@ test('v0.2.2: royal, warrior and scholar names', () => {
     const rnd = seeded(81);
     const king = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'masculine', fixedFamily: 'Holloway' }, 'oldenglish', 'royal', rnd);
     assert.deepEqual([...king.pieces.map(p => p.role)], ['title', 'given', 'epithet']);
-    assert.equal(king.pieces[0].text, 'King');
+    assert.ok(['King', 'Prince', 'Duke', 'Earl'].includes(king.pieces[0].text));
     assert.ok(king.pieces[0].fixed && !king.pieces[2].fixed);
     assert.ok(!/Holloway/.test(king.name), 'kings go by a number or an epithet, not a kept family name');
     assert.match(king.pieces[2].text, /^(II|III|IV|V|VI|VII|VIII|IX|the \w+)$/);
     for (let i = 0; i < 30; i++) {
         const q = api.cacheOne({ target: 'person', parts: ['given'], gender: 'feminine' }, 'latin', 'royal', rnd);
-        assert.equal(q.pieces[0].text, 'Regina');
+        assert.ok(['Regina', 'Imperatrix', 'Ducissa', 'Principissa'].includes(q.pieces[0].text));
         assert.ok(!/us$/.test(q.pieces[2].text), `a queen is Magna, not Magnus: ${q.name}`);
         const g = api.cacheOne({ target: 'person', parts: ['given'] }, 'greek', 'royal', rnd);
         assert.ok(!/^(II|III|IV|V|VI|VII|VIII|IX)$/.test(g.pieces[2].text), `Greek kings use epithets: ${g.name}`);
@@ -1292,11 +1292,12 @@ test('polish answers line up by n, and a missing one stays empty', () => {
 
 test('a polish must stay light: same first letter, same word count, close length', () => {
     const { api } = load();
-    assert.equal(api.polishOk('Wulfrith', 'Wulfric'), true);
+    assert.equal(api.polishOk('Wulfrith', 'Wulfrath'), true);
+    assert.equal(api.polishOk('Richier', 'Richie'), false, 'the ending stays');
     assert.equal(api.polishOk('Wulfrith', 'Thomas'), false);
     assert.equal(api.polishOk('Wulfrith', 'Wulfrithingtonius'), false);
-    assert.equal(api.polishOk('Gornji Volkets', 'Gornji Volkec'), true);
-    assert.equal(api.polishOk('Gornji Volkets', 'Gornjivolkec'), false);
+    assert.equal(api.polishOk('Gornji Volkets', 'Gornji Volkats'), true);
+    assert.equal(api.polishOk('Gornji Volkets', 'Gornjivolkets'), false);
     assert.equal(api.polishOk('Wulfrith', '{"name'), false);
 });
 
@@ -1325,8 +1326,8 @@ test('one-part polish only touches that part', () => {
     const { api } = load();
     const n = { name: 'Edwin Ashford', pieces: [{ role: 'given', text: 'Edwin' }, { role: 'family', text: 'Ashford' }], polishOnly: ['family'] };
     assert.deepEqual([...api.polishRoles(n)], ['family']);
-    const p = api.applyPolish(n, { parts: { family: 'Ashforde', given: 'Edwyn' } }, { target: 'person' });
-    assert.equal(p.name, 'Edwin Ashforde');
+    const p = api.applyPolish(n, { parts: { family: 'Asheford', given: 'Edwyn' } }, { target: 'person' });
+    assert.equal(p.name, 'Edwin Asheford');
     assert.equal(p.polishOnly, undefined);
 });
 
@@ -1389,4 +1390,30 @@ test('Found list shows names newest first and escapes text', () => {
     assert.ok(html.indexOf('Bryn&lt;b&gt;') < html.indexOf('Ashmere'));
     assert.doesNotMatch(html, /Bryn<b>/);
     assert.match(api.tabsHtml(st), /tbd-tab-n">2</);
+});
+
+// ---------- v0.2.6 ----------
+test('rulers get more than one title, and Norman / Germanic bynames match the title language and gender', () => {
+    const { api } = load();
+    const rnd = seeded(5);
+    const titles = new Set();
+    for (let i = 0; i < 80; i++) {
+        const m = api.cacheOne({ target: 'person', parts: ['given'], gender: 'masculine' }, 'norman', 'royal', rnd);
+        titles.add(m.pieces[0].text);
+        assert.doesNotMatch(m.pieces[2].text, /^(the |la |die )/, m.name);
+        const f = api.cacheOne({ target: 'person', parts: ['given'], gender: 'feminine' }, 'germanic', 'royal', rnd);
+        assert.doesNotMatch(f.pieces[2].text, /^(the |der |le )/, f.name);
+        assert.equal(f.gender, 'f');
+        const gq = api.cacheOne({ target: 'person', parts: ['given'], gender: 'feminine' }, 'greek', 'royal', rnd);
+        assert.ok(!['Soter', 'Nikator', 'Megas', 'Euergetes', 'Kallinikos'].includes(gq.pieces[2].text), gq.name);
+        const lq = api.cacheOne({ target: 'person', parts: ['given'], gender: 'feminine' }, 'latin', 'royal', rnd);
+        assert.notEqual(lq.pieces[2].text, 'Victor', lq.name);
+    }
+    assert.ok(titles.has('Roi') && titles.size >= 3, [...titles].join(','));
+    // A swapped byname keeps the gender of the name, even when the form says "any".
+    const q = api.cacheOne({ target: 'person', parts: ['given'], gender: 'feminine' }, 'norman', 'royal', rnd);
+    for (let i = 0; i < 20; i++) {
+        const e = api.cachePiece(q, 2, { target: 'person', gender: 'any' }, [], rnd);
+        assert.doesNotMatch(e.text, /^le /, e.text);
+    }
 });

@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.5
+// TBD — Name Not Found v0.2.6
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -820,7 +820,7 @@
             family: 'nomen', branches: { patron: 4, trade: 2, looks: 3 },
             trade: F('Faber=smith=대장장이;Pictor=painter=화가;Agricola=farmer=농부;Pastor=shepherd=목동;Sutor=shoemaker=구두장이;Nauta=sailor=뱃사람;Scriba=scribe=서기;Medicus=physician=의사;Piscator=fisherman=어부;Molitor=miller=방앗간 주인'),
             looks: F('Rufus=red-haired=빨강 머리;Longus=tall=키 큰;Crassus=stout=뚱뚱한;Paullus=small=작은;Niger=dark=거무스름한;Calvus=bald=대머리;Naso=big-nosed=코 큰;Barbatus=bearded=수염 난;Albinus=pale=하얀;Capito=big-headed=머리 큰'),
-            noble: 'de', of: 'de', titles: { m: ['Frater', 'Sanctus'], f: ['Soror', 'Sancta'] }, royal: { m: ['Rex'], f: ['Regina'] },
+            noble: 'de', of: 'de', titles: { m: ['Frater', 'Sanctus'], f: ['Soror', 'Sancta'] }, royal: { m: ['Rex', 'Imperator', 'Dux', 'Princeps'], f: ['Regina', 'Imperatrix', 'Ducissa', 'Principissa'] },
             royalEpithets: F('Magnus=the Great=위대한 이;Pius=the Pious=경건한 이;Iustus=the Just=정의로운 이;Felix=the Fortunate=행운의 이;Sapiens=the Wise=현명한 이;Victor=the Victor=승리자;Augustus=the Venerable=존엄한 이'),
             war: F('Ferox=fierce=사나운;Fortis=brave=용감한;Rufus=red-haired=빨강 머리;Audax=bold=대담한;Ferreus=made of iron=쇠 같은;Bellator=warrior=전사;Leo=lion=사자;Lupus=wolf=늑대;Torquatus=wearing a neck-ring=목걸이 두른'),
         },
@@ -843,7 +843,7 @@
             dwell: F('Nash=at the ash=물푸레나무 곁;Noakes=at the oaks=참나무 곁;Hill=hill=언덕;Brook=brook=시내;Wood=wood=숲;Marsh=marsh=늪;Green=village green=마을 풀밭;Lane=lane=골목;Bridge=bridge=다리;Cross=crossroads=네거리;Banks=hillside=언덕배기;Shaw=thicket=덤불숲;Dale=valley=골짜기;Moore=moor=황야;Ford=ford=여울'),
             trade: F('Smith=smith=대장장이;Thatcher=roof thatcher=지붕 이는 사람;Fletcher=arrow maker=화살 만드는 사람;Cooper=barrel maker=통 만드는 사람;Fisher=fisherman=어부;Baker=baker=빵 굽는 사람;Miller=miller=방앗간 주인;Turner=lathe worker=선반공;Carter=cart driver=짐수레꾼;Mason=stonemason=석공;Wright=craftsman=장인;Webster=weaver=베 짜는 사람;Shepherd=shepherd=양치기;Hunter=hunter=사냥꾼;Ward=watchman=파수꾼;Millward=mill keeper=방앗간지기;Arkwright=chest maker=궤짝 만드는 사람;Chapman=merchant=행상;Cook=cook=요리사;Knight=servant, knight=시종·기사'),
             looks: F('Brown=brown-haired=갈색 머리;White=fair-haired, pale=흰 머리·흰 얼굴;Black=dark-haired=검은 머리;Armstrong=strong in the arm=팔심 센;Young=young=젊은;Little=small=작은;Long=tall=키 큰;Short=short=키 작은;Strong=strong=억센;Read=red-haired=빨강 머리;Grey=grey-haired=잿빛 머리;Blythe=cheerful=명랑한;Fairfax=fair-haired=고운 머리;Swift=quick=빠른;Bold=bold=대담한'),
-            noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King'], f: ['Queen'] },
+            noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King', 'Prince', 'Duke', 'Earl'], f: ['Queen', 'Princess', 'Duchess', 'Countess'] },
         },
         norman: {
             head: F('Beau=beautiful=아름다운;Bel=fine=고운;Clair=clear=맑은;Fleur=flower=꽃;Gai=merry=명랑한;Dou=sweet=다정한;Blanc=white=흰;Roy=king=왕;Lys=lily=백합;Aim=loved=사랑받는;Ros=rose=장미;Jol=pretty=예쁜;Hardi=bold=대담한;Sauv=wild=야생의;Gent=noble=고귀한;Fid=faithful=믿음직한;'
@@ -864,7 +864,9 @@
             trade: F('Lefebvre=smith=대장장이;Boulanger=baker=빵 굽는 사람;Meunier=miller=방앗간 주인;Charpentier=carpenter=목수;Berger=shepherd=양치기;Tisserand=weaver=베 짜는 사람;Mercier=haberdasher=잡화상;Barbier=barber=이발사;Marchand=merchant=상인;Fournier=oven keeper=화덕지기;Chevalier=horseman, knight=기사;Page=page boy=시동;Granger=granary keeper=곳간지기'),
             looksPre: { t: 'Le', en: 'the', ko: '그' },
             looks: F('blanc=white, fair-haired=흰;brun=brown-haired=갈색 머리;roux=red-haired=빨강 머리;petit=small=작은;grand=tall=큰;gros=stout=뚱뚱한;bel=handsome=잘생긴;bon=good=선한;noir=black-haired=검은 머리;sage=wise=현명한;fort=strong=억센;jeune=young=젊은;doux=gentle=다정한;hardi=bold=대담한;court=short=키 작은'),
-            noble: 'de', of: 'de', titles: { m: ['Frère', 'Saint'], f: ['Sœur', 'Sainte'] }, royal: { m: ['Roi'], f: ['Reine'] },
+            noble: 'de', of: 'de', titles: { m: ['Frère', 'Saint'], f: ['Sœur', 'Sainte'] }, royal: { m: ['Roi', 'Duc', 'Prince', 'Comte'], f: ['Reine', 'Duchesse', 'Princesse', 'Comtesse'] },
+            royalEpithets: F("le Bel=the Fair=고운 이;le Hardi=the Bold=대담한 이;le Grand=the Great=위대한 이;le Sage=the Wise=현명한 이;le Juste=the Just=정의로운 이;le Pieux=the Pious=경건한 이;le Jeune=the Young=젊은 이;l'Ancien=the Elder=나이 든 이;le Bon=the Good=선한 이;le Lion=the Lion=사자;le Pacifique=the Peaceful=평화로운 이;le Conquérant=the Conqueror=정복자;le Vaillant=the Valiant=용맹한 이"),
+            royalEpithetsF: F("la Belle=the Fair=고운 이;la Hardie=the Bold=대담한 이;la Grande=the Great=위대한 이;la Sage=the Wise=현명한 이;la Juste=the Just=정의로운 이;la Pieuse=the Pious=경건한 이;la Jeune=the Young=젊은 이;l'Ancienne=the Elder=나이 든 이;la Bonne=the Good=선한 이;la Pacifique=the Peaceful=평화로운 이;la Vaillante=the Valiant=용맹한 이"),
         },
         germanic: {
             head: F('Adal=noble=고귀한;Bern=bear=곰;Ger=spear=창;Hild=battle=전투;Rad=counsel=조언;Sieg=victory=승리;Wolf=wolf=늑대;Gott=god=신;Kun=bold=대담한;Lud=famous=이름난;Wil=will=의지;Frid=peace=평화;Ans=god=신;Diet=people=백성;Hart=hardy=굳센;Arn=eagle=독수리;Rein=counsel=조언;Eber=boar=멧돼지;Gund=battle=전투;Irm=great=큰;Walt=rule=다스림;Ot=wealth=부;'
@@ -883,7 +885,9 @@
             dwell: F('Bach=by the stream=시냇가;Brunner=by the well=샘가;Steiner=by the rocks=바위 곁;Imhof=at the farmstead=농장 안;Buchner=by the beeches=너도밤나무 곁;Wiesner=by the meadow=풀밭 곁;Waldner=in the forest=숲속;Holzer=in the woods=숲속;Moser=by the bog=늪가;Bühler=on the hill=언덕 위;Lindner=by the lindens=보리수 곁;Imboden=on the valley floor=골짜기 바닥;Thaler=in the valley=골짜기;Auer=by the water meadow=물가 풀밭'),
             trade: F('Müller=miller=방앗간 주인;Schmidt=smith=대장장이;Schneider=tailor=재단사;Fischer=fisherman=어부;Weber=weaver=베 짜는 사람;Bauer=farmer=농부;Becker=baker=빵 굽는 사람;Wagner=wagon maker=수레 만드는 사람;Jäger=hunter=사냥꾼;Zimmermann=carpenter=목수;Koch=cook=요리사;Maurer=wall builder=미장이;Kaufmann=merchant=상인;Schäfer=shepherd=양치기;Böttcher=cooper=통 만드는 사람;Pfeiffer=piper=피리 부는 사람'),
             looks: F('Klein=small=작은;Groß=big=큰;Lang=tall=키 큰;Kurz=short=키 작은;Schwarz=black-haired=검은 머리;Weiss=white-haired=흰 머리;Braun=brown-haired=갈색 머리;Roth=red-haired=빨강 머리;Fuchs=fox (red-haired, sly)=여우 (빨강 머리·꾀);Jung=young=젊은;Kahl=bald=대머리;Stark=strong=억센;Krause=curly-haired=곱슬머리;Neumann=newcomer=새로 온 사람'),
-            noble: 'von', of: 'von', titles: { m: ['Bruder', 'Sankt'], f: ['Schwester', 'Sankt'] }, royal: { m: ['König'], f: ['Königin'] },
+            noble: 'von', of: 'von', titles: { m: ['Bruder', 'Sankt'], f: ['Schwester', 'Sankt'] }, royal: { m: ['König', 'Kaiser', 'Herzog', 'Fürst', 'Graf'], f: ['Königin', 'Kaiserin', 'Herzogin', 'Fürstin', 'Gräfin'] },
+            royalEpithets: F('der Große=the Great=위대한 이;der Kühne=the Bold=대담한 이;der Weise=the Wise=현명한 이;der Gerechte=the Just=정의로운 이;der Fromme=the Pious=경건한 이;der Junge=the Young=젊은 이;der Ältere=the Elder=나이 든 이;der Gute=the Good=선한 이;der Schöne=the Fair=고운 이;der Löwe=the Lion=사자;der Friedfertige=the Peaceful=평화로운 이;der Eroberer=the Conqueror=정복자;der Tapfere=the Brave=용감한 이'),
+            royalEpithetsF: F('die Große=the Great=위대한 이;die Kühne=the Bold=대담한 이;die Weise=the Wise=현명한 이;die Gerechte=the Just=정의로운 이;die Fromme=the Pious=경건한 이;die Junge=the Young=젊은 이;die Ältere=the Elder=나이 든 이;die Gute=the Good=선한 이;die Schöne=the Fair=고운 이;die Friedfertige=the Peaceful=평화로운 이;die Tapfere=the Brave=용감한 이'),
         },
         celtic: {
             head: F('Bran=raven=큰까마귀;Cad=battle=전투;Gwen=white, blessed=흰·복된;Gwyn=white, fair=흰;Mor=great=큰;Kier=dark=어두운;Finn=fair=흰;Aed=fire=불;Con=hound=사냥개;Duv=black=검은;Bri=hill, high=언덕·높은;Mael=follower=따르는 이;Ard=high=높은;Rua=red=붉은;Teg=fair=고운;Llew=light=빛;Bryn=hill=언덕;Fer=man=사내;'
@@ -900,7 +904,7 @@
             family: 'celtic', branches: { patron: 4, trade: 2, looks: 2 },
             trade: F('MacGowan=son of the smith=대장장이의 아들;MacIntyre=son of the carpenter=목수의 아들;MacNab=son of the abbot=수도원장의 아들;MacPherson=son of the parson=교구 사제의 아들;MacTaggart=son of the priest=사제의 아들;MacClery=son of the cleric=성직자의 아들;MacWard=son of the bard=음유시인의 아들;Gow=smith=대장장이'),
             looks: F('Lloyd=grey=잿빛;Vaughan=small=작은;Gough=red=붉은;Gwyn=white, fair=흰;Moyle=bald=대머리;Bain=fair=흰;Roy=red=붉은;Dow=black=검은;Begg=small=작은;More=big=큰;Duff=black=검은;Boyd=yellow-haired=노란 머리'),
-            noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King'], f: ['Queen'] },
+            noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King', 'High King', 'Prince', 'Chief'], f: ['Queen', 'High Queen', 'Princess'] },
         },
         norse: {
             head: F('Thor=Thor (thunder god)=토르(천둥신);Ulf=wolf=늑대;Arn=eagle=독수리;Bjarn=bear=곰;Sig=victory=승리;Ragn=counsel of the gods=신들의 뜻;Gunn=battle=전투;Hall=rock=바위;As=god=신;Ing=the god Ing=잉(신);Ketil=cauldron=솥;Stein=stone=돌;Rafn=raven=큰까마귀;Frey=lord=주인;Vig=battle=싸움;Grim=mask=가면;Orm=serpent=뱀;Svan=swan=백조;Har=army=군대;'
@@ -915,7 +919,7 @@
             placePre: F('Store=big=큰;Lille=little=작은;Ytre=outer=바깥쪽;Indre=inner=안쪽'),
             family: 'norse', branches: { patron: 6, dwell: 4 },
             dwell: F('Dahl=valley=골짜기;Lund=grove=작은 숲;Berg=mountain=산;Strand=shore=바닷가;Holm=islet=작은 섬;Haugen=the mound=언덕 무덤;Bakke=slope=비탈;Lie=hillside=산비탈;Nes=headland=곶;Vik=bay=만;Moen=the heath=황야;Foss=waterfall=폭포;Hagen=the enclosure=울타리 친 땅;Rud=clearing=개간지;Gard=farm=농장'),
-            noble: 'af', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King'], f: ['Queen'] },
+            noble: 'af', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King', 'Jarl', 'Prince'], f: ['Queen', 'Princess'] },
         },
         greek: {
             head: F('Theo=god=신;Dio=of Zeus=제우스의;Niko=victory=승리;Aristo=best=가장 뛰어난;Demo=the people=백성;Kalli=beautiful=아름다운;Agatho=good=좋은;Eu=good, well=좋은;Xeno=stranger=나그네;Andro=man=사내;Hippo=horse=말;Philo=loving=사랑하는;Lyko=wolf=늑대;Kleo=glory=영광;Strato=army=군대;Neo=new=새로운;Archo=rule=다스림;Hermo=Hermes=헤르메스;Apollo=Apollo=아폴론;Nausi=ship=배;Aglao=splendid=빛나는;Chryso=gold=금;Poly=many=많은;Mega=great=큰;Timo=honour=명예;Pheido=sparing=아끼는;Agano=gentle=온화한;Metro=mother=어머니;Chaire=rejoicing=기뻐하는'),
@@ -926,8 +930,9 @@
             // Greek joins drop the vowel where two meet (Aristo + ippos → Aristippos).
             elide: true,
             family: 'greek', branches: { patron: 3, place: 2 },
-            noble: 'of', of: 'of', titles: { m: ['Adelphos', 'Hagios'], f: ['Adelphe', 'Hagia'] }, royal: { m: ['Basileus'], f: ['Basilissa'] },
+            noble: 'of', of: 'of', titles: { m: ['Adelphos', 'Hagios'], f: ['Adelphe', 'Hagia'] }, royal: { m: ['Basileus', 'Anax', 'Despotes', 'Archon'], f: ['Basilissa', 'Anassa', 'Despoina'] },
             royalEpithets: F('Soter=the Saviour=구원자;Nikator=the Victor=승리자;Megas=the Great=위대한 이;Euergetes=the Benefactor=은인;Kallinikos=gloriously victorious=빛나는 승리자;Philadelphos=sibling-loving=형제를 아끼는 이'),
+            royalEpithetsF: F('Soteira=the Saviour=구원자;Megale=the Great=위대한 이;Euergetis=the Benefactor=은인;Kallinike=gloriously victorious=빛나는 승리자;Philadelphos=sibling-loving=형제를 아끼는 이;Philopator=father-loving=아버지를 아끼는 이'),
             noOrdinals: true,
             war: F('Monophthalmos=one-eyed=애꾸눈;Poliorketes=the Besieger=성을 함락하는 자;Keraunos=thunderbolt=벼락;Nikator=the Victor=승리자;Hoplomachos=armoured fighter=중무장 전사;Leon=the lion=사자'),
         },
@@ -944,7 +949,7 @@
             dwell: F('Gorski=of the mountains=산 사람;Zagorski=beyond the hills=언덕 너머;Podgorski=below the hill=언덕 아래;Zarecki=beyond the river=강 건너;Zalesski=beyond the forest=숲 너머;Dubrovski=by the oak wood=참나무 숲가;Lipski=by the lindens=보리수 곁'),
             trade: F('Kovač=smith=대장장이;Kuznetsov=smith\'s child=대장장이의 자식;Melnik=miller=방앗간 주인;Kravets=tailor=재단사;Rybak=fisherman=어부;Pekar=baker=빵 굽는 사람;Bondar=cooper=통 만드는 사람;Goncharov=potter\'s child=도공의 자식;Plotnikov=carpenter\'s child=목수의 자식;Kolar=wheelwright=수레바퀴 장인'),
             looks: F('Belov=white=흰;Chernov=black=검은;Ryzhov=red-haired=빨강 머리;Sedov=grey-haired=흰머리;Novak=newcomer=새로 온 사람;Maly=small=작은;Krasnov=red, handsome=붉은·잘생긴;Lysenko=bald=대머리;Kudryashov=curly-haired=곱슬머리'),
-            noble: 'ski', of: 'of', titles: { m: ['Brat', 'Sveti'], f: ['Sestra', 'Sveta'] }, royal: { m: ['Knyaz'], f: ['Knyaginya'] },
+            noble: 'ski', of: 'of', titles: { m: ['Brat', 'Sveti'], f: ['Sestra', 'Sveta'] }, royal: { m: ['Knyaz', 'Tsar', 'Voivode'], f: ['Knyaginya', 'Tsaritsa'] },
         },
     };
     const CACHE_ROOTS = Object.keys(CACHE);
@@ -1188,14 +1193,21 @@
     }
     // Latin bynames agree with a woman: Magnus → Magna, Rufus → Rufa.
     function latinAgree(f, root, g) {
+        if (root === 'latin' && g === 'f' && f.t === 'Victor') return { ...f, t: 'Victrix' };
         if (root !== 'latin' || g !== 'f' || !/us$/.test(f.t)) return f;
         return { ...f, t: f.t.replace(/us$/, 'a') };
     }
     // Kings and queens: an ordinal (II) or an epithet (the Fair, Magnus, Soter).
     function royalEpithet(root, rnd, g = 'm') {
         const R = CACHE[root];
-        const f = latinAgree((!R.noOrdinals && rnd() < 0.5) ? pick(ORDINALS, rnd) : pick(R.royalEpithets || ROYAL_EN, rnd), root, g);
+        const words = (g === 'f' && R.royalEpithetsF) || R.royalEpithets || ROYAL_EN;
+        const f = latinAgree((!R.noOrdinals && rnd() < 0.5) ? pick(ORDINALS, rnd) : pick(words, rnd), root, g);
         return { text: f.t, frags: [f] };
+    }
+    // The first title (king, queen) half the time; the others (duke, prince…) share the rest.
+    function royalTitle(root, g, rnd) {
+        const list = CACHE[root].royal[g] || CACHE[root].royal.m;
+        return list.length > 1 && rnd() >= 0.5 ? pick(list.slice(1), rnd) : list[0];
     }
     // Warriors: Ironhand, Fairhair, the Red (or a Latin / Greek byname).
     function warEpithet(root, rnd, g = 'm') {
@@ -1245,7 +1257,7 @@
         let given = cacheGiven(root, g, rnd);
         if (kind === 'scholar') given = latinGiven(given, g);
         if (kind === 'religious') pieces.push({ role: 'title', text: pick(R.titles[g], rnd), fixed: true });
-        if (kind === 'royal') pieces.push({ role: 'title', text: pick(R.royal[g], rnd), fixed: true });
+        if (kind === 'royal') pieces.push({ role: 'title', text: royalTitle(root, g, rnd), fixed: true });
         if (parts.includes('given') || !parts.length) pieces.push({ role: 'given', text: given.text, frags: given.frags });
         if (parts.includes('middle')) {
             let m = cacheGiven(root, g, rnd);
@@ -1285,7 +1297,8 @@
         }
         if (!pieces.some(p => p.role === 'given')) pieces.splice(pieces[0]?.role === 'title' ? 1 : 0, 0, { role: 'given', text: given.text, frags: given.frags });
         if (pieces.length === 1) return { name: pieces[0].text, frags: pieces[0].frags, root, cache: true };
-        return { name: pieces.map(p => p.text).join(' '), pieces, root, cache: true, kind };
+        // The gender is kept so a swapped part still fits (no "la Belle" after "Roi").
+        return { name: pieces.map(p => p.text).join(' '), pieces, root, cache: true, kind, gender: g };
     }
     // Sound feel, by letters (no AI here to judge by ear).
     const SOUND_LETTERS = { soft: /[lrmnwy]|[aeiou]/g, hard: /[ktpdgb]|c(?![eiy])|ck/g, sharp: /sh|th|[szxfv]|c(?=[eiy])/g, bright: /[ie]/g, dark: /[oua]/g };
@@ -1342,7 +1355,7 @@
         if (!p || p.fixed) return null;
         const root = src.root || cacheRoots(form)[0];
         const R = CACHE[root];
-        const g = genderOf(form, rnd);
+        const g = src.gender === 'm' || src.gender === 'f' ? src.gender : genderOf(form, rnd);
         const kind = src.kind || '';
         const banned = new Set([p.text, ...avoid].map(a => String(a).toLowerCase()));
         for (let i = 0; i < 40; i++) {
@@ -1461,7 +1474,8 @@
         if (now.trim().split(/\s+/).length !== was.trim().split(/\s+/).length) return false;
         if (!sayable(now)) return false;
         const a = was.toLowerCase(), b = now.toLowerCase();
-        return a[0] === b[0] && Math.abs(a.length - b.length) <= 3;
+        // The first and last letters stay: the end carries the language and gender (Richier must not become Richie).
+        return a[0] === b[0] && a.slice(-1) === b.slice(-1) && Math.abs(a.length - b.length) <= 3;
     }
     // One skeleton + one answer → the polished name, or null to keep the skeleton as it is.
     function applyPolish(n, ans, form, banned = new Set(), lang = 'en') {
@@ -3490,7 +3504,7 @@
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml,
-            CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
+            CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
         };
