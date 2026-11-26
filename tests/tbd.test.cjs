@@ -1587,3 +1587,28 @@ test('merge: settings default to Split and bad values fall back', () => {
     assert.equal(st.form.aiRootMix, 'merge');
     assert.ok(extensionSettings);
 });
+
+// ---------- v0.2.9: Copy for review ----------
+test('review text: choices once per group, every name with its fragments, in English', () => {
+    const { api } = load({ lang: 'ko' });
+    const form = { target: 'person', method: 'cache', roots: ['latin', 'norse'], rootMix: 'merge', ckinds: ['royal'], gender: 'feminine', parts: ['given', 'family'] };
+    const names = api.cacheNames(form, 3, [], seeded(6)).map(n => ({ ...n, form }));
+    const place = { ...api.cacheOne({ target: 'place', kind: 'forest' }, 'celtic', 'common', seeded(2)), form: { target: 'place', method: 'cache', roots: ['celtic'], kind: 'forest' } };
+    const ai = { name: 'Morvel', read: '모르벨', note: '부드러운 느낌', real: true, nicks: ['Mor'], form: { target: 'person', method: 'ai', vibe: 'medieval', aiRoots: ['celtic', 'latin'], aiRootMix: 'merge', realNames: 'near', parts: ['given'] } };
+    const text = api.reviewText([...names, place, ai]);
+    assert.match(text, /\[Made with: Cache · Target: person · Gender: feminine · Roots: Latin, Norse \(Merge\) · Kind of name: Royal \/ ruler · Parts: given, family\]/);
+    assert.equal(text.split('Made with: Cache · Target: person').length - 1, 1, 'same choices written once');
+    assert.match(text, /\[Made with: Cache · Target: place · Kind: forest · Roots: Celtic\]/);
+    assert.match(text, /\[Made with: AI · Target: person · Vibe: medieval · Gender: any · Roots: Celtic, Latin \(Merge\) · Real names: near · Parts: given\]/);
+    for (const n of names) {
+        assert.ok(text.includes(n.name), n.name);
+        assert.match(text, /female, Royal \/ ruler/);
+        assert.match(text, /given "[^"]+": \S+ \([^)]*\) \[(Latin|Norse)\] \+ /);
+    }
+    assert.match(text, /title "[^"]+" \(kept as is\)/);
+    assert.match(text, /roots: (Latin \+ Norse|Norse \+ Latin)/);
+    assert.match(text, /fragments: .+ · ?|fragments: /);
+    assert.match(text, /Morvel  \{real\}\n   reading: 모르벨\n   note: 부드러운 느낌\n   nicknames: Mor/);
+    // English meanings, not the Korean ones, even on a Korean screen.
+    assert.doesNotMatch(text.split('Morvel')[0], /[가-힣]/);
+});

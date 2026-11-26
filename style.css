@@ -759,3 +759,9 @@
 .tbd-found .tbd-foot { flex-wrap: wrap; }
 .tbd-found .tbd-foot .tbd-status { flex: 1 1 100%; color: var(--tbd-dim); font-size: 11px; }
 .tbd-small-btn[disabled] { opacity: .4; cursor: default; }
+
+/* v0.2.9 "Copy for review" sits before "Roll again"; on a phone the status takes its own line and both buttons go right. */
+#tbd_review { margin-left: auto; }
+@media (max-width: 600px) {
+    .tbd-foot .tbd-status:has(~ #tbd_review) { flex: 1 1 100%; }
+}

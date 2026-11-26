@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.8
+// TBD — Name Not Found v0.2.9
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -16,6 +16,7 @@
             customVibePh: 'e.g. foggy harbor town', mustContainPh: 'e.g. ren',
             like: 'Like this (optional)', likePh: 'e.g. Elric, Aldous', likeMode: 'Alike in', likeModes: { sound: 'Sound', feel: 'Feel' },
             find: 'Find names', cancel: 'Cancel', again: 'Roll again',
+            reviewCopy: 'Copy for review', reviewTip: 'Copy every name here as text, with its fragments and the choices it was made with, to paste somewhere for a check.', reviewCopied: 'Copied the names for review.',
             copy: 'Copy', close: 'Close',
             copied: 'Copied', copyFail: "Couldn't copy. Select the text and copy it yourself.",
             tabFind: 'Find names', tabFound: 'Found', starAdd: 'Keep in Found', starRemove: 'Take out of Found',
@@ -114,6 +115,7 @@
             customVibePh: '예: 안개 낀 항구 마을', mustContainPh: '예: ren',
             like: '비슷하게 (안 써도 됨)', likePh: '예: Elric, Aldous', likeMode: '어떻게 비슷하게', likeModes: { sound: '소리', feel: '느낌' },
             find: '이름 찾기', cancel: '취소', again: '다시 뽑기',
+            reviewCopy: '검사용 복사', reviewTip: '지금 보이는 이름 전부를 조각·만든 조건과 함께 글로 복사해요. 다른 곳에 붙여넣어 검사할 때 써요.', reviewCopied: '검사용으로 이름을 복사했어요.',
             copy: '복사', close: '닫기',
             copied: '복사했어요', copyFail: '복사가 안 됐어요. 글자를 직접 골라서 복사해 주세요.',
             tabFind: '이름 찾기', tabFound: 'Found', starAdd: 'Found에 넣기', starRemove: 'Found에서 빼기',
@@ -2697,14 +2699,85 @@
         }).join('');
     }
 
+    // v0.2.9: every result as plain text, for pasting into a chat to check names in a language you don't read.
+    // Always English (fragment meanings too), so it reads the same whatever the screen language.
+    function reviewFormLine(form = {}) {
+        const en = STRINGS.en;
+        const bits = [];
+        const cache = isCache(form);
+        bits.push(`Made with: ${en.methods[isPolish(form) ? 'polish' : cache ? 'cache' : 'ai'] || 'AI'}`);
+        bits.push(`Target: ${form.target || 'person'}`);
+        if (!cache) bits.push(`Vibe: ${form.vibe === 'custom' ? `custom "${String(form.customVibe || '').slice(0, 60)}"` : form.vibe || 'fantasy'}`);
+        if (form.target === 'person') bits.push(`Gender: ${form.gender || 'any'}`);
+        else if (form.kind && form.kind !== 'any') bits.push(`Kind: ${form.kind}`);
+        if (cache) {
+            const roots = cacheRoots(form);
+            bits.push(`Roots: ${roots.map(r => en.roots[r]).join(', ')}${roots.length > 1 ? ` (${cacheMerge(form) ? 'Merge' : 'Split'})` : ''}`);
+            if (form.target === 'person') bits.push(`Kind of name: ${cacheKinds(form).map(k => en.ck[k]).join(', ')}`);
+        } else {
+            const roots = aiRoots(form);
+            if (roots.length) bits.push(`Roots: ${roots.map(r => en.roots[r]).join(', ')}${roots.length > 1 ? ` (${form.aiRootMix === 'merge' ? 'Merge' : 'Split'})` : ''}${aiRootsOff(form) ? ' [not used now]' : ''}`);
+            if (form.target === 'person' && realMode(form) !== 'invented') bits.push(`Real names: ${realMode(form)}`);
+            if (likeWords(form).length) bits.push(`Like: ${likeWords(form).join(', ')} (${form.likeMode === 'feel' ? 'feel' : 'sound'})`);
+        }
+        if (form.target === 'person') bits.push(`Parts: ${(Array.isArray(form.parts) ? form.parts : ['given']).join(', ')}${form.fixedFamily ? ` (family kept: ${form.fixedFamily})` : ''}`);
+        if (form.length && form.length !== 'any') bits.push(`Length: ${form.length}`);
+        if (form.sound && form.sound !== 'any') bits.push(`Sound: ${form.sound}`);
+        if (String(form.mustContain || '').trim()) bits.push(`Must contain: ${String(form.mustContain).trim()}`);
+        return bits.join(' · ');
+    }
+    function reviewFrags(frags = []) {
+        return frags.map(f => `${f.t}${f.en ? ` (${f.en})` : ''}${f.r ? ` [${STRINGS.en.roots[f.r] || f.r}]` : ''}`).join(' + ');
+    }
+    function reviewText(list = results) {
+        const en = STRINGS.en;
+        const lines = ['TBD names for review'];
+        let lastForm = '';
+        list.forEach((r, i) => {
+            const formLine = reviewFormLine(r.form || {});
+            if (formLine !== lastForm) { lines.push('', `[${formLine}]`); lastForm = formLine; }
+            const marks = [];
+            if (r.tag) marks.push(`variant: ${r.tag}`);
+            if (r.polished) marks.push('AI polished'); else if (r.cache) marks.push('CACHE');
+            if (r.real) marks.push('real');
+            if (wordHits(r, r.form).length) marks.push(`plain word: ${wordHits(r, r.form).map(w => w.word).join(', ')}`);
+            if (clicheHit(r)) marks.push('AI favorite');
+            if (canonHit(r)) marks.push('Lovecraft');
+            if (r.gender === 'm' || r.gender === 'f') marks.push(r.gender === 'm' ? 'male' : 'female');
+            if (r.kind) marks.push(en.ck[r.kind] || r.kind);
+            const indent = '  '.repeat(r.depth || 0);
+            lines.push(`${indent}${i + 1}. ${r.name}${marks.length ? `  {${marks.join(', ')}}` : ''}`);
+            const sub = `${indent}   `;
+            if (r.from) lines.push(`${sub}from: ${typeof r.from === 'object' ? r.from.name : r.from}`);
+            if (r.read) lines.push(`${sub}reading: ${r.read}`);
+            if (r.note) lines.push(`${sub}note: ${r.note}`);
+            if (r.cache) {
+                const rootText = Array.isArray(r.mix) && r.mix.length === 2 ? r.mix.map(x => en.roots[x]).join(' + ') : (en.roots[r.root] || '');
+                if (r.pieces) {
+                    for (const p of r.pieces) {
+                        const fr = p.frags?.length ? `: ${reviewFrags(p.frags)}` : '';
+                        lines.push(`${sub}${p.role} "${p.text}"${p.fixed ? ' (kept as is)' : ''}${fr}${p.branch ? ` · ${en.branch[p.branch] || p.branch}` : ''}${p.orig && p.orig !== p.text ? ` · was "${p.orig}"` : ''}`);
+                    }
+                } else if (r.frags?.length) lines.push(`${sub}fragments: ${reviewFrags(r.frags)}`);
+                if (rootText) lines.push(`${sub}roots: ${rootText}`);
+                if (r.polished && r.orig && r.orig !== r.name) lines.push(`${sub}before polish: ${r.orig}`);
+            } else if (r.pieces) {
+                lines.push(`${sub}parts: ${r.pieces.map(p => `${p.role} "${p.text}"${p.real ? ' (real)' : ''}`).join(', ')}`);
+            }
+            if (r.nicks?.length) lines.push(`${sub}nicknames: ${r.nicks.join(', ')}`);
+        });
+        return lines.join('\n');
+    }
+
     function footerHtml() {
         const L = T();
         const again = results.length && !busy && !refining ? `<button id="tbd_again" class="tbd-small-btn"><i class="fa-solid fa-rotate"></i> ${escapeHtml(L.again)}</button>` : '';
+        const review = results.length && !busy ? `<button id="tbd_review" class="tbd-small-btn" title="${escapeHtml(L.reviewTip)}"><i class="fa-solid fa-clipboard-list"></i> ${escapeHtml(L.reviewCopy)}</button>` : '';
         // When an answer couldn't be used, let the user see what actually came back.
         const hasRaw = status.kind === 'error' && typeof status.raw === 'string';
         const rawBtn = hasRaw ? `<button id="tbd_raw_btn" class="tbd-small-btn" aria-expanded="${rawOpen}">${escapeHtml(rawOpen ? L.hideRaw : L.showRaw)}</button>` : '';
         const rawBox = hasRaw && rawOpen ? `<pre class="tbd-raw">${escapeHtml(status.raw.trim() ? status.raw.slice(0, 20000) : L.rawEmpty)}</pre>` : '';
-        return `<span class="tbd-status tbd-status-${status.kind}">${escapeHtml(status.text)}</span>${rawBtn}${again}${rawBox}`;
+        return `<span class="tbd-status tbd-status-${status.kind}">${escapeHtml(status.text)}</span>${rawBtn}${review}${again}${rawBox}`;
     }
 
     function panelClasses(st = settings()) {
@@ -3417,6 +3490,10 @@
         $doc.on('click', '#tbd_raw_btn', () => { rawOpen = !rawOpen; $('#tbd_foot').html(footerHtml()); });
         $doc.on('click', '#tbd_go', generate);
         $doc.on('click', '#tbd_again', generate);
+        $doc.on('click', '#tbd_review', async () => {
+            if (await copyText(reviewText())) toastr.success(T().reviewCopied, 'TBD');
+            else toastr.warning(T().copyFail, 'TBD');
+        });
         $doc.on('change', '#tbd_target', () => { readForm(); render(); });
         $doc.on('change', '#tbd_kind', () => readForm());
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); refreshAiRoots(readForm()); });
@@ -3628,7 +3705,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, reviewText, reviewFormLine, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
