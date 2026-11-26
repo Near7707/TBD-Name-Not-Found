@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.34
+// TBD — Name Not Found v0.2.35
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -892,6 +892,30 @@
     // Careful: a category with no meaning needs three "=" ("um===town").
     // v0.2.2: meanings checked against Behind the Name, the Wikipedia lists of Germanic and Slavic name
     // elements and of British place-name elements, and German / Slavic / Greek place-name references.
+    // v0.2.35: { W: 'Cad wyn …', G: '…' } → { Cad: 'W', wyn: 'W', … }
+    function celticBranches(lists) {
+        const out = {};
+        for (const [b, words] of Object.entries(lists)) for (const w of words.split(/\s+/).filter(Boolean)) out[w] = b;
+        return out;
+    }
+    // Which Celtic language a name's fragments are in ('' when they fit any).
+    function celtOf(frags = []) {
+        const map = CACHE.celtic.branchOf;
+        const tags = frags.map(f => map[f.t] || '');
+        return tags.includes('G') ? 'G' : tags.some(t => t === 'W' || t === 'X') ? 'W' : '';
+    }
+    // Head + tail may share a language: Gaulish endings only after a shared head; a wanted language fits too.
+    function celtFits(hb, tb, want) {
+        if (tb === 'X' ? !!hb : (hb && tb && hb !== tb)) return false;
+        if (want === 'G') return hb !== 'W' && tb !== 'W' && tb !== 'X';
+        if (want === 'W') return hb !== 'G' && tb !== 'G';
+        return true;
+    }
+    function celtOnly(list, R, want, tail = false) {
+        if (!want || !R.branchOf) return list;
+        const ok = list.filter(f => (tail ? celtFits('', R.branchOf[f.t] || '', want) : celtFits(R.branchOf[f.t] || '', '', want)));
+        return ok.length ? ok : list;
+    }
     function F(s) {
         return s.split(';').map(x => x.trim()).filter(Boolean).map(x => {
             const [t, en = '', ko = '', cats = ''] = x.split('=');
@@ -1008,18 +1032,37 @@
         celtic: {
             head: F('Bran=raven=큰까마귀;Cad=battle=전투;Gwen=white, blessed=흰·복된;Gwyn=white, fair=흰;Mor=great=큰;Kier=dark=어두운;Finn=fair=흰;Aed=fire=불;Con=hound=사냥개;Duv=black=검은;Bri=hill, high=언덕·높은;Mael=follower=따르는 이;Ard=high=높은;Rua=red=붉은;Teg=fair=고운;Llew=light=빛;Bryn=hill=언덕;Fer=man=사내;'
                 + 'Cael=slender=날씬한;Cain=handsome, good=잘생긴;Cam=crooked=굽은;Ken=head=머리;Bleid=wolf=늑대;Art=bear=곰;Blath=flower=꽃;Barr=top=꼭대기;Brig=might=힘;Car=love=사랑;Cian=long, distant=먼;Don=brown=갈색;Gov=smith=대장장이;Cyn=first, chief=으뜸;Arian=silver=은;Rhi=king=왕'),
-            masc: F('an=little=작은;in=little=작은;ach==;wyn=white=흰;gal=valor=용맹;fael=prince=왕자;rix=king=왕;mar=great=큰'),
-            fem: F('wen=white, blessed=흰·복된;een=little=작은;nat=little=작은;ia==;ait=little=작은;finn=fair=흰'),
+            masc: F('an=little=작은;in=little=작은;ach==;wyn=white=흰;gal=valor=용맹;fael=prince=왕자;rix=king=왕;mar=great=큰;'
+                + 'udd=lord=주인;fan=peak=봉우리;wal=ruler=통치자;og=little=작은;gus=vigour=기운;chad=battle=전투'),
+            // v0.2.35: no -finn for women (it made them sound like men: Duvfinn, Ardfinn).
+            fem: F('wen=white, blessed=흰·복된;een=little=작은;nat=little=작은;ia==;ait=little=작은;lian=flax=아마;dolen=ring, bow=고리;rhod=wheel=바퀴;laith=princess=공주'),
+            // v0.2.35: Celtic is three languages. Every name keeps to one: Welsh (W), Irish / Scottish Gaelic (G),
+            // or old Gaulish (X: -rix, -mar, only after a shared head, so Asterix-style names are rare).
+            // Fragments not listed belong to all of them.
+            branchOf: celticBranches({
+                W: 'Cad Gwen Gwyn Teg Llew Bryn Bleid Cain Car Cyn Arian Rhi wyn fael udd fan wal og wen lian dolen rhod '
+                    + 'Aber Llan Caer Pen Tre Coed Nant Porth Cwm Blaen Pant Ynys Llwyn Gelli lyn mawr fach goch du hir uchaf newydd llwyd melyn derwen fedw '
+                    + 'Lloyd Vaughan Gough Moyle Gethin',
+                G: 'Kier Finn Aed Con Duv Mael Ard Rua Fer Cael Ken Blath Barr Brig Cian Don in ach gal gus chad een nat ait laith '
+                    + 'Inver Kil Dun Glen Strath Loch Ben Knock Drum Inch Ennis Clon Kin Lis Rath Carrick Tully Kyle Slieve Cashel Tober Derry Auch Moy Shan Bally Scart '
+                    + 'more beg duff ard roe fin derry carrick bane boy brack garv gorm lea reagh noe coole sallagh '
+                    + 'MacGowan MacIntyre MacNab MacPherson MacTaggart MacClery MacWard Gow Bain Roy Dow Begg More Duff Boyd',
+                X: 'rix mar',
+            }),
+            mascOnly: new Set(['Fer']),
             // Celtic places put the place word first: Aber + glas, Dun + more.
             placeHead: F('Aber=river mouth=하구=coast/water;Inver=river mouth=하구=coast/water;Llan=church enclosure=교회 마을=town;Kil=church=교회=town;Dun=fort=요새=fort/hill;Caer=fort=성=fort/town;Pen=head, top=꼭대기=hill;Tre=homestead=마을=town/field;Bally=town=마을=town;Glen=valley=골짜기=hill/field;Ard=height=높은 곳=hill;Strath=wide valley=넓은 골짜기=field/hill;Loch=lake=호수=water;Ros=headland, wood=곶·숲=coast/forest;Bryn=hill=언덕=hill;Coed=wood=숲=forest;Nant=stream, valley=시냇골=water/hill;Porth=harbor=항구=coast;'
-                + 'Ben=mountain=산=hill;Knock=hill=언덕=hill;Drum=ridge=산등성이=hill;Inch=island=섬=water/coast;Ennis=island=섬=water/coast;Clon=meadow=풀밭=field;Kin=head=머리=hill;Lis=small ringfort=작은 원형 요새=fort;Rath=ringfort=원형 요새=fort;Carrick=rock=바위=hill/coast;Tully=hillock=작은 언덕=hill;Cwm=valley=골짜기=hill;Blaen=upland=고지대=hill;Pant=hollow=우묵한 곳=field;Pol=pool=웅덩이=water;Ynys=island=섬=coast;Kyle=narrows=좁은 해협=coast;Slieve=mountain=산=hill;Cashel=stone ringfort=돌 원형 요새=fort;Tober=well=우물=water;Derry=oak grove=참나무 숲=forest;Auch=field=들판=field;Moy=plain=평원=field;Shan=old=오래된'),
+                + 'Ben=mountain=산=hill;Knock=hill=언덕=hill;Drum=ridge=산등성이=hill;Inch=island=섬=water/coast;Ennis=island=섬=water/coast;Clon=meadow=풀밭=field;Kin=head=머리=hill;Lis=small ringfort=작은 원형 요새=fort;Rath=ringfort=원형 요새=fort;Carrick=rock=바위=hill/coast;Tully=hillock=작은 언덕=hill;Cwm=valley=골짜기=hill;Blaen=upland=고지대=hill;Pant=hollow=우묵한 곳=field;Pol=pool=웅덩이=water;Ynys=island=섬=coast;Kyle=narrows=좁은 해협=coast;Slieve=mountain=산=hill;Cashel=stone ringfort=돌 원형 요새=fort;Tober=well=우물=water;Derry=oak grove=참나무 숲=forest;Auch=field=들판=field;Moy=plain=평원=field;Shan=old=오래된;'
+                + 'Llwyn=grove=작은 숲=forest;Gelli=grove=작은 숲=forest;Scart=thicket=덤불숲=forest'),
             placeTail: F('more=great=큰;beg=small=작은;glas=blue-green=푸른;wen=white=흰;duff=black=검은;ard=high=높은;roe=red=붉은;fin=fair=흰;derry=oak wood=참나무 숲;carrick=rock=바위;lyn=lake=호수;mawr=great=큰;fach=small=작은;'
-                + 'bane=white=흰;boy=yellow=노란;brack=speckled=얼룩덜룩한;garv=rough=거친;gorm=blue, dark=검푸른;lea=light grey=잿빛;reagh=streaked=줄무늬진;noe=new=새로운;cool=nook=구석;sally=willows=버드나무'),
+                + 'bane=white=흰;boy=yellow=노란;brack=speckled=얼룩덜룩한;garv=rough=거친;gorm=blue, dark=검푸른;lea=light grey=잿빛;reagh=streaked=줄무늬진;noe=new=새로운;coole=nook=구석;sallagh=willows=버드나무;'
+                + 'goch=red=붉은;du=black=검은;hir=long=긴;uchaf=upper=위쪽;newydd=new=새로운;llwyd=grey=잿빛;melyn=yellow=노란;derwen=oak tree=참나무=forest;fedw=birch=자작나무=forest'),
             // Kil + a name = "church of" that saint (Kilbride: church of Brigit).
-            saint: { m: 'Kil{}', f: 'Kil{}' },
-            family: 'celtic', branches: { patron: 4, trade: 2, looks: 2 },
+            // …and Llan + a name in Welsh (Llandeilo: church of Teilo).
+            saint: { m: 'Kil{}', f: 'Kil{}' }, saintW: 'Llan{}',
+            family: 'celtic', branches: { patron: 4, trade: 2, looks: 2 }, branchesW: { patron: 4, looks: 2 },
             trade: F('MacGowan=son of the smith=대장장이의 아들;MacIntyre=son of the carpenter=목수의 아들;MacNab=son of the abbot=수도원장의 아들;MacPherson=son of the parson=교구 사제의 아들;MacTaggart=son of the priest=사제의 아들;MacClery=son of the cleric=성직자의 아들;MacWard=son of the bard=음유시인의 아들;Gow=smith=대장장이'),
-            looks: F('Lloyd=grey=잿빛;Vaughan=small=작은;Gough=red=붉은;Gwyn=white, fair=흰;Moyle=bald=대머리;Bain=fair=흰;Roy=red=붉은;Dow=black=검은;Begg=small=작은;More=big=큰;Duff=black=검은;Boyd=yellow-haired=노란 머리'),
+            looks: F('Lloyd=grey=잿빛;Vaughan=small=작은;Gough=red=붉은;Gwyn=white, fair=흰;Moyle=bald=대머리;Gethin=dark, swarthy=거무스름한;Bain=fair=흰;Roy=red=붉은;Dow=black=검은;Begg=small=작은;More=big=큰;Duff=black=검은;Boyd=yellow-haired=노란 머리'),
             noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King', 'High King', 'Prince', 'Chief'], f: ['Queen', 'High Queen', 'Princess'] },
         },
         norse: {
@@ -1267,15 +1310,16 @@
         const c = String(h).slice(-1).toLowerCase();
         return /[tl]/.test(c) && /^[aeiouy]/i.test(t) && String(t).charAt(1).toLowerCase() === c && /([aeiouy]|us)$/i.test(t);
     }
-    function cacheGiven(root, g, rnd, root2 = '') {
+    function cacheGiven(root, g, rnd, root2 = '', want = '') {
         const R = CACHE[root];
         const mix = !!root2 && root2 !== root;
         const E = mix ? CACHE[root2] : R;
         const elide = R.elide || E.elide;
-        const tails = g === 'f' ? E.fem : E.masc;
+        const heads = celtOnly(R.head, R, want).filter(f => !(g === 'f' && R.mascOnly && R.mascOnly.has(f.t)));
+        const tails = celtOnly(g === 'f' ? E.fem : E.masc, E, want, true);
         const make = (h, t) => ({ text: glue(h.t, t.t, elide), frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root });
         for (let i = 0; i < 20; i++) {
-            const h = pick(R.head, rnd);
+            const h = pick(heads, rnd);
             const t = pick(tails, rnd);
             if (t.en && h.en === t.en) continue;
             if (sameStem(h.t, t.t) || sameSound(h.t, t.t)) continue;
@@ -1285,6 +1329,9 @@
             if (text.toLowerCase() === h.t.toLowerCase() || newDoubleVowel(text, h.t, t.t)) continue;
             if (echoSyllable(h.t, t.t)) continue;
             if (R.frenchWords && R.frenchWords.has(h.t) && E.germanEnds && E.germanEnds.has(t.t)) continue;
+            // v0.2.35: a Celtic name keeps to one language (no Kierwyn, Cynrix, Gwynait); Fer means "man".
+            if ((R.branchOf || E.branchOf) && !celtFits((R.branchOf || {})[h.t] || '', (E.branchOf || {})[t.t] || '', want)) continue;
+            if (g === 'f' && R.mascOnly && R.mascOnly.has(h.t)) continue;
             if ((R.noHiatus || E.noHiatus) && !elide) {
                 if (VOWEL.test(h.t.slice(-1)) && VOWEL.test(t.t[0])) continue;
                 // …nor three consonants (Baudgarde, Lamsende): Ermengarde and Hersende stay.
@@ -1293,7 +1340,7 @@
             if ((R.notNames && R.notNames.has(text.toLowerCase())) || (E.notNames && E.notNames.has(text.toLowerCase()))) continue;
             return make(h, t);
         }
-        return make(R.head[0], tails[0]);
+        return make(heads[0], tails[0]);
     }
     // v0.2.29: Slavic -ovo after a hard sound, -evo after a soft one (Krasnovo, Tikhovo; Kovačevo).
     function slavicOvo(head, t, E) {
@@ -1304,23 +1351,26 @@
     }
     // A place: head + tail, now and then with "Great …" / "…-on-Sea", or named for a saint (St. Edwin's, Kilbran).
     // Merge: the head from one root and the tail from another (root2); no saint's name then.
-    function cachePlace(root, cats, rnd, plain = false, root2 = '') {
+    function cachePlace(root, cats, rnd, plain = false, root2 = '', want = '') {
         const R = CACHE[root];
         const mix = !!root2 && root2 !== root;
         const E = mix ? CACHE[root2] : R;
         const elide = R.elide || E.elide, link = R.link || E.link;
         if (!mix && !plain && R.saint && (!cats || cats.includes('town')) && rnd() < 0.07) {
             const g = rnd() < 0.5 ? 'm' : 'f';
-            const who = cacheGiven(root, g, rnd);
-            const pattern = R.saint[g];
-            const name = pattern.startsWith('Kil') ? who.text.toLowerCase() : who.text;
+            // v0.2.35: Welsh saints' places are Llan + the name, Gaelic ones Kil + the name.
+            const lang = R.saintW ? (want || (rnd() < 0.5 ? 'G' : 'W')) : '';
+            const who = cacheGiven(root, g, rnd, '', lang);
+            const pattern = lang === 'W' ? R.saintW : R.saint[g];
+            const name = /^(Kil|Llan)/.test(pattern) ? who.text.toLowerCase() : who.text;
             const text = pattern.replace('{}', name);
             const lead = pattern.split('{}')[0].trim().replace(/-$/, '');
-            const frag = lead === 'Kil' ? { t: 'Kil', en: 'church of', ko: '~의 교회' } : { t: lead, en: 'saint', ko: '성인' };
+            const frag = lead === 'Kil' || lead === 'Llan' ? { t: lead, en: 'church of', ko: '~의 교회' } : { t: lead, en: 'saint', ko: '성인' };
             if (sayable(text)) return { text, frags: [frag, ...who.frags], root, saint: true };
         }
-        const heads = fitCats(R.placeHead, cats);
-        const tails = fitCats(E.placeTail, cats);
+        // v0.2.35: with a wanted Celtic language, only its words (and shared ones) to begin with.
+        const heads = celtOnly(fitCats(R.placeHead, cats), R, want);
+        const tails = celtOnly(fitCats(E.placeTail, cats), E, want, true);
         // v0.2.25: a picked place kind wants one fragment of that kind (no "forest" called Magnana),
         // unless the root has too few to find one in time.
         const ofKind = f => !!(f.cats && cats && f.cats.some(c => cats.includes(c)));
@@ -1340,6 +1390,8 @@
             if (sameSound(h.t, t.t)) continue;
             if (meaningClash(h, t) || twoAdjectives(h, t)) continue;
             if (cats && i < 30 && !ofKind(h) && !ofKind(t)) continue;
+            // v0.2.35: Welsh and Gaelic place words don't mix (no Llanderry, Slievemawr, Brynboy).
+            if ((R.branchOf || E.branchOf) && !celtFits((R.branchOf || {})[h.t] || '', (E.branchOf || {})[t.t] || '', want)) continue;
             // v0.2.29: -arium too (Whitarium, Midarium).
             if (shortLatin && (t.t.length <= 4 || t.t === 'arium')) continue;
             const text = capFirst(glue(h.t, t.t, elide, link));
@@ -1401,9 +1453,9 @@
         return `${b}ski`;
     }
     // One family name of a given kind (branch): father's name, home place, where they lived, trade, or looks.
-    function cacheFamilyBranch(root, branch, g, rnd) {
+    function cacheFamilyBranch(root, branch, g, rnd, want = '') {
         const R = CACHE[root];
-        const place = () => cachePlace(root, null, rnd, true);
+        const place = () => cachePlace(root, null, rnd, true, '', want);
         const fem = s => (root === 'slavic' && g === 'f' ? slavicFem(s) : s);
         // Roman women took the feminine family name (Silvia) and never a trade name.
         const latinF = R.family === 'nomen' && g === 'f';
@@ -1425,7 +1477,14 @@
                     return { text: `Fitz${f.text}`, frags: [{ t: 'Fitz', en: 'son of', ko: '~의 아들' }, ...f.frags] };
                 }
                 case 'celtic': { // Mac / O' + a given name
-                    const f = cacheGiven(root, 'm', rnd);
+                    // v0.2.35: Welsh says ap / ab (before a vowel) + the father's name, and ferch for a daughter.
+                    if (want === 'W') {
+                        const f = cacheGiven(root, 'm', rnd, '', 'W');
+                        const pre = g === 'f' ? { t: 'ferch', en: 'daughter of', ko: '~의 딸' }
+                            : /^[aeiouy]/i.test(f.text) ? { t: 'ab', en: 'son of', ko: '~의 아들' } : { t: 'ap', en: 'son of', ko: '~의 아들' };
+                        return { text: `${pre.t} ${f.text}`, frags: [pre, ...f.frags] };
+                    }
+                    const f = cacheGiven(root, 'm', rnd, '', want);
                     const pre = rnd() < 0.6 ? { t: 'Mac', en: 'son of', ko: '~의 아들' } : { t: "O'", en: 'descendant of', ko: '~의 후손' };
                     return { text: `${pre.t}${f.text}`, frags: [pre, ...f.frags] };
                 }
@@ -1470,26 +1529,29 @@
             const w = pick(R.dwell, rnd);
             return { text: fem(w.t), frags: [w] };
         }
-        if (branch === 'trade') { const w = pick(R.trade, rnd); return { text: fem(w.t), frags: [w] }; }
+        // v0.2.35: Celtic trade and looks names keep to the name's language (Gethin, Vaughan for Welsh; Duff, MacIntyre for Gaelic).
+        const own = list => (R.branchOf && want ? list.filter(w => celtFits('', R.branchOf[w.t] || '', want)) : list);
+        if (branch === 'trade') { const w = pick(own(R.trade), rnd); return { text: fem(w.t), frags: [w] }; }
         if (branch === 'looks') {
             if (latinF) {
                 // Bynames agree: Longus → Longa, Niger → Nigra. Nouns like Naso stay with men.
                 const w = pick(R.looks.filter(x => /(us|er)$/.test(x.t)), rnd);
                 return { text: w.t.replace(/us$/, 'a').replace(/er$/, 'ra'), frags: [w] };
             }
-            const w = pick(R.looks, rnd);
+            const w = pick(own(R.looks), rnd);
             if (R.looksPre) return { text: R.looksPre.t + w.t, frags: [R.looksPre, w] }; // Le + blanc → Leblanc
             return { text: fem(w.t), frags: [w] };
         }
         return place();
     }
     // A family name the way each root makes one, from its five kinds (branches) in turn.
-    function cacheFamily(root, g, rnd) {
+    function cacheFamily(root, g, rnd, want = '') {
         const R = CACHE[root];
-        let branch = pickWeighted(R.branches || { place: 1 }, rnd);
+        if (R.branchOf && !want) want = rnd() < 0.5 ? 'G' : 'W';
+        let branch = pickWeighted((want === 'W' && R.branchesW) || R.branches || { place: 1 }, rnd);
         if (R.family === 'greek' && g === 'f') branch = 'place'; // -ides means "son of")
         if (R.family === 'nomen' && g === 'f' && branch === 'trade') branch = 'looks'; // v0.2.11: show what she really got
-        return { ...cacheFamilyBranch(root, branch, g, rnd), root, branch };
+        return { ...cacheFamilyBranch(root, branch, g, rnd, want), root, branch };
     }
     // "de" + a vowel → d'Aubeval.
     function withParticle(p, place) {
@@ -1553,11 +1615,11 @@
     }
     // Holloway → Hollow-, Moore → Moor-, Nauta → Naut-: drop a last y, then e, o or a before -ius.
     function latinStem(t) { return t.replace(/y$/i, '').replace(/[eoa]$/i, ''); }
-    function scholarFamily(root, g, rnd, fixed = '') {
+    function scholarFamily(root, g, rnd, fixed = '', want = '') {
         if (fixed) return { text: `${latinStem(fixed.replace(/\s+/g, ''))}ius`, fixed: true };
         if (rnd() < 0.5) {
             // Latinized from the man's form (Kudryashov, not Kudryashova).
-            const f = cacheFamily(root, 'm', rnd);
+            const f = cacheFamily(root, 'm', rnd, want);
             // v0.2.29: a Latin word stays as it is for a man (Agricola, Naso — not Agricolius, Nasius).
             // Roman women had no trade or nickname surname, so a woman gets a place name then.
             const latinWord = root === 'latin' && ['trade', 'looks'].includes(f.branch) && /^[A-Z][a-z]+[ao]$/.test(f.text);
@@ -1568,7 +1630,7 @@
             if (orWord && g !== 'f' && rnd() < 0.5) return { text: f.text, frags: f.frags, branch: f.branch };
             if (!latinWord && ['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|[sc]k[aiy]|er)$/.test(f.text)) return { text: noAccents(`${latinStem(f.text)}ius`), frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
         }
-        const pl = cachePlace(root, null, rnd, true);
+        const pl = cachePlace(root, null, rnd, true, '', want);
         const base = noAccents(pl.text).replace(/(is|us|um|ia|os)$/i, '');
         return { text: `${dropVowel(base)}ensis`, frags: [...pl.frags, { t: 'ensis', en: 'from', ko: '~ 출신' }], branch: 'place' };
     }
@@ -1617,20 +1679,22 @@
         const pieces = [];
         const mixed = pair ? { mix: pair } : {};
         // A middle name mixes the same two roots the other way round, for variety.
-        const giv = (flip = false) => (pair ? cacheGiven(flip ? pair[1] : pair[0], g, rnd, flip ? pair[0] : pair[1]) : cacheGiven(root, g, rnd));
+        const giv = (flip = false, want = '') => (pair ? cacheGiven(flip ? pair[1] : pair[0], g, rnd, flip ? pair[0] : pair[1]) : cacheGiven(root, g, rnd, '', want));
         let given = giv();
+        // v0.2.35: a Celtic name keeps to one language from the given name to the family name and home place.
+        const want = R.branchOf ? (celtOf(given.frags) || (rnd() < 0.5 ? 'G' : 'W')) : '';
         if (kind === 'scholar') given = latinGiven(given, g);
         if (kind === 'religious') pieces.push({ role: 'title', text: pick(R.titles[g], rnd), fixed: true });
         if (kind === 'royal') pieces.push({ role: 'title', text: royalTitle(root, g, rnd), fixed: true });
         if (parts.includes('given') || !parts.length) pieces.push({ role: 'given', text: given.text, frags: given.frags });
         if (parts.includes('middle')) {
-            let m = giv(rnd() < 0.5);
+            let m = giv(rnd() < 0.5, want);
             if (kind === 'scholar') m = latinGiven(m, g);
             pieces.push({ role: 'middle', text: m.text, frags: m.frags });
         }
         if (kind === 'religious') {
             // Monks and saints go by "of a place" instead of a family name.
-            const pl = cachePlace(root, null, rnd, true);
+            const pl = cachePlace(root, null, rnd, true, '', want);
             const w = withParticle(R.of, pl.text);
             pieces.push({ role: 'origin', text: w.joined, frags: pl.frags });
         } else if (kind === 'royal') {
@@ -1641,7 +1705,7 @@
             pieces.push({ role: 'epithet', text: e.text, frags: e.frags });
         } else if (kind === 'scholar') {
             // A Latin surname always: it is what makes a scholar's name (Copernicus, Erasmus Roterodamus).
-            const f = scholarFamily(root, g, rnd, fixed);
+            const f = scholarFamily(root, g, rnd, fixed, want);
             pieces.push(f.fixed ? { role: 'family', text: f.text, fixed: true } : { role: 'family', text: f.text, frags: f.frags, branch: f.branch });
         } else if (parts.includes('family')) {
             if (kind === 'noble' && R.noble === 'ski') {
@@ -1650,14 +1714,14 @@
                 pieces.push(fixed ? { role: 'family', text: fixed, fixed: true }
                     : { role: 'family', text: (g === 'f' ? slavicFem : (s => s))(ski), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] });
             } else if (kind === 'noble') {
-                const pl = fixed ? { text: fixed } : cachePlace(root, null, rnd, true);
+                const pl = fixed ? { text: fixed } : cachePlace(root, null, rnd, true, '', want);
                 const w = withParticle(R.noble, pl.text);
                 if (w.particle) {
                     pieces.push({ role: 'particle', text: w.particle, fixed: true });
                     pieces.push(fixed ? { role: 'family', text: fixed, fixed: true } : { role: 'family', text: pl.text, frags: pl.frags });
                 } else pieces.push(fixed ? { role: 'family', text: w.joined, fixed: true } : { role: 'family', text: w.joined, frags: pl.frags });
             } else if (fixed) pieces.push({ role: 'family', text: fixed, fixed: true });
-            else { const f = cacheFamily(root, g, rnd); pieces.push({ role: 'family', text: f.text, frags: f.frags, branch: f.branch }); }
+            else { const f = cacheFamily(root, g, rnd, want); pieces.push({ role: 'family', text: f.text, frags: f.frags, branch: f.branch }); }
         }
         if (!pieces.some(p => p.role === 'given')) pieces.splice(pieces[0]?.role === 'title' ? 1 : 0, 0, { role: 'given', text: given.text, frags: given.frags });
         if (pieces.length === 1) return { name: pieces[0].text, frags: pieces[0].frags, root, ...mixed, cache: true };
@@ -1789,19 +1853,22 @@
         const g = src.gender === 'm' || src.gender === 'f' ? src.gender : genderOf(form, rnd);
         const kind = src.kind || '';
         const banned = new Set([p.text, ...avoid].map(a => String(a).toLowerCase()));
+        // v0.2.35: a swapped Celtic part keeps the language of the rest of the name.
+        const others0 = src.pieces.filter((q, j) => j !== k);
+        const want = R.branchOf && !src.mix ? (others0.some(q => /^(ap|ab|ferch) /.test(q.text)) ? 'W' : others0.some(q => /^(Mac|O')/.test(q.text)) ? 'G' : celtOf(others0.flatMap(q => q.frags || []))) : '';
         for (let i = 0; i < 40; i++) {
             let next;
             if (p.role === 'given' || p.role === 'middle') {
                 const pair = Array.isArray(src.mix) && src.mix.length === 2 ? (p.role === 'middle' && rnd() < 0.5 ? [src.mix[1], src.mix[0]] : src.mix) : null;
-                next = pair ? cacheGiven(pair[0], g, rnd, pair[1]) : cacheGiven(root, g, rnd);
+                next = pair ? cacheGiven(pair[0], g, rnd, pair[1]) : cacheGiven(root, g, rnd, '', want);
                 if (kind === 'scholar') next = latinGiven(next, g);
             }
-            else if (p.role === 'origin') { const pl = cachePlace(root, null, rnd, true); next = { text: withParticle(R.of, pl.text).joined, frags: pl.frags }; }
+            else if (p.role === 'origin') { const pl = cachePlace(root, null, rnd, true, '', want); next = { text: withParticle(R.of, pl.text).joined, frags: pl.frags }; }
             else if (p.role === 'epithet') next = kind === 'royal' ? royalEpithet(root, rnd, g) : warEpithet(root, rnd, g);
-            else if (p.role === 'family' && kind === 'scholar') next = scholarFamily(root, g, rnd);
-            else if (p.role === 'family' && src.pieces.some(q => q.role === 'particle')) next = cachePlace(root, null, rnd, true);
+            else if (p.role === 'family' && kind === 'scholar') next = scholarFamily(root, g, rnd, '', want);
+            else if (p.role === 'family' && src.pieces.some(q => q.role === 'particle')) next = cachePlace(root, null, rnd, true, '', want);
             else if (p.role === 'family' && /[sc]k[iya]$/.test(p.text) && kind === 'noble') { const { pl, text: ski } = skiPlace(() => cachePlace(root, null, rnd, true)); next = { text: (g === 'f' ? slavicFem(ski) : ski), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] }; }
-            else if (p.role === 'family') next = cacheFamily(root, g, rnd);
+            else if (p.role === 'family') next = cacheFamily(root, g, rnd, want);
             else return null;
             if (banned.has(next.text.toLowerCase()) || banned.has(next.text.replace(/^(de|of|von|af|d')\s?/i, '').toLowerCase())) continue;
             const out = { ...p, text: next.text, frags: next.frags };

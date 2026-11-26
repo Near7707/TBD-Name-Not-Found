@@ -1235,7 +1235,7 @@ test('v0.2.2: places now and then get Great / -on-Sea / a saint, and only where 
         const w = api.cachePlace('oldenglish', ['water'], rnd);
         assert.ok(!/(-on-Sea|-le-Street|^St\.|^Market )/.test(w.text), w.text);
         const k = api.cachePlace('celtic', null, rnd);
-        if (k.saint) assert.match(k.text, /^Kil[a-z]+$/);
+        if (k.saint) assert.match(k.text, /^(Kil|Llan)[a-z]+$/);
     }
     assert.equal(api.cachePlace('germanic', null, seeded(5), true).frags.length, 2, 'plain places (inside family names) never get extras');
 });
@@ -2412,4 +2412,54 @@ test('v0.2.34 Norman given names: no French word + Germanic ending, smooth joins
     }
     // Both kinds still come out: French pet forms (Clairette) and Germanic names (Thibaud).
     assert.ok(seen.fr > 20 && seen.ge > 20, JSON.stringify(seen));
+});
+
+test('v0.2.35 Celtic names keep to one language: Welsh, Gaelic or Gaulish', () => {
+    const { api } = load();
+    const C = api.CACHE.celtic;
+    const langs = x => {
+        const s = new Set();
+        for (const p of x.pieces || [{ frags: x.frags, text: x.name }]) {
+            for (const f of p.frags || []) { const b = C.branchOf[f.t]; if (b) s.add(b === 'X' ? 'W' : b); }
+            if (/^(ap|ab|ferch) /.test(p.text)) s.add('W');
+            if (/^(Mac|O')/.test(p.text)) s.add('G');
+        }
+        return s;
+    };
+    assert.ok(!C.fem.some(f => f.t === 'finn'));
+    const rnd = seeded(2030);
+    let ap = 0, mac = 0;
+    for (const kind of ['common', 'noble', 'religious', 'scholar']) {
+        for (const gender of ['masculine', 'feminine']) {
+            for (let i = 0; i < 6; i++) {
+                for (const x of api.cacheNames({ target: 'person', method: 'cache', roots: ['celtic'], ckinds: [kind], parts: ['given', 'middle', 'family'], gender }, 20, [], rnd)) {
+                    assert.ok(langs(x).size <= 1, x.name);
+                    const g = x.pieces.find(p => p.role === 'given');
+                    if (gender === 'feminine') assert.ok(g.frags[0].t !== 'Fer', x.name);
+                    // Gaulish endings only after a head every branch shares.
+                    if (C.branchOf[g.frags[1]?.t] === 'X') assert.ok(!C.branchOf[g.frags[0].t], x.name);
+                    if (x.pieces.some(p => /^(ap|ab) /.test(p.text))) { ap++; assert.equal(gender, 'masculine', x.name); }
+                    if (x.pieces.some(p => /^ferch /.test(p.text))) assert.equal(gender, 'feminine', x.name);
+                    if (x.pieces.some(p => /^(Mac|O')/.test(p.text))) mac++;
+                }
+            }
+        }
+    }
+    assert.ok(ap > 10 && mac > 10, `${ap} ${mac}`);
+    for (const kind of ['any', 'forest', 'water', 'town']) {
+        for (let i = 0; i < 10; i++) {
+            for (const p of api.cacheNames({ target: 'place', method: 'cache', roots: ['celtic'], kind }, 20, [], rnd)) {
+                assert.ok(langs(p).size <= 1, p.name);
+                if (p.frags[0].en === 'church of') assert.match(p.name, /^(Kil|Llan)[a-z]+$/);
+            }
+        }
+    }
+    // A swapped part keeps the language of the rest.
+    for (let i = 0; i < 60; i++) {
+        const [x] = api.cacheNames({ target: 'person', method: 'cache', roots: ['celtic'], ckinds: ['common'], parts: ['given', 'middle', 'family'] }, 1, [], rnd);
+        for (let k = 0; k < x.pieces.length; k++) {
+            const np = api.cachePiece(x, k, { target: 'person', method: 'cache', roots: ['celtic'] }, [], rnd);
+            if (np) assert.ok(langs({ pieces: x.pieces.map((p, j) => (j === k ? np : p)) }).size <= 1, `${x.name} → ${np.text}`);
+        }
+    }
 });
