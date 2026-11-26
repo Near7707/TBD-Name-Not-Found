@@ -1774,3 +1774,25 @@ test('v0.2.13: AI roots with a family name ask to mix kinds of family names', ()
     assert.doesNotMatch(text({ ...form, fixedFamily: 'Pell' }), /mix kinds of family names/);
     assert.doesNotMatch(text({ ...form, aiRoots: [] }), /mix kinds of family names/);
 });
+
+test('v0.2.14: the batch is asked to vary sounds, except in sound-alike mode', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    const text = f => api.buildMessages(f, api.rollSeeds(4, f, seeded(3)))[1].content;
+    assert.match(text(form), /vary the sounds too: don't let one sound or word part run through most of the names/);
+    assert.match(text({ target: 'place', vibe: 'fantasy', method: 'ai' }), /vary the sounds too/);
+    assert.doesNotMatch(text({ ...form, aiRoots: [], likeText: 'Elric', likeMode: 'sound' }), /vary the sounds too/);
+    assert.doesNotMatch(api.buildMessages(form, api.rollSeeds(1, form, seeded(3)))[1].content, /vary the sounds too/);
+});
+
+test('v0.2.14: Korean notes ask for Hangul only, English notes stay plain', () => {
+    const ko = load({ lang: 'ko' }).api;
+    const en = load().api;
+    const form = { target: 'person', vibe: 'medieval', parts: ['given'], extras: [], method: 'ai' };
+    const k = ko.buildMessages(form, ko.rollSeeds(3, form, seeded(3)), { lang: 'ko' })[1].content;
+    assert.match(k, /in Korean \(Korean words written in Hangul only, no Chinese characters or Chinese words\)/);
+    const e = en.buildMessages(form, en.rollSeeds(3, form, seeded(3)))[1].content;
+    assert.match(e, /note \(under 12 words\) in English about/);
+    assert.doesNotMatch(e, /Hangul only/);
+    assert.match(ko.buildCheckMessages('Pell', 'ko')[1].content, /Hangul only/);
+});

@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.13
+// TBD — Name Not Found v0.2.14
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -462,9 +462,14 @@
         const full = r.pieces ? r.pieces.filter(p => CHECK_ROLES.includes(p.role)).map(p => p.text).join(' ') || r.name : r.name;
         return `<div class="tbd-check">${body}<span class="tbd-check-links"><a href="${escapeHtml(googleUrl(full))}" target="_blank" rel="noopener noreferrer">${escapeHtml(L.checkGoogle)}</a>${askBtn}</span>${ai}</div>`;
     }
+    // v0.2.14: Chinese-trained models slipped Chinese words into Korean notes (세례册, 노인 → 老人).
+    // The words mean something, so they are not stripped afterwards; the prompt asks for Korean words instead.
+    function noteLang(lang) {
+        return lang === 'ko' ? 'Korean (Korean words written in Hangul only, no Chinese characters or Chinese words)' : 'English';
+    }
     // Asked only on a tap. A guess, marked as one.
     function buildCheckMessages(name, lang) {
-        const out = lang === 'ko' ? 'Korean' : 'English';
+        const out = noteLang(lang);
         return [
             { role: 'system', content: 'You check whether an invented name runs into trouble. Answer briefly and honestly.' },
             { role: 'user', content: `Name: "${name}"\nIn 2 or 3 short sentences, in ${out}: does it match or closely resemble a well-known brand, company, product, fictional character, famous real person or place? Does it mean something rude or embarrassing in a major language? If nothing comes to mind, say so plainly. Don't make up facts; say when you're unsure. Plain text, no list.` },
@@ -1603,7 +1608,7 @@
             else lines.push(`${i + 1}. "${n.name}"`);
         });
         lines.push('');
-        lines.push(`For each add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about its feel. ${ROOT_NOTE_RULE}`);
+        lines.push(`For each add a short note (under 12 words) in ${noteLang(lang)} about its feel. ${ROOT_NOTE_RULE}`);
         if (opts.reading) lines.push(`Also add ${readingRule(lang, full)}.`);
         lines.push('Reply with ONLY a JSON array, one item per name in the same order, nothing else. Use "name" for a single name; for a full name use "parts" with only the listed parts:');
         const tail = `${opts.reading ? ', "read": "..."' : ''}, "note": "..."`;
@@ -2231,12 +2236,14 @@
             lines.push(`${i + 1}. ${main}${parts.join(', ')}${s.family ? `; family name: ${s.family}` : ''}`);
         });
         if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
+        // v0.2.14: Latin + Norse put a v sound in 17 of 20 given names (-val, -var, -lv-) and -mund in three.
+        if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, vary the sounds too: don\'t let one sound or word part run through most of the names (not a "v" in nearly every name).');
         if (avoid.length) {
             lines.push('');
             lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         }
         lines.push('');
-        lines.push(`For each name add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about how it fits this setting. ${roots.length ? ROOT_NOTE_RULE : "Don't claim a real meaning unless you are sure."}`);
+        lines.push(`For each name add a short note (under 12 words) in ${noteLang(lang)} about how it fits this setting. ${roots.length ? ROOT_NOTE_RULE : "Don't claim a real meaning unless you are sure."}`);
         if (opts.reading) lines.push(`Also add ${readingRule(lang, !!shape)}.`);
         if (opts.nicks) lines.push(NICK_RULE);
         lines.push('Reply with ONLY a JSON array, nothing else:');
@@ -2276,7 +2283,7 @@
         else lines.push('Avoid anything only a letter or two away from a well-known real or mythological name (like Bridget or Thor).');
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
         lines.push('');
-        lines.push(`For each variant add a short note (under 10 words) in ${lang === 'ko' ? 'Korean' : 'English'} about what changed in the sound.`);
+        lines.push(`For each variant add a short note (under 10 words) in ${noteLang(lang)} about what changed in the sound.`);
         if (opts.reading) lines.push(`Also add ${readingRule(lang, !!shape)}.`);
         if (opts.nicks) lines.push(NICK_RULE);
         lines.push('Reply with ONLY a JSON array, nothing else:');
