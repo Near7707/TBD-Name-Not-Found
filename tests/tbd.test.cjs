@@ -1576,8 +1576,8 @@ test('merge: the AI gets two roots per name, one short rule, and the ✨ line sa
     const msgs = api.buildMessages(form, seeds);
     const text = msgs.map(m => m.content).join('\n');
     assert.match(text, /blend two roots in each name/);
-    assert.match(text, /\d\. given name: |\d\. (Latin|Celtic|Norse) \+ (Latin|Celtic|Norse) roots/);
-    assert.match(text, /(Latin|Celtic|Norse) \+ (Latin|Celtic|Norse) roots/);
+    assert.match(text, /\d\. (Latin|Welsh|Irish|Scottish Gaelic|Norse) start \+ (Latin|Welsh|Irish|Scottish Gaelic|Norse) ending/);
+    assert.match(text, /says which of Latin, Celtic and Norse gives its start and which gives its ending/);
     assert.match(api.rootsPhrase(form, ['latin', 'celtic'], 'keep'), /^Keep it blending Latin and Celtic/);
     assert.match(api.rootsPhrase({ ...form, aiRootMix: 'split' }, ['latin', 'celtic'], 'keep'), /^Keep it built from Latin or Celtic/);
     // Split: one root per name, as before.
@@ -1841,7 +1841,7 @@ test('v0.2.17: "Copy for review" shows each name\'s seed, the same line the AI s
     assert.equal(shaped[1].seed, api.seedLine(form, seeds[1]));
     assert.match(shaped[0].seed, /; family name: (Latin|Norse) words, from /);
     const text = api.reviewText(shaped.map(r => ({ ...r, form })));
-    assert.match(text, /\n   seed: given name: (Latin \+ Norse|Norse \+ Latin) roots, /);
+    assert.match(text, /\n   seed: given name: (Latin start \+ Norse ending|Norse start \+ Latin ending), /);
     // Old results with no seed print no seed line.
     assert.doesNotMatch(api.reviewText([{ name: 'Pellam', form }]), /seed:/);
 });
@@ -2113,4 +2113,37 @@ test('v0.2.21: the prompt avoid list is AI favorites and the user\'s own list; p
     const all = [...api.avoidList(st, { target: 'person' })];
     assert.ok(all.includes('Pastname') && all.includes('Keptname'));
     assert.ok([...api.promptAvoid(st, { target: 'person' }, ['Onscreen'])].includes('Onscreen'));
+});
+
+// ---------- v0.2.24 ----------
+test('v0.2.24: Merge seeds say which root gives the start and which the ending, both ways round', () => {
+    const { api } = load();
+    for (const roots of [['latin', 'norse'], ['greek', 'slavic', 'norman']]) {
+        const form = { target: 'person', method: 'ai', vibe: 'medieval', aiRoots: roots, aiRootMix: 'merge', parts: ['given', 'family'] };
+        const seeds = api.rollSeeds(20, form, seeded(7)).filter(s => !s.word);
+        const lines = seeds.map(s => api.seedLine(form, s));
+        for (const l of lines) assert.match(l, /^given name: [A-Za-z /]+ start \+ [A-Za-z /]+ ending/);
+        // Every root shows up both as a start and as an ending.
+        for (const r of roots) {
+            assert.ok(seeds.some(s => s.root === r), `${r} as a start`);
+            assert.ok(seeds.some(s => s.root2 === r), `${r} as an ending`);
+        }
+    }
+    // Split and no roots: unchanged wording.
+    const split = { target: 'person', method: 'ai', vibe: 'medieval', aiRoots: ['latin', 'norse'], aiRootMix: 'split', parts: ['given'] };
+    assert.match(api.seedLine(split, { root: 'latin', start: 'A' }), /^Latin roots/);
+});
+test('v0.2.24: a family name seen before keeps the name; the given name and the own list still filter', () => {
+    const { api } = load();
+    const mk = (given, family) => ({ name: `${given} ${family}`, pieces: [{ role: 'given', text: given }, { role: 'family', text: family }] });
+    const list = [mk('Corvan', 'Lignarius'), mk('Ostric', 'Faber'), mk('Pellam', 'Holm'), mk('Ulric', 'Ostrand')];
+    const avoid = ['Lignarius', 'Ostric', 'Holm', 'Ulric Ostrand'];
+    const out = api.filterNames(list, avoid, ['Holm']).map(n => n.name);
+    assert.deepEqual([...out], ['Corvan Lignarius']);
+    // Without a family list (old callers), family parts still filter as before.
+    assert.deepEqual([...api.filterNames(list, avoid).map(n => n.name)], []);
+    // keepNames uses the own avoid list for family names.
+    const { api: a2 } = load({ extensionSettings: { tbd_names: { banList: 'Faber' } } });
+    const kept = a2.keepNames([mk('Corvan', 'Lignarius'), mk('Brannoc', 'Faber')], ['Lignarius', 'Faber'], { target: 'person', method: 'ai' });
+    assert.deepEqual([...kept.map(n => n.name)], ['Corvan Lignarius']);
 });

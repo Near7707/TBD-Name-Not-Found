@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.23
+// TBD — Name Not Found v0.2.24
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -357,7 +357,7 @@
     // Avoid list + repeats + copies of the "like this" words, then real words too when the user chose to filter them.
     // In a real-names mode, a name the AI called real stays even then (Rose is both a word and a real name).
     function keepNames(list, avoid, form, st = settings()) {
-        const out = filterNames(list, avoid).filter(n => !isLikeCopy(n, form || {}));
+        const out = filterNames(list, avoid, splitList(st.banList)).filter(n => !isLikeCopy(n, form || {}));
         if (st.wordNames !== 'filter' || wordUsed(form || {}) !== 'avoid') return out;
         const realOk = realMode(form || {}) !== 'invented';
         return out.filter(n => !wordHits(n, form).length || (realOk && n.real));
@@ -2278,7 +2278,7 @@
         const fresh = latinNote + celticNote + slavicNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist.${wordExcept(form)} Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
         if (aiMerge(form)) {
             const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
-            return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}${fresh}`;
+            return `Name roots: blend two roots in each name, with word parts from both in the same ${what}: each name below says which of ${rootNames(roots, 'and')} gives its start and which gives its ending. Keep it easy to say.${fam}${fresh}`;
         }
         const family = hasFamily ? ' Family names follow that root\'s own surname customs too.' : '';
         const parts = invented ? 'word roots and endings' : 'word roots, endings and naming customs';
@@ -2302,7 +2302,11 @@
             const from = s.root && s.root2 ? `${rn(s.root, true)} or ${rn(s.root2, true)}` : s.root ? rn(s.root, true) : '';
             parts.push(from ? `real word: a pretty ${from} word, as it is or lightly changed`
                 : 'real word: a pretty word from any language that fits the setting (English is fine), as it is or lightly changed');
-        } else if (s.root && s.root2) parts.push(`${rn(s.root)} + ${rn(s.root2)} roots`);
+        } else if (s.root && s.root2) {
+            // v0.2.24: "Latin + Norse roots" almost always came back as a Norse start + a Latin ending
+            // (9 of 18 given names ended in -us). Saying which root gives which part, in turn, splits the endings.
+            parts.push(`${rn(s.root)} start + ${rn(s.root2)} ending`);
+        }
         else if (s.root) parts.push(`${rn(s.root)} roots`);
         if (s.shape) parts.push(`shape: ${s.shape}`);
         if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
@@ -2600,13 +2604,20 @@
             .filter(n => n.parts || (n.name && n.name.length <= 40 && looksLikeName(n.name)));
     }
 
-    function filterNames(list, avoid) {
+    // v0.2.24: family names are shared by many people, and trade and -son names repeat a lot. A family
+    // name that was only seen before (past names, Found) no longer throws out the whole name: 2 of 20
+    // went missing that way. When `familyAvoid` is given, family parts are checked only against it
+    // (the user's own avoid list); the given name and the whole name still go against everything.
+    const SHARED_ROLES = ['family', 'patronymic'];
+    function filterNames(list, avoid, familyAvoid = null) {
         const banned = new Set(avoid.map(a => a.toLowerCase()));
+        const famBanned = familyAvoid ? new Set(familyAvoid.map(a => a.toLowerCase())) : banned;
         const seen = new Set();
         return list.filter(n => {
             const key = n.name.toLowerCase();
             if (banned.has(key) || seen.has(key)) return false;
-            if (n.pieces && memoryNames(n).some(t => banned.has(t.toLowerCase()))) return false;
+            if (n.pieces && n.pieces.some(p => NAME_ROLES.includes(p.role) && !p.fixed
+                && (SHARED_ROLES.includes(p.role) ? famBanned : banned).has(String(p.text).toLowerCase()))) return false;
             seen.add(key);
             return true;
         });
