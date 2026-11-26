@@ -2305,3 +2305,33 @@ test('v0.2.29: Archive — endings spread out, no stutter, Latin scholars keep L
         if (g.frags.length >= 2) assert.ok(!api.echoSyllable(g.frags[0].t, g.frags[1].t), r.name);
     }
 });
+
+test('v0.2.30: Archive — given endings and families spread out, Mesnil no longer piles up, no great + small', () => {
+    const { api } = load();
+    // 96: an extra word never says the opposite of the name.
+    assert.ok(api.oppositeClash({ en: 'great' }, { en: 'small' }) && api.oppositeClash({ en: 'little (Latin)' }, { en: 'great' }));
+    assert.ok(!api.oppositeClash({ en: 'great' }, { en: 'river' }));
+    const rnd = seeded(2030);
+    let mesnil = 0;
+    for (let k = 0; k < 6; k++) {
+        for (const roots of [['slavic'], ['greek', 'slavic']]) {
+            const list = api.cacheNames({ target: 'person', method: 'cache', roots, rootMix: 'merge', ckinds: ['common'], parts: ['given', 'family'] }, 20, [], rnd);
+            // 94: one list doesn't pile up one given-name ending (-mila six times).
+            const ends = {};
+            for (const r of list) { const g = r.pieces.find(p => p.role === 'given'); if (g.frags.length > 1) { const e = g.frags.slice(1).map(f => f.t).join('').toLowerCase().replace(/a$/, ''); ends[e] = (ends[e] || 0) + 1; } }
+            assert.ok(Math.max(...Object.values(ends)) <= 5, `${roots}: ${JSON.stringify(ends)}`);
+            // 97: no Chernov and Chernova in one list.
+            const fams = list.map(r => r.pieces.find(p => p.role === 'family' || p.role === 'patronymic')).filter(Boolean)
+                .map(p => p.text.toLowerCase().replace(/(sk|ck)a$/, '$1i').replace(/(ov|ev|in)a$/, '$1'));
+            assert.ok(fams.length - new Set(fams).size <= 1, fams.join(', '));
+        }
+        const places = api.cacheNames({ target: 'place', method: 'cache', kind: 'street', roots: ['norman', 'celtic'], rootMix: 'merge' }, 20, [], rnd);
+        mesnil += places.filter(r => /^Mesnil/.test(r.name)).length;
+        for (const r of places) {
+            const e = r.frags.map(f => f.en || '').join(' ');
+            assert.ok(!(/\b(great|big)\b/.test(e) && /\b(small|little)\b/.test(e)), r.name);
+        }
+    }
+    // 95: Mesnil… as the first part about three times in 20 at most, on average (was five).
+    assert.ok(mesnil / 6 <= 3.5, String(mesnil / 6));
+});

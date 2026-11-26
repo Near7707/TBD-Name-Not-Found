@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.29
+// TBD — Name Not Found v0.2.30
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1215,6 +1215,13 @@
         for (const k of meaningKeys(b)) if (x.has(k)) return true;
         return false;
     }
+    // v0.2.30: an extra word may not say the opposite of the name either (Grand-Pontfach = great … small,
+    // Magnocot Parva = great … little).
+    const OPPOSITES = [['big', 'small'], ['upper', 'lower'], ['old', 'new']];
+    function oppositeClash(a, b) {
+        const x = meaningKeys(a), y = meaningKeys(b);
+        return OPPOSITES.some(([p, q]) => (x.has(p) && y.has(q)) || (x.has(q) && y.has(p)));
+    }
     // v0.2.25: a place of two describing words and no thing (Shan + boy = old + yellow). Slavic -ica / -ets
     // ("little") make real place names out of one describing word (Belica, Starets), so they don't count.
     const ADJ_WORDS = new Set(['great', 'big', 'small', 'little', 'white', 'black', 'red', 'blue', 'blue-green', 'green', 'high', 'old', 'new', 'long', 'fair', 'dark', 'grey', 'light grey', 'yellow', 'speckled', 'rough', 'streaked', 'broad', 'cold', 'brown', 'swift', 'dry', 'wet', 'quiet', 'upper', 'lower', 'beautiful', 'fine', 'holy']);
@@ -1326,7 +1333,7 @@
         // Now and then an extra word: before (Great, Ober, Lille) or after (-on-Sea, Magna, am See).
         // The extra word before comes from the head's root, the one after from the tail's.
         // Never an extra word that says what the name already says (Grandroche-le-Grand, Magnona Magna).
-        const fresh = f => f.en !== base.frags[0].en && !base.frags.some(b => meaningClash(f, b));
+        const fresh = f => f.en !== base.frags[0].en && !base.frags.some(b => meaningClash(f, b) || oppositeClash(f, b));
         const pre = strictCats(R.placePre, cats).filter(fresh).map(f => tagRoot(f, root, mix));
         const post = strictCats(E.placePost, cats).filter(fresh).map(f => tagRoot(f, root2, mix));
         const usePre = pre.length && (!post.length || rnd() < 0.5);
@@ -1660,7 +1667,10 @@
         // v0.2.11: one list doesn't give the same byname twice (two "the Conqueror"s). Ordinals may repeat.
         const usedEpi = new Set();
         // v0.2.27: nor the same first part again and again (Chryso- four times) while unused ones are left.
-        const usedHeads = new Set();
+        // v0.2.30: counted, so once every first part is used the least-used ones still come first.
+        const usedHeads = new Map();
+        const headUse = n => Math.max(0, ...headsOf(n).map(h => usedHeads.get(h) || 0));
+        const leastHeadUse = list => Math.min(...list.map(headUse));
         // v0.2.28: a place named for a saint counts as one first part too ("saint"), or saints, never
         // "used", win every turn once the place heads run out (Sveti … 10 times in 20).
         const isSaintPlace = n => !!n.saint || (n.frags || []).some(f => f.en === 'saint' || f.en === 'church of');
@@ -1670,26 +1680,51 @@
         const usedTails = new Set();
         const tailsOf = n => (n.pieces ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
+        // v0.2.30: people spread out their given-name endings too (-mila six times, -ianus five times),
+        // and one list doesn't give the same family twice (Chernov and Chernova).
+        const usedGivenTails = new Set();
+        const givenTailsOf = n => {
+            const g = (n.pieces || []).find(p => p.role === 'given');
+            if (!g || !g.frags || g.frags.length < 2) return [];
+            return [g.frags.slice(1).map(f => f.t).join('').toLowerCase().replace(/a$/, '')];
+        };
+        const usedFamilies = new Set();
+        const familiesOf = n => (n.pieces || []).filter(p => (p.role === 'family' || p.role === 'patronymic') && !p.fixed)
+            .map(p => p.text.toLowerCase().replace(/(sk|ck)a$/, '$1i').replace(/(ov|ev|in)a$/, '$1'));
         const epithets = n => (n.pieces || []).filter(p => p.role === 'epithet' && !ORDINAL_TEXTS.has(p.text)).map(p => p.text.toLowerCase());
         for (let i = 0; i < count; i++) {
             const pair = pairs ? pairs[i % pairs.length] : null;
             const root = pair ? null : roots[(start + i) % roots.length];
-            const pool = [];
-            for (let k = 0; k < 60; k++) {
-                // The family name and title side with either root.
-                const n = pair ? cacheOne(form, pick(pair, rnd), pick(kinds, rnd), rnd, pair) : cacheOne(form, root, pick(kinds, rnd), rnd);
-                const texts = memoryNames(n).map(t => t.toLowerCase());
-                if (seen.has(n.name.toLowerCase()) || texts.some(t => banned.has(t))) continue;
-                pool.push(n);
+            const makePool = pr => {
+                const list = [];
+                for (let k = 0; k < 60; k++) {
+                    // The family name and title side with either root.
+                    const n = pr ? cacheOne(form, pick(pr, rnd), pick(kinds, rnd), rnd, pr) : cacheOne(form, root, pick(kinds, rnd), rnd);
+                    const texts = memoryNames(n).map(t => t.toLowerCase());
+                    if (seen.has(n.name.toLowerCase()) || texts.some(t => banned.has(t))) continue;
+                    list.push(n);
+                }
+                return list;
+            };
+            let pool = makePool(pair);
+            // v0.2.30: when one way round has used up its first parts (Norman has three town heads, so
+            // Mesnil… five times in 20), try the pair the other way round (Llanville, Caerbourg).
+            if (pair && pool.length && leastHeadUse(pool) > 0) {
+                const other = makePool([pair[1], pair[0]]);
+                if (other.length && leastHeadUse(other) < leastHeadUse(pool)) pool = other;
             }
             if (!pool.length) continue;
             let best = pool;
             const freshEpi = best.filter(n => !epithets(n).some(e => usedEpi.has(e)));
             if (freshEpi.length) best = freshEpi;
-            const freshHeads = best.filter(n => !headsOf(n).some(h => usedHeads.has(h)));
-            if (freshHeads.length) best = freshHeads;
+            const fewest = leastHeadUse(best);
+            best = best.filter(n => headUse(n) === fewest);
             const freshTails = best.filter(n => !tailsOf(n).some(t => usedTails.has(t)));
             if (freshTails.length) best = freshTails;
+            const freshGiven = best.filter(n => !givenTailsOf(n).some(t => usedGivenTails.has(t)));
+            if (freshGiven.length) best = freshGiven;
+            const freshFamily = best.filter(n => !familiesOf(n).some(f => usedFamilies.has(f)));
+            if (freshFamily.length) best = freshFamily;
             if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
             if (form.length && form.length !== 'any') {
                 const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
@@ -1701,8 +1736,10 @@
             const n = pick(best, rnd);
             seen.add(n.name.toLowerCase());
             for (const e of epithets(n)) usedEpi.add(e);
-            for (const h of headsOf(n)) usedHeads.add(h);
+            for (const h of headsOf(n)) usedHeads.set(h, (usedHeads.get(h) || 0) + 1);
             for (const t of tailsOf(n)) usedTails.add(t);
+            for (const t of givenTailsOf(n)) usedGivenTails.add(t);
+            for (const f of familiesOf(n)) usedFamilies.add(f);
             for (const t of memoryNames(n)) banned.add(t.toLowerCase());
             out.push(n);
         }
@@ -4147,7 +4184,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki, echoSyllable, slavicOvo, scholarFamily,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki, echoSyllable, slavicOvo, scholarFamily, oppositeClash,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
