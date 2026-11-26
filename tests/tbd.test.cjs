@@ -2373,3 +2373,21 @@ test('v0.2.32: Latin scholars keep -or trade words half the time (Pictor and Pic
     // "bad" counts as an adjective, so Mal + bane (bad + white) doesn't join.
     assert.ok(api.twoAdjectives({ t: 'Mal', en: 'bad' }, { t: 'bane', en: 'white' }));
 });
+
+test('v0.2.33: qu always takes a vowel after it (no Aqudunum, Aqus, Aquwulf)', () => {
+    const { api } = load();
+    assert.ok(!api.sayable('Aqudunum'));
+    assert.ok(!api.sayable('Aqus'));
+    assert.ok(!api.sayable('Aquwulf'));
+    assert.ok(api.sayable('Aquila'));
+    assert.ok(api.sayable('Quercensis'));
+    const rnd = seeded(2030);
+    for (const roots of [['latin'], ['latin', 'oldenglish'], ['latin', 'celtic']]) {
+        for (const target of ['person', 'place']) {
+            for (let k = 0; k < 10; k++) {
+                const list = api.cacheNames({ target, method: 'cache', roots, rootMix: roots.length > 1 ? 'merge' : 'split', ckinds: ['common', 'scholar'], parts: ['given', 'family'] }, 20, [], rnd);
+                for (const r of list) assert.ok(!/qu(?![aeio])/i.test(r.name), r.name);
+            }
+        }
+    }
+});

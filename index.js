@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.32
+// TBD — Name Not Found v0.2.33
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1158,7 +1158,8 @@
     // Hard to say: four consonants in a row, or the same letter three times.
     function sayable(s) {
         const w = String(s).toLowerCase().replace(/[^a-zæœ]/g, '');
-        return !/[^aeiouyæœ]{4,}/.test(w) && !/[aeiouy]{4,}/.test(w) && !/(.)\1\1/.test(w);
+        // v0.2.33: qu always takes a, e, i or o after it (no Aqudunum, Aqus, Aquwulf).
+        return !/[^aeiouyæœ]{4,}/.test(w) && !/[aeiouy]{4,}/.test(w) && !/(.)\1\1/.test(w) && !/qu(?![aeio])/.test(String(s).toLowerCase());
     }
     function syllableCount(s) {
         return (String(s).toLowerCase().match(/[aeiouyæœ]+/g) || []).length;
