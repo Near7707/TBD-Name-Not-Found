@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.12
+// TBD — Name Not Found v0.2.13
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -607,8 +607,11 @@
 
     // One seed per name. Each name gets its own nudge so the batch spreads out.
     function rollSeeds(count, opts = {}, rnd = Math.random) {
-        const [lo, hi] = SYLLABLES[opts.length] || SYLLABLES.any;
         const target = opts.target || 'person';
+        // v0.2.13: one-syllable names with roots on came out blunt or as plain words (Irk, Jorp, Hark),
+        // so "any length" starts at two syllables then. "Short" still allows one.
+        const anyLen = !SYLLABLES[opts.length] || opts.length === 'any';
+        const [lo, hi] = anyLen && target === 'person' && aiRootsUsed(opts).length ? [2, 4] : (SYLLABLES[opts.length] || SYLLABLES.any);
         // No inspiration word when the user typed a vibe or details: their words already set the direction,
         // and a random word ("bus stop") pulled names away from what was typed ("bread").
         const typedDetail = target !== 'person' && String(opts.kindText || '').trim();
@@ -2149,7 +2152,10 @@
         // this sits fine with the line that lets family names use real words.
         // v0.2.12: Latin drifted into Italian and French (Ursari, Corvelli, Granet).
         const latinNote = roots.includes('latin') ? ' Latin means classical Latin forms (endings like -us, -ius, -a, -ia), not Italian or French ones.' : '';
-        const fresh = latinNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
+        // v0.2.13: with roots on, Latin family names were nearly all trade words (Sutoris, Messoris) and
+        // Norse ones shared endings (-moen x3). Not a hard "no same ending": -son and -ović really do repeat.
+        const famMix = hasFamily ? ' Across the batch, mix kinds of family names (place, father\'s name, looks, trade), so they don\'t all end alike.' : '';
+        const fresh = latinNote + famMix + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
         if (aiMerge(form)) {
             const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
             return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}${fresh}`;

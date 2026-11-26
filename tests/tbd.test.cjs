@@ -1749,3 +1749,28 @@ test('v0.2.12: Latin AI roots ask for classical Latin forms', () => {
     const norse = { ...form, aiRoots: ['norse'] };
     assert.doesNotMatch(api.buildMessages(norse, api.rollSeeds(4, norse, seeded(3)))[1].content, /classical Latin/);
 });
+
+test('v0.2.13: AI roots with any length give no one-syllable person names', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    const syl = f => [...api.rollSeeds(200, f, seeded(6))].map(s => s.syllables);
+    assert.ok(syl(form).every(n => n >= 2 && n <= 4));
+    assert.ok(syl({ ...form, length: 'any' }).every(n => n >= 2));
+    // "Short" still allows one syllable, and so do names with no roots.
+    assert.ok(syl({ ...form, length: 'short' }).includes(1));
+    assert.ok(syl({ ...form, aiRoots: [] }).includes(1));
+    // Places keep the old range.
+    assert.ok(syl({ target: 'place', vibe: 'medieval', method: 'ai', aiRoots: ['latin'] }).includes(1));
+});
+
+test('v0.2.13: AI roots with a family name ask to mix kinds of family names', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    const text = f => api.buildMessages(f, api.rollSeeds(4, f, seeded(3)))[1].content;
+    assert.match(text(form), /mix kinds of family names \(place, father's name, looks, trade\), so they don't all end alike/);
+    assert.match(text({ ...form, aiRootMix: 'split' }), /mix kinds of family names/);
+    // No family name, a fixed one, or no roots: no line.
+    assert.doesNotMatch(text({ ...form, parts: ['given'] }), /mix kinds of family names/);
+    assert.doesNotMatch(text({ ...form, fixedFamily: 'Pell' }), /mix kinds of family names/);
+    assert.doesNotMatch(text({ ...form, aiRoots: [] }), /mix kinds of family names/);
+});
