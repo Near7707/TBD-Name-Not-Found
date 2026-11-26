@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.33
+// TBD — Name Not Found v0.2.34
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -949,10 +949,23 @@
             noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King', 'Prince', 'Duke', 'Earl'], f: ['Queen', 'Princess', 'Duchess', 'Countess'] },
         },
         norman: {
-            head: F('Beau=beautiful=아름다운;Bel=fine=고운;Clair=clear=맑은;Fleur=flower=꽃;Gai=merry=명랑한;Dou=sweet=다정한;Blanc=white=흰;Roy=king=왕;Lys=lily=백합;Aim=loved=사랑받는;Ros=rose=장미;Jol=pretty=예쁜;Hardi=bold=대담한;Sauv=wild=야생의;Gent=noble=고귀한;Fid=faithful=믿음직한;'
-                + 'Grand=great=큰;Fier=proud=당당한;Franc=free=자유로운;Bon=good=좋은;Joi=joy=기쁨;Lou=wolf=늑대;Esper=hope=희망;Guill=will=의지;Rich=ruler=통치자;Ber=bear=곰;Hu=mind=마음;Lam=land=땅;Ro=fame=명성;Thi=people=백성;Ger=spear=창;Bau=bold=대담한;Gui=wood=숲'),
-            masc: F('ard=hardy=굳센;ert=bright=빛나는;ault=rule=다스림;in=little=작은;on=little=작은;ier=one who=~하는 사람;et=little=작은;aume=helmet=투구;aud=rule=다스림;ouin=friend=벗;ric=ruler=통치자;ran=raven=큰까마귀;mond=protection=보호;land=land=땅'),
-            fem: F('ine=little=작은;elle=little=작은;ette=little=작은;ise==;ienne=of=~의;ilde=battle=전투;inde=gentle=부드러운'),
+            // v0.2.34: Norman names are Germanic names in French mouths (Guillaume, Thibaud, Aubert), plus French
+            // pet forms (Clairette, Jolin). Heads that end in a vowel and never joined well (Beau, Roy, Joi, Lou, Gai)
+            // are gone, and Grand stays in places and family names only.
+            head: F('Guill=will=의지;Bel=fine=고운;Clair=clear=맑은;Fleur=flower=꽃;Douc=sweet=다정한;Blanc=white=흰;Lys=lily=백합;Aim=loved=사랑받는;Ros=rose=장미;Jol=pretty=예쁜;Sauv=wild=야생의;Gent=noble=고귀한;Fid=faithful=믿음직한;'
+                + 'Fier=proud=당당한;Franc=free=자유로운;Bon=good=좋은;Esper=hope=희망;Rich=ruler=통치자;Ber=bear=곰;Hu=mind=마음;Lam=land=땅;Ro=fame=명성;Thi=people=백성;Ger=spear=창;Baud=bold=대담한;Gui=wood=숲;Hard=hardy=굳센;'
+                + 'Aub=noble=고귀한;Ans=god=신;Main=might=힘;God=god=신;Her=army=군대;Os=god=신;Fouc=people=백성;Ren=counsel=조언;Od=wealth=부;Ermen=whole, great=온전한·큰'),
+            masc: F('ard=hardy=굳센;ert=bright=빛나는;ault=rule=다스림;in=little=작은;on=little=작은;ier=one who=~하는 사람;et=little=작은;aume=helmet=투구;aud=rule=다스림;ouin=friend=벗;ric=ruler=통치자;ran=raven=큰까마귀;mond=protection=보호;land=land=땅;'
+                + 'bert=bright=빛나는;baud=bold=대담한;ger=spear=창;ri=ruler=통치자'),
+            fem: F('ine=little=작은;elle=little=작은;ette=little=작은;ise==;ienne=of=~의;ilde=battle=전투;inde=gentle=부드러운;garde=enclosure=울타리;sende=path=길'),
+            // v0.2.34: a plain French word never takes a Germanic name ending (no Blancault, Fleuraud, Rosric,
+            // Royinde). The other way round is fine (Guilline), and so is -ard (Blanchard is a real French name).
+            frenchWords: new Set('Bel Clair Fleur Douc Blanc Lys Aim Ros Jol Sauv Gent Fid Fier Franc Bon Esper'.split(' ')),
+            germanEnds: new Set('ert ault aume aud ouin ric ran mond land bert baud ger ri ilde inde garde sende'.split(' ')),
+            // Two vowels at the join (Huaud, Joiet, Thiette, Roelle) don't sound French…
+            noHiatus: true,
+            // Joins that turn into another French or English word.
+            notNames: new Set('beret guise belette rosette lamine thin thine bonnet grandine'.split(' ')),
             placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Riv=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town;'
                 + 'Chesne=oak=참나무=forest;Loup=wolf=늑대=forest;Fleur=flower=꽃=field;Vieux=old=오래된;Ros=rose=장미=field;Chastel=castle=성=fort;Gué=ford=여울=water;Mesnil=dwelling=집터=town;Bec=stream=시내=water;Tour=tower=탑=fort;Sable=sand=모래=coast;Ormes=elms=느릅나무들=forest;Lande=heath=황야=field'),
             placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pre=meadow=풀밭=field;'
@@ -1271,6 +1284,13 @@
             // v0.2.26: the ending must still be there (Mega + a → Mega) and not leave a doubled vowel.
             if (text.toLowerCase() === h.t.toLowerCase() || newDoubleVowel(text, h.t, t.t)) continue;
             if (echoSyllable(h.t, t.t)) continue;
+            if (R.frenchWords && R.frenchWords.has(h.t) && E.germanEnds && E.germanEnds.has(t.t)) continue;
+            if ((R.noHiatus || E.noHiatus) && !elide) {
+                if (VOWEL.test(h.t.slice(-1)) && VOWEL.test(t.t[0])) continue;
+                // …nor three consonants (Baudgarde, Lamsende): Ermengarde and Hersende stay.
+                if (((h.t.match(/[^aeiouy]+$/i) || [''])[0] + (t.t.match(/^[^aeiouy]+/i) || [''])[0]).length >= 3) continue;
+            }
+            if ((R.notNames && R.notNames.has(text.toLowerCase())) || (E.notNames && E.notNames.has(text.toLowerCase()))) continue;
             return make(h, t);
         }
         return make(R.head[0], tails[0]);

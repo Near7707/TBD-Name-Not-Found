@@ -2391,3 +2391,25 @@ test('v0.2.33: qu always takes a vowel after it (no Aqudunum, Aqus, Aquwulf)', (
         }
     }
 });
+
+test('v0.2.34 Norman given names: no French word + Germanic ending, smooth joins, no stray words', () => {
+    const { api } = load();
+    const N = api.CACHE.norman;
+    assert.ok(!N.head.some(f => f.t === 'Grand'));
+    const rnd = seeded(2030);
+    const seen = { fr: 0, ge: 0 };
+    for (const gender of ['masculine', 'feminine']) {
+        for (let i = 0; i < 20; i++) {
+            for (const x of api.cacheNames({ target: 'person', method: 'cache', roots: ['norman'], ckinds: ['common'], parts: ['given'], gender }, 20, [], rnd)) {
+                const [h, t] = x.pieces ? x.pieces[0].frags : x.frags;
+                seen[N.frenchWords.has(h.t) ? 'fr' : 'ge']++;
+                assert.ok(!(N.frenchWords.has(h.t) && N.germanEnds.has(t.t)), x.name);
+                assert.ok(!(/[aeiouy]$/i.test(h.t) && /^[aeiouy]/i.test(t.t)), x.name);
+                assert.ok(((h.t.match(/[^aeiouy]+$/i) || [''])[0] + (t.t.match(/^[^aeiouy]+/i) || [''])[0]).length < 3, x.name);
+                assert.ok(!N.notNames.has(x.name.toLowerCase()), x.name);
+            }
+        }
+    }
+    // Both kinds still come out: French pet forms (Clairette) and Germanic names (Thibaud).
+    assert.ok(seen.fr > 20 && seen.ge > 20, JSON.stringify(seen));
+});
