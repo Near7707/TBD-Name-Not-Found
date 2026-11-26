@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.27
+// TBD — Name Not Found v0.2.28
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1637,7 +1637,11 @@
         const usedEpi = new Set();
         // v0.2.27: nor the same first part again and again (Chryso- four times) while unused ones are left.
         const usedHeads = new Set();
-        const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t)).map(f => f.t.toLowerCase());
+        // v0.2.28: a place named for a saint counts as one first part too ("saint"), or saints, never
+        // "used", win every turn once the place heads run out (Sveti … 10 times in 20).
+        const isSaintPlace = n => !!n.saint || (n.frags || []).some(f => f.en === 'saint' || f.en === 'church of');
+        const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
+            .concat(isSaintPlace(n) ? ['#saint'] : []);
         const epithets = n => (n.pieces || []).filter(p => p.role === 'epithet' && !ORDINAL_TEXTS.has(p.text)).map(p => p.text.toLowerCase());
         for (let i = 0; i < count; i++) {
             const pair = pairs ? pairs[i % pairs.length] : null;

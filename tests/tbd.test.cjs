@@ -2255,3 +2255,15 @@ test('v0.2.27: Archive — -ski family names stay sayable, and one list spreads 
         assert.ok(Math.max(...Object.values(count)) <= 3, `${roots} ${target}: ${JSON.stringify(count)}`);
     }
 });
+
+test('v0.2.28: Archive — places named for a saint stay rare when one list spreads out its first parts', () => {
+    const { api } = load();
+    const rnd = seeded(2030);
+    const saintly = r => (r.frags || []).some(f => f.en === 'saint' || f.en === 'church of');
+    for (const roots of [['slavic'], ['norman'], ['oldenglish'], ['germanic']]) for (const kind of ['street', 'town']) {
+        let saints = 0;
+        for (let i = 0; i < 10; i++) saints += api.cacheNames({ target: 'place', method: 'cache', kind, roots }, 20, [], rnd).filter(saintly).length;
+        // About 7% of names (14 in 200); before the fix it was close to half.
+        assert.ok(saints <= 30, `${roots} ${kind}: ${saints} saints in 200`);
+    }
+});
