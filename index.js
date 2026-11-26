@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.31
+// TBD — Name Not Found v0.2.32
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1224,7 +1224,7 @@
     }
     // v0.2.25: a place of two describing words and no thing (Shan + boy = old + yellow). Slavic -ica / -ets
     // ("little") make real place names out of one describing word (Belica, Starets), so they don't count.
-    const ADJ_WORDS = new Set(['great', 'big', 'small', 'little', 'white', 'black', 'red', 'blue', 'blue-green', 'green', 'high', 'old', 'new', 'long', 'fair', 'dark', 'grey', 'light grey', 'yellow', 'speckled', 'rough', 'streaked', 'broad', 'cold', 'brown', 'swift', 'dry', 'wet', 'quiet', 'upper', 'lower', 'beautiful', 'fine', 'holy']);
+    const ADJ_WORDS = new Set(['great', 'big', 'small', 'little', 'white', 'black', 'red', 'blue', 'blue-green', 'green', 'high', 'old', 'new', 'long', 'fair', 'dark', 'grey', 'light grey', 'yellow', 'speckled', 'rough', 'streaked', 'broad', 'cold', 'brown', 'swift', 'dry', 'wet', 'quiet', 'upper', 'lower', 'beautiful', 'fine', 'holy', 'bad']);
     function isAdj(f) { return ADJ_WORDS.has(((f && f.en) || '').split(',')[0].trim().toLowerCase()); }
     // v0.2.26: …but never "great" + "little" (Megalets).
     function twoAdjectives(h, t) { return isAdj(h) && isAdj(t) && (!(t.en === 'little' && t.t.length <= 3) || /^(great|big)\b/.test(h.en)); }
@@ -1541,6 +1541,10 @@
             // Roman women had no trade or nickname surname, so a woman gets a place name then.
             const latinWord = root === 'latin' && ['trade', 'looks'].includes(f.branch) && /^[A-Z][a-z]+[ao]$/.test(f.text);
             if (latinWord && g !== 'f') return { text: f.text, frags: f.frags, branch: f.branch };
+            // v0.2.32: a Latin -or trade word (Pictor, Pastor) stays as it is for a man about half the time,
+            // -orius the other half. A woman keeps -orius (a Latinized family name, like Pastorius).
+            const orWord = root === 'latin' && ['trade', 'looks'].includes(f.branch) && /^[A-Z][a-z]+or$/.test(f.text);
+            if (orWord && g !== 'f' && rnd() < 0.5) return { text: f.text, frags: f.frags, branch: f.branch };
             if (!latinWord && ['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|[sc]k[aiy]|er)$/.test(f.text)) return { text: noAccents(`${latinStem(f.text)}ius`), frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
         }
         const pl = cachePlace(root, null, rnd, true);

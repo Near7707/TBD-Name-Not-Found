@@ -2355,3 +2355,21 @@ test('v0.2.31: Archive — first parts and endings spread out together, family-n
     assert.ok(anyMax / 6 <= 3.5, `any part ${anyMax / 6}`);
     assert.ok(famMax / 6 <= 3.2, `family ending ${famMax / 6}`);
 });
+
+test('v0.2.32: Latin scholars keep -or trade words half the time (Pictor and Pictorius), no Malbane', () => {
+    const { api } = load();
+    const rnd = seeded(2030);
+    const seen = { m: { or: 0, orius: 0 }, f: { or: 0, orius: 0 } };
+    for (let i = 0; i < 2000; i++) {
+        const g = i % 2 ? 'f' : 'm';
+        const f = api.scholarFamily('latin', g, rnd);
+        if (/orius$/.test(f.text)) seen[g].orius++;
+        else if (/or$/.test(f.text)) seen[g].or++;
+    }
+    assert.ok(seen.m.or > 0 && seen.m.orius > 0, JSON.stringify(seen));
+    assert.ok(seen.m.or < seen.m.orius * 2 && seen.m.orius < seen.m.or * 2, JSON.stringify(seen));
+    // A woman never takes a bare Latin trade word as her family name.
+    assert.equal(seen.f.or, 0);
+    // "bad" counts as an adjective, so Mal + bane (bad + white) doesn't join.
+    assert.ok(api.twoAdjectives({ t: 'Mal', en: 'bad' }, { t: 'bane', en: 'white' }));
+});
