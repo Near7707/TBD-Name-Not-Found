@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.21
+// TBD — Name Not Found v0.2.22
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -2157,8 +2157,9 @@
         const what = realWhat(roles);
         const mode = realMode(form);
         const out = [];
-        // v0.2.21: with AI roots on, the roots line already says "new names, not names that already exist".
-        if (mode === 'invented') { if (!aiRootsUsed(form).length) out.push(`Invent the ${what}; don't hand back names that real people commonly have.${wordExcept(form)}`); }
+        // v0.2.21 dropped this with roots on (the roots line says much the same), and 8 of 13 names in round 23
+        // came back as plain real names (Borys, Danilo). Saying it twice is what works, so it stays.
+        if (mode === 'invented') out.push(`Invent the ${what}; don't hand back names that real people commonly have.${wordExcept(form)}`);
         else if (mode === 'near') out.push(`Base the ${what} on real names people use in this setting, each changed a little so it is new but still feels familiar.`);
         else if (mode === 'mix') out.push(`Mix real ${what} that people use in this setting with invented ones, roughly half and half.`);
         else out.push(`Use real ${what} that people actually use in this setting, not invented ones.${roles.length > 1 ? " Don't put together a famous person's full name." : ''}`);
@@ -2369,8 +2370,9 @@
             lines.push('follow its hint.');
         }
         // v0.2.21: a seed the roots can't meet (a Slavic word starting with E) sent the AI round in circles until
-        // the answer ran out. A way out works better than more rules.
-        if (roots.length || seeds.some(s => s.word)) lines.push('If a hint doesn\'t fit the name\'s roots or language, use the nearest one that does and move on; don\'t search long.');
+        // the answer ran out. v0.2.22: "use the nearest one and move on; don't search long" read as "anything goes"
+        // (plain real names, no blending), so the way out is only for the start letter now.
+        if (seeds.some(s => s.start && s.root)) lines.push('If a start letter doesn\'t suit the name\'s roots, a nearby letter is fine.');
         seeds.forEach((s, i) => lines.push(`${i + 1}. ${seedLine(form, s)}`));
         // v0.2.21: this line is for inspiration words, which roots turn off; with roots the AI still redid names over "same image".
         if (seeds.length > 1 && !echoOnly && !roots.length) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');

@@ -2080,6 +2080,9 @@ test('v0.2.21: word seeds carry no start letter, and the other names still do no
     const starts = seeds.filter(s => !s.word).map(s => s.start);
     assert.equal(new Set(starts).size, starts.length);
     assert.ok(seeds.every(s => !('newStart' in s)));
+    // No roots: word names alone get no start-letter line either.
+    const noRoots = { ...form, aiRoots: [] };
+    assert.doesNotMatch(api.buildMessages(noRoots, api.rollSeeds(6, noRoots, seeded(2)), {})[1].content, /nearby letter/);
 });
 
 test('v0.2.21: with roots on, the prompt drops rules the roots already cover and gives a way out', () => {
@@ -2088,16 +2091,17 @@ test('v0.2.21: with roots on, the prompt drops rules the roots already cover and
     const text = form => api.buildMessages(form, api.rollSeeds(6, form, seeded(2)), { lang: 'en', avoid: ['Elara'] })[1].content;
     const roots = text({ ...base, aiRoots: ['greek', 'slavic'], aiRootMix: 'merge' });
     assert.doesNotMatch(roots, /plain existing English words/);
-    assert.doesNotMatch(roots, /Invent the given and family names/);
+    assert.match(roots, /Invent the given and family names/);
     assert.doesNotMatch(roots, /same idea or image/);
     assert.match(roots, /not names that already exist/);
-    assert.match(roots, /use the nearest one that does and move on/);
+    assert.match(roots, /If a start letter doesn't suit the name's roots, a nearby letter is fine\./);
+    assert.doesNotMatch(roots, /move on|search long/);
     assert.match(roots, /Do NOT use these names: Elara\./);
     const plain = text(base);
     assert.match(plain, /plain existing English words/);
     assert.match(plain, /Invent the given and family names/);
     assert.match(plain, /same idea or image/);
-    assert.doesNotMatch(plain, /move on/);
+    assert.doesNotMatch(plain, /nearby letter/);
 });
 
 test('v0.2.21: the prompt avoid list is AI favorites and the user\'s own list; past and kept names are only filtered', () => {
