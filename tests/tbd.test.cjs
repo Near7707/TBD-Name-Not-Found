@@ -1037,7 +1037,9 @@ test('v0.2.1: picked roots reach the AI per name, and "Any" changes nothing', ()
     const form = { ...base, aiRoots: ['celtic', 'norse'] };
     const seeds = api.rollSeeds(6, form, seeded(3));
     assert.deepEqual([...new Set(seeds.map(s => s.root))].sort(), ['celtic', 'norse'], 'roots take turns');
-    assert.ok(seeds.every(s => !s.ending && !s.family), 'vibe endings and family styles would argue with the roots');
+    assert.ok(seeds.every(s => !s.ending), 'vibe endings would argue with the roots');
+    // v0.2.15: no vibe family styles, only the plain kinds in turn.
+    assert.ok(seeds.every(s => /^from (a |looks )/.test(s.family)), 'only plain family kinds with roots');
     assert.ok(seeds.every(s => s.syllables), 'syllable count stays');
     const text = api.buildMessages(form, seeds)[1].content;
     assert.match(text, /Name roots: build each name from Celtic or Norse name elements .*each name below says which\. Family names follow/);
@@ -1763,16 +1765,21 @@ test('v0.2.13: AI roots with any length give no one-syllable person names', () =
     assert.ok(syl({ target: 'place', vibe: 'medieval', method: 'ai', aiRoots: ['latin'] }).includes(1));
 });
 
-test('v0.2.13: AI roots with a family name ask to mix kinds of family names', () => {
+test('v0.2.15: AI roots with a family name give each name its own kind of family name', () => {
     const { api } = load();
     const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
-    const text = f => api.buildMessages(f, api.rollSeeds(4, f, seeded(3)))[1].content;
-    assert.match(text(form), /mix kinds of family names \(place, father's name, looks, trade\), so they don't all end alike/);
-    assert.match(text({ ...form, aiRootMix: 'split' }), /mix kinds of family names/);
-    // No family name, a fixed one, or no roots: no line.
-    assert.doesNotMatch(text({ ...form, parts: ['given'] }), /mix kinds of family names/);
-    assert.doesNotMatch(text({ ...form, fixedFamily: 'Pell' }), /mix kinds of family names/);
-    assert.doesNotMatch(text({ ...form, aiRoots: [] }), /mix kinds of family names/);
+    const seeds = [...api.rollSeeds(4, form, seeded(3))];
+    assert.deepEqual([...new Set(seeds.map(s => s.family))].sort(), ["from a father's name", 'from a place', 'from a trade', 'from looks or a nickname']);
+    const text = api.buildMessages(form, seeds)[1].content;
+    assert.match(text, /; family name: from a (place|trade|father's name|looks or a nickname)/);
+    // The old batch-wide line is gone.
+    assert.doesNotMatch(text, /mix kinds of family names/);
+    // No family name or a fixed one: no kind seed. No roots: the vibe's own family styles as before.
+    assert.ok([...api.rollSeeds(4, { ...form, parts: ['given'] }, seeded(3))].every(s => !s.family));
+    assert.ok([...api.rollSeeds(4, { ...form, fixedFamily: 'Pell' }, seeded(3))].every(s => !s.family));
+    const plain = [...api.rollSeeds(4, { ...form, aiRoots: [] }, seeded(3))];
+    assert.ok(plain.every(s => s.family));
+    assert.ok([...api.rollSeeds(12, { ...form, aiRoots: [] }, seeded(5))].some(s => /-ford|landscape|Fitz/.test(s.family)), 'vibe styles without roots');
 });
 
 test('v0.2.14: the batch is asked to vary sounds, except in sound-alike mode', () => {

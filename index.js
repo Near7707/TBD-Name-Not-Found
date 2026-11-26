@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.14
+// TBD — Name Not Found v0.2.15
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -606,6 +606,7 @@
 
     // Start letters a root (almost) never uses: a Latin name can't start with W.
     const ROOT_NO_START = { latin: 'WK', norse: 'CW', celtic: 'WJ', norman: 'K', greek: 'WJQFVY', slavic: 'QX' };
+    const ROOT_FAMILY_KINDS = ['from a place', "from a father's name", 'from looks or a nickname', 'from a trade'];
     const LIKE_FOCUS = ['its opening sound', 'its vowels', 'its ending', 'its rhythm', 'its consonants'];
 
     function pick(arr, rnd = Math.random) { return arr[Math.floor(rnd() * arr.length)]; }
@@ -638,6 +639,10 @@
         const roots = aiRootsUsed(opts);
         const endings = roots.length ? null : endingsFor(target, opts.vibe);
         const familyStyles = !roots.length && shape && shape.roles.includes('family') && !shape.fixed ? (FAMILY_STYLES[familyKey] || ALL_FAMILY_STYLES) : null;
+        // v0.2.15: with roots on, one batch-wide "mix kinds of family names" line still let them bunch up
+        // (-oris, then -onis), so each name gets its own kind in turn. Plain kinds only: no vibe wording to argue with the roots.
+        const rootFamily = roots.length && shape && shape.roles.includes('family') && !shape.fixed;
+        const familyKindStart = Math.floor(rnd() * ROOT_FAMILY_KINDS.length);
         const rootStart = Math.floor(rnd() * Math.max(1, roots.length));
         // Merge: each name gets two different roots, in turn through every pair.
         const pairs = aiMerge(opts) ? rootPairs(roots, rnd) : null;
@@ -675,6 +680,7 @@
                 usedEndings.add(seed.ending);
             }
             if (shapes) seed.shape = pick(shapes, rnd);
+            if (rootFamily) seed.family = ROOT_FAMILY_KINDS[(familyKindStart + i) % ROOT_FAMILY_KINDS.length];
             if (familyStyles) {
                 const fresh = familyStyles.filter(f => !usedFamily.has(f));
                 seed.family = pick(fresh.length ? fresh : familyStyles, rnd);
@@ -2157,10 +2163,7 @@
         // this sits fine with the line that lets family names use real words.
         // v0.2.12: Latin drifted into Italian and French (Ursari, Corvelli, Granet).
         const latinNote = roots.includes('latin') ? ' Latin means classical Latin forms (endings like -us, -ius, -a, -ia), not Italian or French ones.' : '';
-        // v0.2.13: with roots on, Latin family names were nearly all trade words (Sutoris, Messoris) and
-        // Norse ones shared endings (-moen x3). Not a hard "no same ending": -son and -ović really do repeat.
-        const famMix = hasFamily ? ' Across the batch, mix kinds of family names (place, father\'s name, looks, trade), so they don\'t all end alike.' : '';
-        const fresh = latinNote + famMix + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
+        const fresh = latinNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
         if (aiMerge(form)) {
             const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
             return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}${fresh}`;
