@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.16
+// TBD — Name Not Found v0.2.17
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -813,6 +813,7 @@
             const out = { name: joinPieces(pieces), note: n.note, read: n.read, pieces };
             if (pieces.some(p => p.real)) out.real = true;
             if (n.nicks?.length) out.nicks = n.nicks;
+            if (n.seed) out.seed = n.seed;
             return out;
         }).filter(n => n && n.name.length <= 120);
     }
@@ -2182,6 +2183,31 @@
     }
     const ROOT_NOTE_RULE = "Don't state what the name means or where it comes from; describe only its feel.";
 
+    // One name's seed as the AI sees it. v0.2.17: also kept on the result for "Copy for review",
+    // so a check can count what each name was asked for instead of guessing.
+    function seedLine(form, s) {
+        const sound = SOUND_DESC[form.sound];
+        const phrase = form.target === 'shop' || form.target === 'item';
+        const shape = nameShape(form);
+        const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
+        const parts = [];
+        if (s.root && s.root2) parts.push(`${STRINGS.en.roots[s.root]} + ${STRINGS.en.roots[s.root2]} roots`);
+        else if (s.root) parts.push(`${STRINGS.en.roots[s.root]} roots`);
+        if (s.shape) parts.push(`shape: ${s.shape}`);
+        if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
+        if (s.syllables) parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
+        if (s.ending) parts.push(`ends with "${s.ending}"`);
+        if (!sound && s.texture) parts.push(`${s.texture} sound`);
+        if (s.likeFocus) parts.push(`echo the "like" word${likeWords(form).length > 1 ? 's' : ''} mostly in ${s.likeFocus}`);
+        if (!parts.length) parts.push('follow the "like" words above');
+        if (s.spark) parts.push(`inspiration: "${s.spark}"`);
+        return `${main}${parts.join(', ')}${s.family ? `; family name: ${s.familyRoot ? `${STRINGS.en.roots[s.familyRoot]} words, ` : ''}${s.family}` : ''}`;
+    }
+    // Answers come back in seed order, so the n-th answer gets the n-th seed (before any filtering).
+    function withSeeds(list, form, seeds) {
+        list.forEach((n, i) => { if (n && seeds[i]) n.seed = seedLine(form, seeds[i]); });
+        return list;
+    }
     function buildMessages(form, seeds, opts = {}) {
         const lang = opts.lang || 'en';
         const avoid = opts.avoid || [];
@@ -2231,21 +2257,7 @@
         } else {
             lines.push('follow its hint.');
         }
-        const main = shape ? (shape.roles.includes('given') ? 'given name: ' : 'main invented part: ') : '';
-        seeds.forEach((s, i) => {
-            const parts = [];
-            if (s.root && s.root2) parts.push(`${STRINGS.en.roots[s.root]} + ${STRINGS.en.roots[s.root2]} roots`);
-            else if (s.root) parts.push(`${STRINGS.en.roots[s.root]} roots`);
-            if (s.shape) parts.push(`shape: ${s.shape}`);
-            if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
-            if (s.syllables) parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
-            if (s.ending) parts.push(`ends with "${s.ending}"`);
-            if (!sound && s.texture) parts.push(`${s.texture} sound`);
-            if (s.likeFocus) parts.push(`echo the "like" word${likeWords(form).length > 1 ? 's' : ''} mostly in ${s.likeFocus}`);
-            if (!parts.length) parts.push('follow the "like" words above');
-            if (s.spark) parts.push(`inspiration: "${s.spark}"`);
-            lines.push(`${i + 1}. ${main}${parts.join(', ')}${s.family ? `; family name: ${s.familyRoot ? `${STRINGS.en.roots[s.familyRoot]} words, ` : ''}${s.family}` : ''}`);
-        });
+        seeds.forEach((s, i) => lines.push(`${i + 1}. ${seedLine(form, s)}`));
         if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, don\'t build two names or notes on the same idea or image (not three "neon" names).');
         // v0.2.14: Latin + Norse put a v sound in 17 of 20 given names (-val, -var, -lv-) and -mund in three.
         if (seeds.length > 1 && !echoOnly) lines.push('Across the batch, vary the sounds too: don\'t let one sound or word part run through most of the names (not a "v" in nearly every name).');
@@ -2875,6 +2887,7 @@
                 lines.push(`${sub}parts: ${r.pieces.map(p => `${p.role} "${p.text}"${p.real ? ' (real)' : ''}`).join(', ')}`);
             }
             if (r.nicks?.length) lines.push(`${sub}nicknames: ${r.nicks.join(', ')}`);
+            if (r.seed) lines.push(`${sub}seed: ${r.seed}`);
         });
         return lines.join('\n');
     }
@@ -2996,7 +3009,8 @@
         }
         if (isPolish(form)) { await polishGenerate(form, count, avoid, st); return; }
         if (isCache(form)) { cacheGenerate(form, count, avoid, st); return; }
-        const messages = buildMessages(form, rollSeeds(count, form), { lang, avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
+        const seeds = rollSeeds(count, form);
+        const messages = buildMessages(form, seeds, { lang, avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
 
         busy = true;
         controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -3007,7 +3021,7 @@
             const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(count, st, !!nameShape(form)), signal: myController?.signal });
             if (myController && myController.signal.aborted) return;
             if (controller !== myController) return;
-            const parsed = applyShape(parseNames(raw), form);
+            const parsed = applyShape(withSeeds(parseNames(raw), form, seeds), form);
             const kept = keepNames(parsed, avoid, form, st);
             const cut = answerCut(raw);
             if (!parsed.length) {
@@ -3225,9 +3239,10 @@
         const form = aiForm(src.form || st.form, isVariant ? src.from : src);
         const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
         const nicks = nickOn(form, st);
+        const seeds1 = isVariant ? [] : rollSeeds(1, form);
         const messages = isVariant
             ? buildRefineMessages(from, src.tag, form, { lang, avoid, count: 1, reading: !!st.showReading, nicks })
-            : buildMessages(form, rollSeeds(1, form), { lang, avoid, reading: !!st.showReading, nicks });
+            : buildMessages(form, seeds1, { lang, avoid, reading: !!st.showReading, nicks });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const job = { src, ctl, kind: 'reroll' };
         refining = job;
@@ -3237,14 +3252,14 @@
         try {
             const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(1, st, !!nameShape(form)), signal: ctl?.signal });
             if (refining !== job) return;
-            const parsed = isVariant && !from.pieces ? parseNames(raw) : applyShape(parseNames(raw), form);
+            const parsed = isVariant && !from.pieces ? parseNames(raw) : applyShape(withSeeds(parseNames(raw), form, seeds1), form);
             const kept = keepNames(parsed, avoid, form, st);
             const at = results.indexOf(src);
             if (!parsed.length) status = { kind: 'error', text: failText(raw, L), raw };
             else if (!kept.length) status = { kind: 'error', text: L.err(L.allFiltered), raw };
             else if (at !== -1) {
-                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces, real: kept[0].real, nicks: kept[0].nicks };
-                for (const k of ['pieces', 'real', 'nicks']) if (!fresh[k]) delete fresh[k];
+                const fresh = { ...src, name: kept[0].name, note: kept[0].note, read: kept[0].read, pieces: kept[0].pieces, real: kept[0].real, nicks: kept[0].nicks, seed: kept[0].seed };
+                for (const k of ['pieces', 'real', 'nicks', 'seed']) if (!fresh[k]) delete fresh[k];
                 delete fresh.check; // the old name's check is not about this one
                 // Variants hanging under the old name no longer fit, so they go with it.
                 const depth = src.depth || 0;
@@ -3357,6 +3372,7 @@
                 }
                 src.name = joinPieces(src.pieces);
                 delete src.check;
+                delete src.seed; // the seed was for the old whole name
                 src.read = reading ? String(parsed[0].read || '').slice(0, 80) : '';
                 if (NAME_ROLES.includes(piece.role)) { rememberNames([text], st); refreshHistory(); }
                 save();
@@ -3824,7 +3840,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },

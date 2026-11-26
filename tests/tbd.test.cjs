@@ -1821,3 +1821,26 @@ test('v0.2.16: the family-name seed says which root its words come from', () => 
     // No roots: no root in the family seed.
     assert.ok([...api.rollSeeds(4, { ...form, aiRoots: [] }, seeded(3))].every(s => !s.familyRoot));
 });
+
+test('v0.2.17: "Copy for review" shows each name\'s seed, the same line the AI saw', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    const seeds = [...api.rollSeeds(3, form, seeded(5))];
+    const prompt = api.buildMessages(form, seeds)[1].content;
+    // The prompt still has one numbered line per seed, built by the same helper.
+    seeds.forEach((s, i) => assert.ok(prompt.includes(`${i + 1}. ${api.seedLine(form, s)}`), `seed ${i + 1}`));
+    // Answers in parts get their seed by order, and it survives applyShape.
+    const raw = JSON.stringify([
+        { parts: { given: 'Pellam', family: 'Ostrand' }, note: 'a' },
+        { parts: { given: 'Corvan', family: 'Mirelund' }, note: 'b' },
+    ]);
+    const shaped = api.applyShape(api.withSeeds(api.parseNames(raw), form, seeds), form);
+    assert.equal(shaped.length, 2);
+    assert.equal(shaped[0].seed, api.seedLine(form, seeds[0]));
+    assert.equal(shaped[1].seed, api.seedLine(form, seeds[1]));
+    assert.match(shaped[0].seed, /; family name: (Latin|Norse) words, from /);
+    const text = api.reviewText(shaped.map(r => ({ ...r, form })));
+    assert.match(text, /\n   seed: given name: (Latin \+ Norse|Norse \+ Latin) roots, /);
+    // Old results with no seed print no seed line.
+    assert.doesNotMatch(api.reviewText([{ name: 'Pellam', form }]), /seed:/);
+});
