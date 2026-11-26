@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.2
+// TBD — Name Not Found v0.2.3
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -62,7 +62,7 @@
             checkGoogle: 'Search Google', checkAsk: 'Ask the AI too', checkAsking: 'Asking…', checkAiTag: 'AI guess', checkAiEmpty: '(no answer)',
             clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
-            method: 'Made with', methods: { ai: 'AI', cache: 'Cache' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
+            method: 'Made with', methods: { ai: 'AI', cache: 'Cache', polish: 'Cache + AI' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
             roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse', greek: 'Ancient Greek', slavic: 'Slavic' },
             aiRootAny: 'Any', aiRootOff: { like: 'Not used now: the "Like this" words lead.', cosmic: 'Not used now: Lovecraftian invented names stay eldritch.' },
             ck: { common: 'Common name', noble: 'Noble house', religious: 'Monastic / saint', royal: 'Royal / ruler', warrior: 'Warrior / byname', scholar: 'Scholar (Latin)' },
@@ -70,6 +70,10 @@
             fragments: 'fragments', cacheTag: 'CACHE', cacheTip: 'Built from name fragments. No AI was used.',
             foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from cache`,
             cacheEmpty: 'No new names left in the cache for these choices. Try other roots or conditions.',
+            polishTag: 'AI polished', polishTip: 'Built from name fragments, then the AI smoothed the sound a little. The meanings are from the cache, not the AI.',
+            polishWas: 'was', polishing: 'Polishing…',
+            polishFail: '206 — the AI polish failed; showing plain Cache names.',
+            polishSome: (n, all) => `206 — ${n} of ${all} polished; the rest are plain Cache names.`,
             nicks: 'Nicknames', nickCopy: 'Copy this nickname',
             copyPiece: 'Copy this part', rerollPiece: 'Swap just this part', rerollingPiece: 'Swapping one part…', pieceRerolled: '200 OK — part swapped',
             gear: 'Settings', back: 'Back',
@@ -148,7 +152,7 @@
             checkGoogle: '구글에서 보기', checkAsk: 'AI에게도 묻기', checkAsking: '묻는 중…', checkAiTag: 'AI 추정', checkAiEmpty: '(답 없음)',
             clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
-            method: '만드는 방식', methods: { ai: 'AI', cache: 'Cache' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
+            method: '만드는 방식', methods: { ai: 'AI', cache: 'Cache', polish: 'Cache + AI' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
             roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽', greek: '고대 그리스', slavic: '슬라브' },
             aiRootAny: '상관없음', aiRootOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', cosmic: '지금은 안 써요: 러브크래프트풍 지어낸 이름은 이질적인 이름이라서요.' },
             ck: { common: '일반 인명', noble: '귀족 가문', religious: '수도원·성인', royal: '왕족·군주', warrior: '전사·별칭', scholar: '학자 (라틴식)' },
@@ -156,6 +160,10 @@
             fragments: 'fragments', cacheTag: 'CACHE', cacheTip: '이름 조각으로 만든 이름이에요. AI는 안 썼어요.',
             foundCache: n => `200 OK — 캐시에서 이름 ${n}개 찾음`,
             cacheEmpty: '이 조건으론 캐시에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
+            polishTag: 'AI 다듬음', polishTip: '이름 조각으로 만든 뒤 AI가 소리를 살짝 다듬었어요. 뜻은 AI가 아니라 캐시 자료예요.',
+            polishWas: '원래', polishing: '다듬는 중…',
+            polishFail: '206 — AI 다듬기에 실패해서 조각 이름 그대로 보여요.',
+            polishSome: (n, all) => `206 — ${all}개 중 ${n}개만 다듬었어요. 나머지는 조각 이름 그대로예요.`,
             nicks: '애칭', nickCopy: '이 애칭 복사',
             copyPiece: '이 조각 복사', rerollPiece: '이 조각만 다시 뽑기', rerollingPiece: '조각 하나 바꾸는 중…', pieceRerolled: '200 OK — 조각 바꿈',
             gear: '설정', back: '돌아가기',
@@ -933,8 +941,13 @@
         city: ['town', 'fort'], town: ['town', 'field'], street: ['town'], building: ['town', 'fort'], transit: ['water', 'coast', 'town'],
         park: ['field', 'town'], mountain: ['hill'], water: ['water'], forest: ['forest'], sea: ['coast', 'water'], fort: ['fort', 'hill'],
     };
+    // "Cache + AI" (polish) is a Cache name first, so it counts as Cache everywhere the form is concerned.
+    const METHODS = ['ai', 'cache', 'polish'];
     function isCache(form = {}) {
-        return form.method === 'cache' && (form.target === 'person' || form.target === 'place');
+        return (form.method === 'cache' || form.method === 'polish') && (form.target === 'person' || form.target === 'place');
+    }
+    function isPolish(form = {}) {
+        return form.method === 'polish' && isCache(form);
     }
     function cacheRoots(form = {}) {
         const r = (Array.isArray(form.roots) ? form.roots : []).filter(x => CACHE_ROOTS.includes(x));
@@ -1350,7 +1363,9 @@
             + (p.branch && L.branch?.[p.branch] ? ` <span class="tbd-frag-root">· ${escapeHtml(L.branch[p.branch])}</span>` : ''))
             .join('<span class="tbd-nick-dot" aria-hidden="true"> / </span>');
         const root = r.root && L.roots[r.root] ? ` <span class="tbd-frag-root">· ${escapeHtml(L.roots[r.root])}</span>` : '';
-        return `<div class="tbd-frags"><span class="tbd-nicks-label">${escapeHtml(L.fragments)}:</span> ${body}${root}</div>`;
+        // After an AI polish, show the name the fragments really made, so the change can be seen.
+        const was = r.polished && r.orig && r.orig !== r.name ? ` <span class="tbd-frag-root">· ${escapeHtml(L.polishWas)}: ${escapeHtml(r.orig)}</span>` : '';
+        return `<div class="tbd-frags"><span class="tbd-nicks-label">${escapeHtml(L.fragments)}:</span> ${body}${root}${was}</div>`;
     }
     // ✨ and swapping a variant still use the AI. It gets the roots in place of the hidden vibe,
     // and a full name goes as one whole name.
@@ -1362,6 +1377,124 @@
             ...form, method: 'ai', vibe: 'custom', customVibe: `built from ${roots} name roots`, realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'],
             ...(full ? { target: 'other', kind: 'any', kindText: 'a full name for a person; keep the same number of words and any title or "of …" part' } : {}),
         };
+    }
+
+    // ---------- Cache + AI (polish) ----------
+    // The cache builds the name; the AI only smooths the sound. Meanings stay the cache's own,
+    // so the note is about feel only. Titles, particles, bynames and kept family names are not touched.
+    const POLISH_ROLES = ['given', 'middle', 'family'];
+    function polishRoles(n) {
+        if (!n.pieces) return [];
+        const only = Array.isArray(n.polishOnly) ? n.polishOnly : POLISH_ROLES;
+        return n.pieces.filter(p => only.includes(p.role) && POLISH_ROLES.includes(p.role) && !p.fixed).map(p => p.role);
+    }
+    function buildPolishMessages(list, form, opts = {}) {
+        const lang = opts.lang || 'en';
+        const place = form.target === 'place';
+        const roots = [...new Set(list.map(n => n.root).filter(Boolean))].map(r => STRINGS.en.roots[r]).join(' and ');
+        const full = list.some(n => n.pieces);
+        const lines = [];
+        lines.push(`These ${place ? 'place names' : 'names for people'} were built by joining real ${roots || 'old'} name elements. Some joins may sound stiff.`);
+        lines.push("Polish each one lightly so it flows when said aloud: change only a letter or two, or the sound where two parts meet. Keep the elements recognizable and keep that root's spelling customs. If one already sounds natural, return it unchanged. Go by ear.");
+        if (full) {
+            lines.push('For a full name, change only the parts listed after it; every other word stays exactly as it is.');
+            lines.push('Keep endings that mark a naming custom (such as -son, -ski, -ius, -ensis).');
+        }
+        const must = String(form.mustContain || '').trim();
+        if (must) lines.push(`Keep the letters "${must}" in each name.`);
+        lines.push('');
+        list.forEach((n, i) => {
+            const roles = polishRoles(n);
+            if (n.pieces && roles.length) lines.push(`${i + 1}. "${n.name}" — change only: ${n.pieces.filter(p => roles.includes(p.role)).map(p => `${p.role} "${p.text}"`).join(', ')}`);
+            else lines.push(`${i + 1}. "${n.name}"`);
+        });
+        lines.push('');
+        lines.push(`For each add a short note (under 12 words) in ${lang === 'ko' ? 'Korean' : 'English'} about its feel. ${ROOT_NOTE_RULE}`);
+        if (opts.reading) lines.push(`Also add ${readingRule(lang, full)}.`);
+        lines.push('Reply with ONLY a JSON array, one item per name in the same order, nothing else. Use "name" for a single name; for a full name use "parts" with only the listed parts:');
+        const tail = `${opts.reading ? ', "read": "..."' : ''}, "note": "..."`;
+        const first = list[0] && list[0].pieces && polishRoles(list[0]).length
+            ? `{"n": 1, "parts": {${polishRoles(list[0]).map(r => `"${r}": "..."`).join(', ')}}${tail}}`
+            : `{"n": 1, "name": "..."${tail}}`;
+        lines.push(`[${first}]`);
+        return [
+            { role: 'system', content: 'You are a naming assistant for fiction writers who understands phonetics and old naming customs.' },
+            { role: 'user', content: lines.join('\n') },
+        ];
+    }
+    // The answer items, in order (by "n" when the AI gives it).
+    function polishAnswers(raw, count) {
+        const text = stripThinking(raw).replace(/```(?:json)?/gi, '');
+        const start = text.indexOf('[');
+        const end = text.lastIndexOf(']');
+        let arr = null;
+        if (start !== -1 && end > start) { try { arr = JSON.parse(text.slice(start, end + 1)); } catch { /* salvage below */ } }
+        if (!Array.isArray(arr) && start !== -1) arr = salvageObjects(text);
+        if (!Array.isArray(arr)) return [];
+        const out = new Array(count).fill(null);
+        arr.forEach((it, k) => {
+            if (!it || typeof it !== 'object') return;
+            const n = Number(it.n);
+            const at = Number.isInteger(n) && n >= 1 && n <= count ? n - 1 : k;
+            if (at < count && !out[at]) out[at] = it;
+        });
+        return out;
+    }
+    // A polished word must still be a plain name and close to the cache's own (light polish only).
+    function polishOk(was, now) {
+        if (!now || !looksLikeName(now) || now.length > 40) return false;
+        // Same number of words ("Gornji Volkets" stays two words, a given name stays one).
+        if (now.trim().split(/\s+/).length !== was.trim().split(/\s+/).length) return false;
+        if (!sayable(now)) return false;
+        const a = was.toLowerCase(), b = now.toLowerCase();
+        return a[0] === b[0] && Math.abs(a.length - b.length) <= 3;
+    }
+    // One skeleton + one answer → the polished name, or null to keep the skeleton as it is.
+    function applyPolish(n, ans, form, banned = new Set(), lang = 'en') {
+        if (!ans) return null;
+        const must = String(form.mustContain || '').trim().toLowerCase();
+        const read = String(ans.read ?? ans.reading ?? '').trim().slice(0, 80);
+        const note = String(ans.note ?? '').trim().slice(0, 120);
+        let out;
+        if (n.pieces) {
+            const roles = polishRoles(n);
+            const parts = ans.parts && typeof ans.parts === 'object' ? ans.parts : {};
+            const pieces = n.pieces.map(p => {
+                if (!roles.includes(p.role)) return p;
+                const t = cleanPiece(parts[p.role]);
+                if (!polishOk(p.text, t)) return p;
+                if (t === p.text) return p;
+                if (banned.has(t.toLowerCase())) return p;
+                return { ...p, text: t, orig: p.text };
+            });
+            out = { ...n, pieces, name: pieces.map(p => p.text).join(' ') };
+        } else {
+            const t = cleanPiece(ans.name);
+            const ok = polishOk(n.name, t) && !banned.has(t.toLowerCase());
+            out = { ...n, name: ok ? t : n.name };
+        }
+        if (must && !out.name.toLowerCase().includes(must) && n.name.toLowerCase().includes(must)) out = { ...n };
+        out.polished = true;
+        out.orig = n.pieces ? n.pieces.map(p => p.orig || p.text).join(' ') : n.name;
+        delete out.polishOnly;
+        if (read) out.read = read; else delete out.read;
+        if (note) out.note = note; else delete out.note;
+        return out;
+    }
+    // Ask once for all of them. Never loses names: anything the AI didn't give back stays a plain Cache name.
+    async function polishNames(list, form, st, signal) {
+        const lang = detectLang();
+        const messages = buildPolishMessages(list, form, { lang, reading: !!st.showReading });
+        const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(list.length, st, list.some(n => n.pieces)), signal });
+        const answers = polishAnswers(raw, list.length);
+        const banned = new Set(avoidList(st, form).map(a => String(a).toLowerCase()));
+        let done = 0;
+        const names = list.map((n, i) => {
+            const p = applyPolish(n, answers[i], form, banned, lang);
+            if (p) { done++; return p; }
+            return n;
+        });
+        return { names, done, raw };
     }
 
     // ---------- settings ----------
@@ -1412,7 +1545,7 @@
         if (st.wordNames !== 'filter') st.wordNames = 'mark';
         if (!REASONING_LEVELS.includes(st.reasoning)) st.reasoning = 'default';
         if (!REAL_MODES.includes(st.form.realNames)) st.form.realNames = 'invented';
-        if (st.form.method !== 'cache') st.form.method = 'ai';
+        if (!METHODS.includes(st.form.method)) st.form.method = 'ai';
         st.form.roots = cacheRoots(st.form);
         st.form.ckinds = cacheKinds(st.form);
         st.form.aiRoots = (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x));
@@ -2164,9 +2297,9 @@
     // AI or Cache (people and places only).
     function methodHtml(form) {
         const L = T();
-        const m = isCache(form) ? 'cache' : 'ai';
+        const m = isPolish(form) ? 'polish' : isCache(form) ? 'cache' : 'ai';
         return `<div class="tbd-wide tbd-chipset"><div class="tbd-chips-label">${escapeHtml(L.method)}</div>
-            <div class="tbd-chips">${['ai', 'cache'].map(v => chipHtml('method', v, L.methods[v], m === v)).join('')}</div></div>`;
+            <div class="tbd-chips">${METHODS.map(v => chipHtml('method', v, L.methods[v], m === v)).join('')}</div></div>`;
     }
     // Roots (and, for people, kinds of name). Several can be on; the last one stays on.
     function cacheChipsHtml(form) {
@@ -2267,7 +2400,8 @@
             const realTag = r.real ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.realTip)}">${escapeHtml(L.realTag)}</span>` : '';
             const clicheTag = clicheHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.clicheTip)}">${escapeHtml(L.clicheTag)}</span>` : '';
             const canonTag = canonHit(r) ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.canonTip)}">${escapeHtml(L.canonTag)}</span>` : '';
-            const cacheTag = r.cache ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.cacheTip)}">${escapeHtml(L.cacheTag)}</span>` : '';
+            const cacheTag = r.polished ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.polishTip)}">${escapeHtml(L.polishTag)}</span>`
+                : r.cache ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(L.cacheTip)}">${escapeHtml(L.cacheTag)}</span>` : '';
             const nicks = showNicks && r.nicks?.length ? `<div class="tbd-nicks"><span class="tbd-nicks-label">${escapeHtml(L.nicks)}:</span>${r.nicks.map((n, k) =>
                 `${k ? '<span class="tbd-nick-dot" aria-hidden="true">·</span>' : ''}<button type="button" class="tbd-nick" data-n="${k}" title="${escapeHtml(L.nickCopy)}">${escapeHtml(n)}</button>`).join('')}</div>` : '';
             const menu = menuFor === r ? `<div class="tbd-refine-menu">${REFINE_MODES.map(m =>
@@ -2369,7 +2503,7 @@
             parts: Array.isArray(st.form.parts) ? st.form.parts : ['given'],
             extras: Array.isArray(st.form.extras) ? st.form.extras : [],
             fixedFamily: String($('#tbd_fixed').val() ?? st.form.fixedFamily ?? '').slice(0, 40),
-            method: st.form.method === 'cache' ? 'cache' : 'ai',
+            method: METHODS.includes(st.form.method) ? st.form.method : 'ai',
             roots: cacheRoots(st.form),
             ckinds: cacheKinds(st.form),
             aiRoots: (Array.isArray(st.form.aiRoots) ? st.form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x)),
@@ -2388,6 +2522,7 @@
         const lang = detectLang();
         const count = st.count;
         const avoid = avoidList(st, form);
+        if (isPolish(form)) { await polishGenerate(form, count, avoid, st); return; }
         if (isCache(form)) { cacheGenerate(form, count, avoid, st); return; }
         const messages = buildMessages(form, rollSeeds(count, form), { lang, avoid, reading: !!st.showReading, nicks: nickOn(form, st) });
 
@@ -2443,6 +2578,111 @@
             autoCheck(results);
         }
         renderResultsOnly();
+    }
+
+    // Cache + AI: the cache makes them, one request polishes them all.
+    async function polishGenerate(form, count, avoid, st) {
+        const made = cacheNames(form, count, avoid);
+        rawOpen = false;
+        if (!made.length) { status = { kind: 'error', text: T().err(T().cacheEmpty) }; renderResultsOnly(); return; }
+        busy = true;
+        controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const myController = controller;
+        status = { kind: 'busy', text: '' };
+        renderResultsOnly();
+        let names = made, done = 0, raw;
+        try {
+            ({ names, done, raw } = await polishNames(made, form, st, myController?.signal));
+        } catch (e) {
+            if (controller !== myController) return;
+            if (myController?.signal.aborted || e?.name === 'AbortError') {
+                status = { kind: 'error', text: T().cancelled };
+                busy = false; controller = null; renderResultsOnly();
+                return;
+            }
+        }
+        if (controller !== myController) return;
+        const used = { ...form };
+        results = names.map(n => ({ ...n, form: used }));
+        rememberNames(results.flatMap(memoryNames), st); refreshHistory();
+        save();
+        const L = T();
+        if (done === results.length) status = { kind: 'ok', text: L.found(results.length) };
+        else if (!done) status = { kind: 'error', text: L.polishFail, ...(typeof raw === 'string' ? { raw } : {}) };
+        else status = { kind: 'error', text: L.polishSome(done, results.length), ...(typeof raw === 'string' ? { raw } : {}) };
+        busy = false;
+        controller = null;
+        renderResultsOnly();
+        autoCheck(results);
+    }
+
+    // One polished name (🔄 or one part swapped): a running job like the other single-name swaps.
+    async function polishOne(src, item, st, kind) {
+        const L = T();
+        const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const job = { src, ctl, kind };
+        refining = job;
+        menuFor = null;
+        status = { kind: 'busy', text: '' }; rawOpen = false;
+        renderResultsOnly();
+        let out = { ...item }, done = 0, raw;
+        delete out.polishOnly;
+        try {
+            const r = await polishNames([item], src.form || st.form, st, ctl?.signal);
+            out = r.names[0]; done = r.done; raw = r.raw;
+            delete out.polishOnly;
+        } catch (e) {
+            if (refining !== job) return null;
+            if (ctl?.signal.aborted || e?.name === 'AbortError') { status = { kind: 'error', text: L.cancelled }; refining = null; renderResultsOnly(); return null; }
+        }
+        if (refining !== job) return null;
+        refining = null;
+        if (!done) {
+            // Keep the new cache name, but say the polish didn't happen (and keep "was" honest).
+            if (kind === 'piece' && src.polished) { out.polished = true; out.orig = out.pieces ? out.pieces.map(p => p.orig || p.text).join(' ') : out.name; }
+            status = { kind: 'error', text: L.polishFail, ...(typeof raw === 'string' ? { raw } : {}) };
+        } else status = { kind: 'ok', text: kind === 'piece' ? L.pieceRerolled : L.rerolled };
+        return out;
+    }
+    async function polishReroll(src, st) {
+        const form = src.form || st.form;
+        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
+        const [n] = cacheNames({ ...form, roots: [src.root || cacheRoots(form)[0]] }, 1, avoid);
+        if (!n) { status = { kind: 'error', text: T().err(T().cacheEmpty) }; renderResultsOnly(); return; }
+        const fresh0 = await polishOne(src, n, st, 'reroll');
+        const at = results.indexOf(src);
+        if (!fresh0 || at === -1) { renderResultsOnly(); return; }
+        const fresh = { ...fresh0, form: src.form };
+        const depth = src.depth || 0;
+        let end = at + 1;
+        while (end < results.length && (results[end].depth || 0) > depth) end++;
+        results.splice(at, end - at, fresh);
+        rememberNames(memoryNames(fresh), st); refreshHistory();
+        save();
+        renderResultsOnly();
+        autoCheck([fresh]);
+    }
+    async function polishRerollPiece(src, k, st) {
+        const form = src.form || st.form;
+        const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
+        const old = src.pieces[k];
+        const next = cachePiece(src, k, form, avoid);
+        if (!next) { status = { kind: 'error', text: T().err(T().cacheEmpty) }; renderResultsOnly(); return; }
+        delete next.orig;
+        const pieces = src.pieces.map((p, j) => (j === k ? next : p));
+        const item = { ...src, pieces, name: pieces.map(p => p.text).join(' '), polishOnly: [next.role] };
+        const out = await polishOne(src, item, st, 'piece');
+        if (!out || !results.includes(src) || src.pieces[k] !== old) { renderResultsOnly(); return; }
+        src.pieces = out.pieces;
+        src.name = out.name;
+        if (out.orig) src.orig = out.orig;
+        if (out.read) src.read = out.read;
+        if (out.note) src.note = out.note;
+        delete src.check;
+        rememberNames([src.pieces[k].text], st); refreshHistory();
+        save();
+        renderResultsOnly();
+        autoCheck([src]);
     }
 
     // ---------- reshape one name ----------
@@ -2507,6 +2747,7 @@
         const lang = detectLang();
         const isVariant = (src.depth || 0) > 0 && src.from && REFINE_DESC[src.tag];
         // A first-round Cache name is remade from the cache, right away and for free.
+        if (!isVariant && src.cache && isPolish(src.form || st.form)) { polishReroll(src, st); return; }
         if (!isVariant && src.cache) { cacheReroll(src, st); return; }
         const from = isVariant && src.from.cache ? { ...src.from, pieces: undefined } : src.from;
         const form = aiForm(src.form || st.form, isVariant ? src.from : src);
@@ -2584,6 +2825,7 @@
         else {
             src.pieces = src.pieces.map((p, j) => (j === k ? next : p));
             src.name = src.pieces.map(p => p.text).join(' ');
+            if (src.polished) src.orig = src.pieces.map(p => p.orig || p.text).join(' ');
             delete src.check;
             if (NAME_ROLES.includes(next.role)) { rememberNames([next.text], st); refreshHistory(); }
             save();
@@ -2599,6 +2841,7 @@
         if (busy || refining || !results.includes(src)) return;
         const piece = src.pieces?.[k];
         if (!piece || piece.fixed) return;
+        if (src.cache && isPolish(src.form || settings().form) && POLISH_ROLES.includes(piece.role)) { polishRerollPiece(src, k, settings()); return; }
         if (src.cache) { cacheRerollPiece(src, k, settings()); return; }
         const st = settings();
         const L = T();
@@ -2919,7 +3162,7 @@
             const v0 = String($(this).data('v'));
             if (group === 'method') {
                 if (form.method === v0) return;
-                form.method = v0 === 'cache' ? 'cache' : 'ai';
+                form.method = METHODS.includes(v0) ? v0 : 'ai';
                 save();
                 render();
                 return;
@@ -3029,7 +3272,7 @@
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml,
-            CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
+            CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
         };

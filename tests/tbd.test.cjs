@@ -1251,3 +1251,81 @@ test('v0.2.2: the fragments line says which kind of family name it is', () => {
     assert.match(html, /data-chip="ckind" data-v="royal" aria-pressed="true"/);
     assert.match(html, /왕족·군주/);
 });
+
+// ---------- v0.2.3 Cache + AI ----------
+test('Cache + AI counts as Cache, only for people and places', () => {
+    const { api } = load();
+    assert.equal(api.isCache({ method: 'polish', target: 'person' }), true);
+    assert.equal(api.isPolish({ method: 'polish', target: 'place' }), true);
+    assert.equal(api.isPolish({ method: 'polish', target: 'shop' }), false);
+    assert.equal(api.isPolish({ method: 'cache', target: 'person' }), false);
+    assert.deepEqual([...api.METHODS], ['ai', 'cache', 'polish']);
+});
+
+test('polish prompt lists only the parts it may change, and no meanings', () => {
+    const { api } = load();
+    const form = { method: 'polish', target: 'person', roots: ['oldenglish'], ckinds: ['religious'], mustContain: 'or' };
+    const list = [
+        { name: 'Wulfrith', root: 'oldenglish', cache: true },
+        { name: 'Sister Ormhild of Stainthorpe', root: 'oldenglish', cache: true, kind: 'religious', pieces: [
+            { role: 'title', text: 'Sister', fixed: true }, { role: 'given', text: 'Ormhild' }, { role: 'origin', text: 'of Stainthorpe' }] },
+    ];
+    const user = api.buildPolishMessages(list, form, { lang: 'ko', reading: true })[1].content;
+    assert.match(user, /Old English/);
+    assert.match(user, /1\. "Wulfrith"/);
+    assert.match(user, /2\. "Sister Ormhild of Stainthorpe" — change only: given "Ormhild"/);
+    assert.match(user, /Keep the letters "or"/);
+    assert.match(user, /describe only its feel/);
+    assert.match(user, /in Korean/);
+    assert.doesNotMatch(user, /origin "/);
+});
+
+test('polish answers line up by n, and a missing one stays empty', () => {
+    const { api } = load();
+    const raw = '<think>hmm</think>[{"n": 2, "name": "Bee"}, {"n": 1, "name": "Ay"}]';
+    const out = api.polishAnswers(raw, 3);
+    assert.equal(out[0].name, 'Ay');
+    assert.equal(out[1].name, 'Bee');
+    assert.equal(out[2], null);
+    assert.deepEqual([...api.polishAnswers('nothing here', 2)], []);
+});
+
+test('a polish must stay light: same first letter, same word count, close length', () => {
+    const { api } = load();
+    assert.equal(api.polishOk('Wulfrith', 'Wulfric'), true);
+    assert.equal(api.polishOk('Wulfrith', 'Thomas'), false);
+    assert.equal(api.polishOk('Wulfrith', 'Wulfrithingtonius'), false);
+    assert.equal(api.polishOk('Gornji Volkets', 'Gornji Volkec'), true);
+    assert.equal(api.polishOk('Gornji Volkets', 'Gornjivolkec'), false);
+    assert.equal(api.polishOk('Wulfrith', '{"name'), false);
+});
+
+test('applying a polish keeps fixed parts, marks the original, and falls back when it is off', () => {
+    const { api } = load();
+    const form = { method: 'polish', target: 'person' };
+    const n = { name: 'Godgar Underwood', root: 'oldenglish', cache: true, pieces: [
+        { role: 'given', text: 'Godgar', frags: [] }, { role: 'family', text: 'Underwood', frags: [] }] };
+    const p = api.applyPolish(n, { parts: { given: 'Godgaer', family: 'Xyz' }, read: '고드개어', note: '단단한 느낌' }, form);
+    assert.equal(p.name, 'Godgaer Underwood');
+    assert.equal(p.orig, 'Godgar Underwood');
+    assert.equal(p.polished, true);
+    assert.equal(p.pieces[0].orig, 'Godgar');
+    assert.equal(p.note, '단단한 느낌');
+    // A word on the avoid list keeps the cache's own part.
+    const q = api.applyPolish(n, { parts: { given: 'Godgaer' } }, form, new Set(['godgaer']));
+    assert.equal(q.name, 'Godgar Underwood');
+    assert.equal(api.applyPolish(n, null, form), null);
+    // Must-contain letters can't be polished away.
+    const one = { name: 'Everton', cache: true, root: 'oldenglish' };
+    assert.equal(api.applyPolish(one, { name: 'Evarten' }, { ...form, target: 'place', mustContain: 'ton' }).name, 'Everton');
+    assert.equal(api.applyPolish(one, { name: 'Evertun' }, { ...form, target: 'place' }).name, 'Evertun');
+});
+
+test('one-part polish only touches that part', () => {
+    const { api } = load();
+    const n = { name: 'Edwin Ashford', pieces: [{ role: 'given', text: 'Edwin' }, { role: 'family', text: 'Ashford' }], polishOnly: ['family'] };
+    assert.deepEqual([...api.polishRoles(n)], ['family']);
+    const p = api.applyPolish(n, { parts: { family: 'Ashforde', given: 'Edwyn' } }, { target: 'person' });
+    assert.equal(p.name, 'Edwin Ashforde');
+    assert.equal(p.polishOnly, undefined);
+});
