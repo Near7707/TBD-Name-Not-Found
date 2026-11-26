@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.28
+// TBD — Name Not Found v0.2.29
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -1058,6 +1058,7 @@
     };
     const CACHE_ROOTS = Object.keys(CACHE);
     // First parts of names and places (Chryso-, Zlato-), to spread them out in one list.
+    const TAIL_TEXTS = new Set(CACHE_ROOTS.flatMap(k => CACHE[k].placeTail.map(f => f.t)));
     const HEAD_TEXTS = new Set(CACHE_ROOTS.flatMap(k => [...CACHE[k].head, ...CACHE[k].placeHead].map(f => f.t)));
     const CACHE_KINDS = ['common', 'noble', 'religious', 'royal', 'warrior', 'scholar'];
     const FAMILY_BRANCHES = ['patron', 'place', 'dwell', 'trade', 'looks'];
@@ -1238,6 +1239,13 @@
     function tagRoot(f, r, on) { return on ? { ...f, r } : f; }
     // One given name: head + ending. The two parts never mean the same thing (Wulf + wulf).
     // Merge: the head from one root, the ending from another (root2). Joins follow whichever has the rule.
+    // v0.2.29: a t or l, a vowel, the same t or l again sounds like a stutter (Mart + ata → Martata,
+    // Fel + ella → Felella). Only t and l, and only endings that close on a vowel or -us, so real shapes
+    // like Steinunn, Kenin or Adalolf stay.
+    function echoSyllable(h, t) {
+        const c = String(h).slice(-1).toLowerCase();
+        return /[tl]/.test(c) && /^[aeiouy]/i.test(t) && String(t).charAt(1).toLowerCase() === c && /([aeiouy]|us)$/i.test(t);
+    }
     function cacheGiven(root, g, rnd, root2 = '') {
         const R = CACHE[root];
         const mix = !!root2 && root2 !== root;
@@ -1254,9 +1262,17 @@
             if (!sayable(text)) continue;
             // v0.2.26: the ending must still be there (Mega + a → Mega) and not leave a doubled vowel.
             if (text.toLowerCase() === h.t.toLowerCase() || newDoubleVowel(text, h.t, t.t)) continue;
+            if (echoSyllable(h.t, t.t)) continue;
             return make(h, t);
         }
         return make(R.head[0], tails[0]);
+    }
+    // v0.2.29: Slavic -ovo after a hard sound, -evo after a soft one (Krasnovo, Tikhovo; Kovačevo).
+    function slavicOvo(head, t, E) {
+        if (!/^[oe]vo$/.test(t.t) || E !== CACHE.slavic) return t;
+        const stem = String(head).replace(/[aeiouy]+$/i, '');
+        const want = /(j|c|č|ć|š|ž|đ|ch|sh|zh|ts)$/i.test(stem) ? 'evo' : 'ovo';
+        return t.t === want ? t : (E.placeTail.find(f => f.t === want) || t);
     }
     // A place: head + tail, now and then with "Great …" / "…-on-Sea", or named for a saint (St. Edwin's, Kilbran).
     // Merge: the head from one root and the tail from another (root2); no saint's name then.
@@ -1282,10 +1298,13 @@
         const ofKind = f => !!(f.cats && cats && f.cats.some(c => cats.includes(c)));
         // v0.2.25: an Old English word + a short Latin ending sounds like a joke (Kingsetum, Birchona).
         const shortLatin = mix && root === 'oldenglish' && root2 === 'latin';
+        // v0.2.29: and few Latin endings are left after an English word (mostly -magus), so this pair
+        // goes the natural way round most of the time: a Latin head and an Old English tail (Aurostead).
+        if (shortLatin && rnd() < 0.7) return cachePlace('latin', cats, rnd, plain, 'oldenglish');
         let base = null;
         for (let i = 0; i < 40; i++) {
             const h = pick(heads, rnd);
-            const t = pick(tails, rnd);
+            const t = slavicOvo(h.t, pick(tails, rnd), E);
             if (t.en && h.en === t.en) continue;
             if (h.t.toLowerCase() === t.t.toLowerCase()) continue;
             // Not the same word twice (Castr + castra), nor the same sound (Gor + gorod).
@@ -1293,7 +1312,8 @@
             if (sameSound(h.t, t.t)) continue;
             if (meaningClash(h, t) || twoAdjectives(h, t)) continue;
             if (cats && i < 30 && !ofKind(h) && !ofKind(t)) continue;
-            if (shortLatin && t.t.length <= 4) continue;
+            // v0.2.29: -arium too (Whitarium, Midarium).
+            if (shortLatin && (t.t.length <= 4 || t.t === 'arium')) continue;
             const text = capFirst(glue(h.t, t.t, elide, link));
             if (!sayable(text) || newDoubleVowel(text, h.t, t.t)) continue;
             // r + vowel + r at the join (Akro + oros → Akroros).
@@ -1510,7 +1530,11 @@
         if (rnd() < 0.5) {
             // Latinized from the man's form (Kudryashov, not Kudryashova).
             const f = cacheFamily(root, 'm', rnd);
-            if (['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|[sc]k[aiy]|er)$/.test(f.text)) return { text: noAccents(`${latinStem(f.text)}ius`), frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
+            // v0.2.29: a Latin word stays as it is for a man (Agricola, Naso — not Agricolius, Nasius).
+            // Roman women had no trade or nickname surname, so a woman gets a place name then.
+            const latinWord = root === 'latin' && ['trade', 'looks'].includes(f.branch) && /^[A-Z][a-z]+[ao]$/.test(f.text);
+            if (latinWord && g !== 'f') return { text: f.text, frags: f.frags, branch: f.branch };
+            if (!latinWord && ['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|[sc]k[aiy]|er)$/.test(f.text)) return { text: noAccents(`${latinStem(f.text)}ius`), frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
         }
         const pl = cachePlace(root, null, rnd, true);
         const base = noAccents(pl.text).replace(/(is|us|um|ia|os)$/i, '');
@@ -1642,6 +1666,10 @@
         const isSaintPlace = n => !!n.saint || (n.frags || []).some(f => f.en === 'saint' || f.en === 'church of');
         const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
+        // v0.2.29: places spread out their endings the same way (-magus six times in 20).
+        const usedTails = new Set();
+        const tailsOf = n => (n.pieces ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
+            .concat(isSaintPlace(n) ? ['#saint'] : []);
         const epithets = n => (n.pieces || []).filter(p => p.role === 'epithet' && !ORDINAL_TEXTS.has(p.text)).map(p => p.text.toLowerCase());
         for (let i = 0; i < count; i++) {
             const pair = pairs ? pairs[i % pairs.length] : null;
@@ -1660,6 +1688,8 @@
             if (freshEpi.length) best = freshEpi;
             const freshHeads = best.filter(n => !headsOf(n).some(h => usedHeads.has(h)));
             if (freshHeads.length) best = freshHeads;
+            const freshTails = best.filter(n => !tailsOf(n).some(t => usedTails.has(t)));
+            if (freshTails.length) best = freshTails;
             if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
             if (form.length && form.length !== 'any') {
                 const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
@@ -1672,6 +1702,7 @@
             seen.add(n.name.toLowerCase());
             for (const e of epithets(n)) usedEpi.add(e);
             for (const h of headsOf(n)) usedHeads.add(h);
+            for (const t of tailsOf(n)) usedTails.add(t);
             for (const t of memoryNames(n)) banned.add(t.toLowerCase());
             out.push(n);
         }
@@ -4116,7 +4147,7 @@
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
-            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki,
+            aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki, echoSyllable, slavicOvo, scholarFamily,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },

@@ -2267,3 +2267,41 @@ test('v0.2.28: Archive — places named for a saint stay rare when one list spre
         assert.ok(saints <= 30, `${roots} ${kind}: ${saints} saints in 200`);
     }
 });
+
+test('v0.2.29: Archive — endings spread out, no stutter, Latin scholars keep Latin words, -ovo/-evo', () => {
+    const { api } = load();
+    // 91: Mart + ata, Fel + ella stutter; real shapes stay.
+    assert.ok(api.echoSyllable('Mart', 'ata') && api.echoSyllable('Fel', 'ella') && api.echoSyllable('Fel', 'ellus'));
+    assert.ok(!api.echoSyllable('Stein', 'unn') && !api.echoSyllable('Adal', 'olf') && !api.echoSyllable('Marc', 'ella'));
+    // 93: -ovo after a hard sound, -evo after a soft one.
+    const S = api.CACHE.slavic;
+    const evo = S.placeTail.find(f => f.t === 'evo'), ovo = S.placeTail.find(f => f.t === 'ovo');
+    assert.equal(api.slavicOvo('Krasno', evo, S).t, 'ovo');
+    assert.equal(api.slavicOvo('Tikh', evo, S).t, 'ovo');
+    assert.equal(api.slavicOvo('Kovač', ovo, S).t, 'evo');
+    const rnd = seeded(2030);
+    // 92: a Latin scholar keeps a Latin word as his family name (Agricola, not Agricolius).
+    for (let i = 0; i < 300; i++) {
+        const f = api.scholarFamily('latin', i % 2 ? 'f' : 'm', rnd);
+        assert.ok(!/[ao]ius$/.test(f.text) || !f.frags.some(x => new RegExp(`^${x.t}$`, 'i').test(f.text.replace(/ius$/, 'a')) || new RegExp(`^${x.t}$`, 'i').test(f.text.replace(/ius$/, 'o'))), f.text);
+    }
+    for (const roots of [['latin', 'oldenglish'], ['norman', 'celtic'], ['oldenglish'], ['germanic'], ['slavic']]) {
+        for (let k = 0; k < 5; k++) {
+            const list = api.cacheNames({ target: 'place', method: 'cache', kind: 'town', roots, rootMix: 'merge' }, 20, [], rnd);
+            // 89: one list doesn't pile up one ending.
+            const count = {};
+            for (const r of list) { const t = r.frags[r.frags.length - 1]; if (!/^-|\s/.test(t.t)) count[t.t] = (count[t.t] || 0) + 1; }
+            assert.ok(Math.max(...Object.values(count)) <= 5, `${roots}: ${JSON.stringify(count)}`);
+            for (const r of list) {
+                // 90: no -arium after an Old English word; 93: no -evo after a hard sound.
+                const [h, t] = r.frags.filter(f => f.r || r.frags.length === 2);
+                if (h && t && h.r === 'oldenglish' && t.r === 'latin') assert.notEqual(t.t, 'arium', r.name);
+                assert.ok(!/[knrtdbpmlv]evo/.test(r.name), r.name);
+            }
+        }
+    }
+    for (const gender of ['masculine', 'feminine']) for (const r of api.cacheNames({ target: 'person', method: 'cache', roots: ['latin'], ckinds: ['common', 'scholar'], gender, parts: ['given', 'family'] }, 40, [], rnd)) {
+        const g = r.pieces.find(p => p.role === 'given');
+        if (g.frags.length >= 2) assert.ok(!api.echoSyllable(g.frags[0].t, g.frags[1].t), r.name);
+    }
+});
