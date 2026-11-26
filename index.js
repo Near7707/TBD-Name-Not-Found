@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.1
+// TBD — Name Not Found v0.2.2
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -63,9 +63,10 @@
             clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
             method: 'Made with', methods: { ai: 'AI', cache: 'Cache' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
-            roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse' },
+            roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse', greek: 'Ancient Greek', slavic: 'Slavic' },
             aiRootAny: 'Any', aiRootOff: { like: 'Not used now: the "Like this" words lead.', cosmic: 'Not used now: Lovecraftian invented names stay eldritch.' },
-            ck: { common: 'Common name', noble: 'Noble house', religious: 'Monastic / saint' },
+            ck: { common: 'Common name', noble: 'Noble house', religious: 'Monastic / saint', royal: 'Royal / ruler', warrior: 'Warrior / byname', scholar: 'Scholar (Latin)' },
+            branch: { patron: "father's name", place: 'home place', dwell: 'where they lived', trade: 'trade', looks: 'looks / nickname' },
             fragments: 'fragments', cacheTag: 'CACHE', cacheTip: 'Built from name fragments. No AI was used.',
             foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from cache`,
             cacheEmpty: 'No new names left in the cache for these choices. Try other roots or conditions.',
@@ -148,9 +149,10 @@
             clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
             method: '만드는 방식', methods: { ai: 'AI', cache: 'Cache' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
-            roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽' },
+            roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽', greek: '고대 그리스', slavic: '슬라브' },
             aiRootAny: '상관없음', aiRootOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', cosmic: '지금은 안 써요: 러브크래프트풍 지어낸 이름은 이질적인 이름이라서요.' },
-            ck: { common: '일반 인명', noble: '귀족 가문', religious: '수도원·성인' },
+            ck: { common: '일반 인명', noble: '귀족 가문', religious: '수도원·성인', royal: '왕족·군주', warrior: '전사·별칭', scholar: '학자 (라틴식)' },
+            branch: { patron: '아버지 이름', place: '출신 지명', dwell: '사는 곳', trade: '직업', looks: '생김새·별명' },
             fragments: 'fragments', cacheTag: 'CACHE', cacheTip: '이름 조각으로 만든 이름이에요. AI는 안 썼어요.',
             foundCache: n => `200 OK — 캐시에서 이름 ${n}개 찾음`,
             cacheEmpty: '이 조건으론 캐시에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
@@ -566,7 +568,7 @@
     const SYLLABLES = { short: [1, 2], medium: [2, 3], long: [3, 4], any: [1, 4] };
 
     // Start letters a root (almost) never uses: a Latin name can't start with W.
-    const ROOT_NO_START = { latin: 'WK', norse: 'CW', celtic: 'WJ', norman: 'K' };
+    const ROOT_NO_START = { latin: 'WK', norse: 'CW', celtic: 'WJ', norman: 'K', greek: 'WJQFVY', slavic: 'QX' };
     const LIKE_FOCUS = ['its opening sound', 'its vowels', 'its ending', 'its rhythm', 'its consonants'];
 
     function pick(arr, rnd = Math.random) { return arr[Math.floor(rnd() * arr.length)]; }
@@ -763,6 +765,9 @@
     // ---------- Cache (names from built-in fragments, no AI) ----------
     // Each fragment: "Text=English meaning=Korean meaning[=categories]". Only well-known meanings;
     // an empty meaning means "just an ending". Categories tie place fragments to place kinds.
+    // Careful: a category with no meaning needs three "=" ("um===town").
+    // v0.2.2: meanings checked against Behind the Name, the Wikipedia lists of Germanic and Slavic name
+    // elements and of British place-name elements, and German / Slavic / Greek place-name references.
     function F(s) {
         return s.split(';').map(x => x.trim()).filter(Boolean).map(x => {
             const [t, en = '', ko = '', cats = ''] = x.split('=');
@@ -771,59 +776,158 @@
             return f;
         });
     }
+    // Shared English-style bynames (Ironside, Fairhair, Forkbeard, Erik the Red) and royal epithets.
+    const WAR_EN = {
+        head: F('Iron=iron=쇠;Strong=strong=억센;Long=long=긴;Red=red=붉은;Fair=fair=고운;Grey=grey=잿빛;Black=black=검은;Blood=blood=피;Storm=storm=폭풍;Wolf=wolf=늑대;Stone=stone=돌;Silver=silver=은;Bright=bright=빛나는;Fork=forked=갈라진'),
+        tail: F('hand=hand=손;arm=arm=팔;sword=sword=칼;beard=beard=수염;hair=hair=머리카락;shield=shield=방패;axe=axe=도끼;bow=bow=활;heart=heart=심장;side=side=옆구리;foot=foot=발;tooth=tooth=이빨;spear=spear=창;helm=helmet=투구'),
+        whole: F('the Red=the Red=붉은 이;the Bold=the Bold=대담한 이;the Grim=the Grim=사나운 이;the Tall=the Tall=키 큰 이;the Young=the Young=젊은 이;the Old=the Old=늙은 이;the Black=the Black=검은 이;the Fair=the Fair=고운 이;the Wolf=the Wolf=늑대;the Raven=the Raven=큰까마귀;the Fearless=the Fearless=겁 없는 이;the Silent=the Silent=말 없는 이'),
+    };
+    const ROYAL_EN = F('the Fair=the Fair=고운 이;the Bold=the Bold=대담한 이;the Great=the Great=위대한 이;the Wise=the Wise=현명한 이;the Just=the Just=정의로운 이;the Pious=the Pious=경건한 이;the Young=the Young=젊은 이;the Elder=the Elder=나이 든 이;the Good=the Good=선한 이;the Lion=the Lion=사자;the Peaceful=the Peaceful=평화로운 이;the Learned=the Learned=학식 있는 이;the Conqueror=the Conqueror=정복자;the Brave=the Brave=용감한 이');
+    const ORDINALS = F('II=the Second=2세;III=the Third=3세;IV=the Fourth=4세;V=the Fifth=5세;VI=the Sixth=6세;VII=the Seventh=7세;VIII=the Eighth=8세;IX=the Ninth=9세');
     const CACHE = {
         latin: {
-            head: F('Silv=forest=숲;Luc=light=빛;Aur=gold=금;Sever=stern=엄격한;Clar=clear, bright=맑은;Fort=strong=강한;Flor=flower=꽃;Vit=life=생명;Fel=lucky=행운의;Ver=true=참된;Prim=first=첫째;Val=strong, well=굳센;Dom=lord=주인;Pac=peace=평화;Fid=faith=믿음;Sanct=holy=거룩한;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Stell=star=별;Ign=fire=불;Vent=wind=바람;Mar=sea=바다;Terr=earth=땅;Aqu=water=물;Noct=night=밤;Cael=sky=하늘'),
-            masc: F('us==;ius==;ianus=belonging to=~에 속한;inus=like=~ 같은;ian=belonging to=~에 속한'),
-            fem: F('a==;ia==;ina=like=~ 같은;ana=belonging to=~에 속한;illa=little=작은;ella=little=작은'),
-            placeHead: F('Silv=forest=숲=forest;Aqu=water=물=water;Mar=sea=바다=coast;Terr=earth=땅;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Luc=light=빛;Aur=gold=금;Fort=strong=강한=fort;Flor=flower=꽃=field;Vent=wind=바람=hill/coast;Petr=rock=바위=hill;Mont=mountain=산=hill;Lac=lake=호수=water;Port=harbor=항구=coast;Prat=meadow=풀밭=field;Castr=fort=요새=fort;Font=spring=샘=water'),
-            placeTail: F('ia=land of=~의 땅;ium=place of=~의 터=town/fort;um===town;ana=belonging to=~에 속한;etum=grove of=~나무 숲=forest;arium=place for=~ 두는 곳=town/fort;ona===town/coast'),
-            family: 'nomen', noble: 'de', of: 'de', titles: { m: ['Frater', 'Sanctus'], f: ['Soror', 'Sancta'] },
+            head: F('Silv=forest=숲;Luc=light=빛;Aur=gold=금;Sever=stern=엄격한;Clar=clear, bright=맑은;Fort=strong=강한;Flor=flower=꽃;Vit=life=생명;Fel=lucky=행운의;Ver=true=참된;Prim=first=첫째;Val=strong, well=굳센;Dom=lord=주인;Pac=peace=평화;Fid=faith=믿음;Sanct=holy=거룩한;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Stell=star=별;Ign=fire=불;Vent=wind=바람;Mar=sea=바다;Terr=earth=땅;Aqu=water=물;Noct=night=밤;Cael=sky=하늘;'
+                + 'Magn=great=큰;Ferr=iron=쇠;Lup=wolf=늑대;Urs=bear=곰;Aquil=eagle=독수리;Corv=raven=큰까마귀;Columb=dove=비둘기;Ros=rose=장미;Laur=laurel=월계수;Oliv=olive=올리브;Bon=good=좋은;Ben=well=잘;Grat=grace=은총;Iust=just=의로운;Fest=festive=축제의;Hilar=cheerful=쾌활한;Constant=steadfast=한결같은;Vict=victory=승리;August=venerable=존엄한;Max=greatest=가장 큰;Mart=Mars=마르스;Vesper=evening=저녁;Argent=silver=은'),
+            masc: F('us==;ius==;ianus=belonging to=~에 속한;inus=like=~ 같은;ian=belonging to=~에 속한;ellus=little=작은;ulus=little=작은;icus=of, belonging to=~의;atus=having=~을 지닌'),
+            fem: F('a==;ia==;ina=like=~ 같은;ana=belonging to=~에 속한;illa=little=작은;ella=little=작은;ula=little=작은;ica=of, belonging to=~의;ata=having=~을 지닌;iana=belonging to=~에 속한'),
+            placeHead: F('Silv=forest=숲=forest;Aqu=water=물=water;Mar=sea=바다=coast;Terr=earth=땅;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Luc=light=빛;Aur=gold=금;Fort=strong=강한=fort;Flor=flower=꽃=field;Vent=wind=바람=hill/coast;Petr=rock=바위=hill;Mont=mountain=산=hill;Lac=lake=호수=water;Port=harbor=항구=coast;Prat=meadow=풀밭=field;Castr=fort=요새=fort;Font=spring=샘=water;'
+                + 'Aquil=eagle=독수리=hill;Lup=wolf=늑대=forest;Urs=bear=곰=forest;Ferr=iron=쇠=hill;Vin=wine=포도주=field;Oliv=olive=올리브=field;Laur=laurel=월계수=forest;Magn=great=큰;Alt=high=높은=hill/fort;Flumin=river=강=water;Sax=rock=바위=hill;Pin=pine=소나무=forest;Querc=oak=참나무=forest;Fag=beech=너도밤나무=forest;Nemor=grove=작은 숲=forest;Pont=bridge=다리=water/town;Insul=island=섬=coast/water;Camp=field=들판=field;Vic=village=마을=town;Colon=settlement=정착지=town;Hort=garden=정원=field'),
+            placeTail: F('ia=land of=~의 땅;ium=place of=~의 터=town/fort;um===town;ana=belonging to=~에 속한;etum=grove of=~나무 숲=forest;arium=place for=~ 두는 곳=town/fort;ona===town/coast;'
+                + 'acum=place of=~의 터=town;magus=field, market=들판·장터=town/field;briga=hill fort=언덕 요새=fort/hill;dunum=fort, hill=요새·언덕=fort/hill;castra=army camp=진지=fort'),
+            placePost: F('Magna=great=큰;Parva=little=작은;Superior=upper=위쪽;Inferior=lower=아래쪽'),
+            family: 'nomen', branches: { patron: 4, trade: 2, looks: 3 },
+            trade: F('Faber=smith=대장장이;Pictor=painter=화가;Agricola=farmer=농부;Pastor=shepherd=목동;Sutor=shoemaker=구두장이;Nauta=sailor=뱃사람;Scriba=scribe=서기;Medicus=physician=의사;Piscator=fisherman=어부;Molitor=miller=방앗간 주인'),
+            looks: F('Rufus=red-haired=빨강 머리;Longus=tall=키 큰;Crassus=stout=뚱뚱한;Paullus=small=작은;Niger=dark=거무스름한;Calvus=bald=대머리;Naso=big-nosed=코 큰;Barbatus=bearded=수염 난;Albinus=pale=하얀;Capito=big-headed=머리 큰'),
+            noble: 'de', of: 'de', titles: { m: ['Frater', 'Sanctus'], f: ['Soror', 'Sancta'] }, royal: { m: ['Rex'], f: ['Regina'] },
+            royalEpithets: F('Magnus=the Great=위대한 이;Pius=the Pious=경건한 이;Iustus=the Just=정의로운 이;Felix=the Fortunate=행운의 이;Sapiens=the Wise=현명한 이;Victor=the Victor=승리자;Augustus=the Venerable=존엄한 이'),
+            war: F('Ferox=fierce=사나운;Fortis=brave=용감한;Rufus=red-haired=빨강 머리;Audax=bold=대담한;Ferreus=made of iron=쇠 같은;Bellator=warrior=전사;Leo=lion=사자;Lupus=wolf=늑대;Torquatus=wearing a neck-ring=목걸이 두른'),
         },
         oldenglish: {
-            head: F('Ethel=noble=고귀한;Ed=wealth, fortune=부·행운;Alf=elf=요정;Os=god=신;God=god=신;Leof=dear=사랑하는;Wulf=wolf=늑대;Sig=victory=승리;Cuth=famous=이름난;Here=army=군대;Hild=battle=전투;Wil=will=의지;Beorn=warrior=전사;Ald=old=오래된;Win=friend=벗;Bert=bright=빛나는;Mild=gentle=온화한;Ceol=ship=배;Wig=battle=싸움;Swith=strong=강한'),
-            masc: F('win=friend=벗;ric=ruler=통치자;wulf=wolf=늑대;mund=protection=보호;ward=guardian=지킴이;stan=stone=돌;red=counsel=조언;frith=peace=평화;helm=helmet=투구;bert=bright=빛나는;gar=spear=창'),
-            fem: F('gyth=battle=전투;wyn=joy=기쁨;flaed=beauty=아름다움;burh=fortress=요새;thryth=strength=힘;hild=battle=전투'),
-            placeHead: F('Ash=ash tree=물푸레나무=forest;Brad=broad=넓은;Ald=old=오래된;Brom=broom=금작화=field;Thorn=thorn=가시나무=forest/field;Stan=stone=돌=hill/fort;Hart=stag=수사슴=forest;Lang=long=긴;Sut=south=남쪽;Nor=north=북쪽;Wes=west=서쪽;East=east=동쪽;Cran=crane=두루미=water;Brock=badger=오소리=forest;Fox=fox=여우=forest;Ever=wild boar=멧돼지=forest;Elm=elm=느릅나무=forest;Black=black=검은;Whit=white=흰;Hasel=hazel=개암나무=forest;Salt=salt=소금=coast;Kings=king\'s=왕의=town/fort;Chip=market=장터=town;Mil=mill=방앗간=water/town'),
-            placeTail: F('ton=farmstead=농가 마을=town/field;ham=homestead=마을=town/field;wick=dwelling, trading place=마을·장터=town;ford=river crossing=여울=water;bury=fort=성채=fort/town;ley=woodland clearing=숲속 빈터=forest/field;wood=wood=숲=forest;hurst=wooded hill=숲 언덕=forest/hill;den=valley=골짜기=hill/field;mere=lake=호수=water;well=spring=샘=water/town;stead=place=터=town/field;field=open land=들판=field;combe=valley=골짜기=hill;cliffe=cliff=절벽=hill/coast;don=hill=언덕=hill;worth=enclosure=울타리 친 땅=town/field;bourne=stream=시내=water;holt=wood=숲=forest;mouth=river mouth=하구=coast/water;port=harbor, market town=항구·장터=coast/town;ridge=ridge=산등성이=hill;brook=stream=시내=water;wold=forest upland=숲 고원=forest/hill;hithe=landing place=나루터=water/coast'),
-            family: 'english', noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] },
+            head: F('Ethel=noble=고귀한;Ed=wealth, fortune=부·행운;Alf=elf=요정;Os=god=신;God=god=신;Leof=dear=사랑하는;Wulf=wolf=늑대;Sig=victory=승리;Cuth=famous=이름난;Here=army=군대;Hild=battle=전투;Wil=will=의지;Beorn=warrior=전사;Ald=old=오래된;Win=friend=벗;Bert=bright=빛나는;Mild=gentle=온화한;Ceol=ship=배;Wig=battle=싸움;Swith=strong=강한;'
+                + 'Cyne=royal=왕다운;Cen=bold, keen=용감한;Deor=dear=소중한;Eorl=warrior, noble=전사·귀족;Frith=peace=평화;Gar=spear=창;Wiht=spirit=정령;Wyn=joy=기쁨;Beald=bold=대담한;Brun=brown=갈색;Blith=happy=즐거운;Heah=high=높은;Eofor=boar=멧돼지;Hroth=fame=명성;Ecg=sword edge=칼날;Noth=courage=용기;Cwic=alive=살아 있는;Frea=lord=주인;Guth=battle=전투'),
+            masc: F('win=friend=벗;ric=ruler=통치자;wulf=wolf=늑대;mund=protection=보호;ward=guardian=지킴이;stan=stone=돌;red=counsel=조언;frith=peace=평화;helm=helmet=투구;bert=bright=빛나는;gar=spear=창;'
+                + 'here=army=군대;laf=heir=후손;noth=courage=용기;sige=victory=승리;wald=rule=다스림;heard=hardy=굳센;mer=famous=이름난;bald=bold=대담한'),
+            fem: F('gyth=battle=전투;wyn=joy=기쁨;flaed=beauty=아름다움;burh=fortress=요새;thryth=strength=힘;hild=battle=전투;gifu=gift=선물;swith=strength=힘;waru=care, protection=보살핌'),
+            placeHead: F('Ash=ash tree=물푸레나무=forest;Brad=broad=넓은;Ald=old=오래된;Brom=broom=금작화=field;Thorn=thorn=가시나무=forest/field;Stan=stone=돌=hill/fort;Hart=stag=수사슴=forest;Lang=long=긴;Sut=south=남쪽;Nor=north=북쪽;Wes=west=서쪽;East=east=동쪽;Cran=crane=두루미=water;Brock=badger=오소리=forest;Fox=fox=여우=forest;Ever=wild boar=멧돼지=forest;Elm=elm=느릅나무=forest;Black=black=검은;Whit=white=흰;Hasel=hazel=개암나무=forest;Salt=salt=소금=coast;Kings=king\'s=왕의=town/fort;Chip=market=장터=town;Mil=mill=방앗간=water/town;'
+                + 'Ac=oak=참나무=forest;Bex=boxwood=회양목=forest;Ship=sheep=양=field;Swin=swine=돼지=field;Cald=cold=차가운;Clay=clay=점토=field;Craw=crow=까마귀;Bar=barley=보리=field;Apple=apple=사과=field;Ling=heather=헤더=field/hill;Farn=fern=고사리=field/forest;Buck=buck=수사슴=forest;Bever=beaver=비버=water;Wal=foreigners (Britons)=이방인(브리튼인);Mid=middle=가운데;Birch=birch=자작나무=forest'),
+            placeTail: F('ton=farmstead=농가 마을=town/field;ham=homestead=마을=town/field;wick=dwelling, trading place=마을·장터=town;ford=river crossing=여울=water;bury=fort=성채=fort/town;ley=woodland clearing=숲속 빈터=forest/field;wood=wood=숲=forest;hurst=wooded hill=숲 언덕=forest/hill;den=valley=골짜기=hill/field;mere=lake=호수=water;well=spring=샘=water/town;stead=place=터=town/field;field=open land=들판=field;combe=valley=골짜기=hill;cliffe=cliff=절벽=hill/coast;don=hill=언덕=hill;worth=enclosure=울타리 친 땅=town/field;bourne=stream=시내=water;holt=wood=숲=forest;mouth=river mouth=하구=coast/water;port=harbor, market town=항구·장터=coast/town;ridge=ridge=산등성이=hill;brook=stream=시내=water;wold=forest upland=숲 고원=forest/hill;hithe=landing place=나루터=water/coast;'
+                + 'stoke=outlying farmstead=딸린 농가=field/town;stow=holy meeting place=거룩한 모임터=town;minster=great church=큰 교회·수도원=town;chester=old fort=옛 성채=fort/town;cot=cottage=오두막=town/field;croft=enclosed field=울 친 밭=field;fold=animal pen=가축 우리=field;hope=enclosed valley=막힌 골짜기=hill/field;law=rounded hill=둥근 언덕=hill;shaw=thicket=덤불숲=forest;hay=hedged land=산울타리 땅=field;royd=clearing=개간지=forest/field;moss=bog=늪=water/field;ey=island=섬=water/coast;pool=pool, harbour=웅덩이·항구=water/coast;bridge=bridge=다리=water/town'),
+            placePre: F('Great=great=큰;Little=little=작은;Upper=upper=위쪽;Lower=lower=아래쪽;North=north=북쪽;South=south=남쪽;East=east=동쪽;West=west=서쪽;Long=long=긴;Market=market=장터=town'),
+            placePost: F('-on-Sea=by the sea=바닷가=coast;-le-Street=near the Roman road=옛 로마 길가=town;-upon-Avon=on the river (avon = river)=강가 (avon = 강)=water/town;Magna=great (Latin)=큰 (라틴어);Parva=little (Latin)=작은 (라틴어)'),
+            saint: { m: "St. {}'s", f: "St. {}'s" },
+            family: 'english', branches: { patron: 2, place: 2, dwell: 2, trade: 2, looks: 2 },
+            dwellPre: F('At=at=곁에;By=by=옆에;Under=under=아래'),
+            dwellWord: F('wood=wood=숲=at/by/under;water=water=물가=at/by;well=spring=샘=at/by;hill=hill=언덕=at/under;field=field=들판=at/by;lee=clearing=숲속 빈터=at;brook=brook=시내=at/by;gate=gate=문=at;down=hill=언덕=under'),
+            dwell: F('Nash=at the ash=물푸레나무 곁;Noakes=at the oaks=참나무 곁;Hill=hill=언덕;Brook=brook=시내;Wood=wood=숲;Marsh=marsh=늪;Green=village green=마을 풀밭;Lane=lane=골목;Bridge=bridge=다리;Cross=crossroads=네거리;Banks=hillside=언덕배기;Shaw=thicket=덤불숲;Dale=valley=골짜기;Moore=moor=황야;Ford=ford=여울'),
+            trade: F('Smith=smith=대장장이;Thatcher=roof thatcher=지붕 이는 사람;Fletcher=arrow maker=화살 만드는 사람;Cooper=barrel maker=통 만드는 사람;Fisher=fisherman=어부;Baker=baker=빵 굽는 사람;Miller=miller=방앗간 주인;Turner=lathe worker=선반공;Carter=cart driver=짐수레꾼;Mason=stonemason=석공;Wright=craftsman=장인;Webster=weaver=베 짜는 사람;Shepherd=shepherd=양치기;Hunter=hunter=사냥꾼;Ward=watchman=파수꾼;Millward=mill keeper=방앗간지기;Arkwright=chest maker=궤짝 만드는 사람;Chapman=merchant=행상;Cook=cook=요리사;Knight=servant, knight=시종·기사'),
+            looks: F('Brown=brown-haired=갈색 머리;White=fair-haired, pale=흰 머리·흰 얼굴;Black=dark-haired=검은 머리;Armstrong=strong in the arm=팔심 센;Young=young=젊은;Little=small=작은;Long=tall=키 큰;Short=short=키 작은;Strong=strong=억센;Read=red-haired=빨강 머리;Grey=grey-haired=잿빛 머리;Blythe=cheerful=명랑한;Fairfax=fair-haired=고운 머리;Swift=quick=빠른;Bold=bold=대담한'),
+            noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King'], f: ['Queen'] },
         },
         norman: {
-            head: F('Beau=beautiful=아름다운;Bel=fine=고운;Clair=clear=맑은;Fleur=flower=꽃;Gai=merry=명랑한;Dou=sweet=다정한;Blanc=white=흰;Roy=king=왕;Lys=lily=백합;Aim=loved=사랑받는;Ros=rose=장미;Jol=pretty=예쁜;Hardi=bold=대담한;Sauv=wild=야생의;Gent=noble=고귀한;Fid=faithful=믿음직한'),
-            masc: F('ard=hardy=굳센;ert=bright=빛나는;ault=rule=다스림;in=little=작은;on=little=작은;ier=one who=~하는 사람;et=little=작은'),
-            fem: F('ine=little=작은;elle=little=작은;ette=little=작은;ise==;ienne=of=~의'),
-            placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Riv=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town'),
-            placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pre=meadow=풀밭=field'),
-            family: 'french', noble: 'de', of: 'de', titles: { m: ['Frère', 'Saint'], f: ['Sœur', 'Sainte'] },
+            head: F('Beau=beautiful=아름다운;Bel=fine=고운;Clair=clear=맑은;Fleur=flower=꽃;Gai=merry=명랑한;Dou=sweet=다정한;Blanc=white=흰;Roy=king=왕;Lys=lily=백합;Aim=loved=사랑받는;Ros=rose=장미;Jol=pretty=예쁜;Hardi=bold=대담한;Sauv=wild=야생의;Gent=noble=고귀한;Fid=faithful=믿음직한;'
+                + 'Grand=great=큰;Fier=proud=당당한;Franc=free=자유로운;Bon=good=좋은;Joi=joy=기쁨;Lou=wolf=늑대;Esper=hope=희망;Guill=will=의지;Rich=ruler=통치자;Ber=bear=곰;Hu=mind=마음;Lam=land=땅;Ro=fame=명성;Thi=people=백성;Ger=spear=창;Bau=bold=대담한;Gui=wood=숲'),
+            masc: F('ard=hardy=굳센;ert=bright=빛나는;ault=rule=다스림;in=little=작은;on=little=작은;ier=one who=~하는 사람;et=little=작은;aume=helmet=투구;aud=rule=다스림;ouin=friend=벗;ric=ruler=통치자;ran=raven=큰까마귀;mond=protection=보호;land=land=땅'),
+            fem: F('ine=little=작은;elle=little=작은;ette=little=작은;ise==;ienne=of=~의;ilde=battle=전투;inde=gentle=부드러운'),
+            placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Riv=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town;'
+                + 'Chesne=oak=참나무=forest;Loup=wolf=늑대=forest;Fleur=flower=꽃=field;Vieux=old=오래된;Ros=rose=장미=field;Chastel=castle=성=fort;Gué=ford=여울=water;Mesnil=dwelling=집터=town;Bec=stream=시내=water;Tour=tower=탑=fort;Sable=sand=모래=coast;Ormes=elms=느릅나무들=forest;Lande=heath=황야=field'),
+            placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pre=meadow=풀밭=field;'
+                + 'tot=homestead (Norse)=집터 (노르드어)=town;beuf=hut (Norse)=오두막 (노르드어)=town;fleur=inlet=물굽이=coast/water;bec=stream=시내=water;ay=estate=영지=town;bourg=market town=장터 마을=town;lande=heath=황야=field;tour=tower=탑=fort;chastel=castle=성=fort;mesnil=dwelling=집터=town'),
+            placePre: F('Grand-=great=큰;Petit-=little=작은'),
+            placePost: F('-sur-Mer=on the sea=바닷가=coast;-le-Grand=the great=큰;-le-Petit=the little=작은;-la-Foret=by the forest=숲가=forest'),
+            saint: { m: 'Saint-{}', f: 'Sainte-{}' },
+            family: 'french', branches: { patron: 1, place: 3, dwell: 2, trade: 2, looks: 2 },
+            dwellPre: F('Du=of the=~의;Dela=of the=~의'),
+            dwellWord: F('bois=wood=숲=du;pont=bridge=다리=du;mont=hill=언덕=du;val=valley=골짜기=du;pre=meadow=풀밭=du;chesne=oak=참나무=du;moulin=mill=방앗간=du;four=oven=화덕=du;puis=well=우물=du;bourg=market town=장터 마을=du;champ=field=들판=du;mesnil=dwelling=집터=du;'
+                + 'croix=cross=십자가=dela;fontaine=spring=샘=dela;rue=street=길=dela;porte=gate=문=dela;haye=hedge=산울타리=dela;motte=mound=둔덕=dela;roche=rock=바위=dela;mare=pond=연못=dela;cour=courtyard=안뜰=dela;fosse=ditch=도랑=dela'),
+            trade: F('Lefebvre=smith=대장장이;Boulanger=baker=빵 굽는 사람;Meunier=miller=방앗간 주인;Charpentier=carpenter=목수;Berger=shepherd=양치기;Tisserand=weaver=베 짜는 사람;Mercier=haberdasher=잡화상;Barbier=barber=이발사;Marchand=merchant=상인;Fournier=oven keeper=화덕지기;Chevalier=horseman, knight=기사;Page=page boy=시동;Granger=granary keeper=곳간지기'),
+            looksPre: { t: 'Le', en: 'the', ko: '그' },
+            looks: F('blanc=white, fair-haired=흰;brun=brown-haired=갈색 머리;roux=red-haired=빨강 머리;petit=small=작은;grand=tall=큰;gros=stout=뚱뚱한;bel=handsome=잘생긴;bon=good=선한;noir=black-haired=검은 머리;sage=wise=현명한;fort=strong=억센;jeune=young=젊은;doux=gentle=다정한;hardi=bold=대담한;court=short=키 작은'),
+            noble: 'de', of: 'de', titles: { m: ['Frère', 'Saint'], f: ['Sœur', 'Sainte'] }, royal: { m: ['Roi'], f: ['Reine'] },
         },
         germanic: {
-            head: F('Adal=noble=고귀한;Bern=bear=곰;Ger=spear=창;Hild=battle=전투;Rad=counsel=조언;Sieg=victory=승리;Wolf=wolf=늑대;Gott=god=신;Kun=bold=대담한;Lud=famous=이름난;Wil=will=의지;Frid=peace=평화;Ans=god=신;Diet=people=백성;Hart=hardy=굳센;Arn=eagle=독수리;Rein=counsel=조언;Eber=boar=멧돼지;Gund=battle=전투;Irm=great=큰;Walt=rule=다스림;Ot=wealth=부'),
-            masc: F('bert=bright=빛나는;hard=hardy=굳센;mund=protection=보호;wald=rule=다스림;rich=ruler=통치자;win=friend=벗;fried=peace=평화;helm=helmet=투구;bald=bold=대담한;wig=battle=싸움;olf=wolf=늑대;brand=sword, fire=칼·불길;mar=famous=이름난'),
-            fem: F('hild=battle=전투;gard=enclosure=울타리;trud=strength=힘;lind=gentle=부드러운;burg=fortress=요새;run=secret=비밀;heid=nature=됨됨이'),
-            placeHead: F('Stein=stone=돌=hill/fort;Ross=horse=말=field;Eich=oak=참나무=forest;Lind=linden=보리수=forest/town;Wolf=wolf=늑대=forest;Hoh=high=높은=hill/fort;Neu=new=새로운=town;Alt=old=오래된;Schwarz=black=검은=forest;Weiss=white=흰;Rot=red=붉은;Grun=green=푸른=field/forest;Tann=fir=전나무=forest;Birk=birch=자작나무=forest;Fels=rock=바위=hill;Muhl=mill=방앗간=water/town;Kirch=church=교회=town;Hirsch=stag=수사슴=forest;Falk=falcon=매=hill;Sonn=sun=해;Eis=ice=얼음=hill/water;Wald=forest=숲=forest'),
-            placeTail: F('burg=fortress=성채=fort/town;berg=mountain=산=hill;heim=home=집·마을=town;dorf=village=마을=town/field;feld=field=들판=field;wald=forest=숲=forest;bach=stream=시내=water;stein=stone, rock=돌·바위=hill/fort;furt=ford=여울=water;hof=farmstead=농장=field/town;au=water meadow=물가 풀밭=water/field;hausen=houses=집들=town;see=lake=호수=water;bruck=bridge=다리=water/town;tal=valley=골짜기=hill/field;hafen=harbor=항구=coast;hain=grove=작은 숲=forest;horn=peak=봉우리=hill'),
-            family: 'place', noble: 'von', of: 'von', titles: { m: ['Bruder', 'Sankt'], f: ['Schwester', 'Sankt'] },
+            head: F('Adal=noble=고귀한;Bern=bear=곰;Ger=spear=창;Hild=battle=전투;Rad=counsel=조언;Sieg=victory=승리;Wolf=wolf=늑대;Gott=god=신;Kun=bold=대담한;Lud=famous=이름난;Wil=will=의지;Frid=peace=평화;Ans=god=신;Diet=people=백성;Hart=hardy=굳센;Arn=eagle=독수리;Rein=counsel=조언;Eber=boar=멧돼지;Gund=battle=전투;Irm=great=큰;Walt=rule=다스림;Ot=wealth=부;'
+                + 'Brun=armour, brown=갑옷·갈색;Erchen=pure=순수한;Erl=warrior, noble=전사·귀족;Folc=people=백성;Fram=spear=창;Frod=wise=지혜로운;Gisel=pledge=서약;Grim=mask, helmet=가면·투구;Heim=home=집;Hug=mind, spirit=마음;Isen=iron=쇠;Land=land=땅;Liut=people=백성;Mein=might=힘;Nord=north=북쪽;Rud=fame=명성;Wid=wood=숲;Ing=the god Ing=잉(신);Helm=helmet=투구;Her=army=군대;Engel=Angles (a tribe)=앵글족'),
+            masc: F('bert=bright=빛나는;hard=hardy=굳센;mund=protection=보호;wald=rule=다스림;rich=ruler=통치자;win=friend=벗;fried=peace=평화;helm=helmet=투구;bald=bold=대담한;wig=battle=싸움;olf=wolf=늑대;brand=sword, fire=칼·불길;mar=famous=이름난;'
+                + 'ger=spear=창;gast=guest=손님;land=land=땅;man=man=사람;rad=counsel=조언;ram=raven=큰까마귀;grim=mask=가면;gang=path=길;mut=mind, spirit=마음;wart=guardian=지킴이'),
+            fem: F('hild=battle=전투;gard=enclosure=울타리;trud=strength=힘;lind=gentle=부드러운;burg=fortress=요새;run=secret=비밀;heid=kind, rank=됨됨이·지위;gund=battle=전투;swind=strength=힘'),
+            placeHead: F('Stein=stone=돌=hill/fort;Ross=horse=말=field;Eich=oak=참나무=forest;Lind=linden=보리수=forest/town;Wolf=wolf=늑대=forest;Hoh=high=높은=hill/fort;Neu=new=새로운=town;Alt=old=오래된;Schwarz=black=검은=forest;Weiss=white=흰;Rot=red=붉은;Grun=green=푸른=field/forest;Tann=fir=전나무=forest;Birk=birch=자작나무=forest;Fels=rock=바위=hill;Muhl=mill=방앗간=water/town;Kirch=church=교회=town;Hirsch=stag=수사슴=forest;Falk=falcon=매=hill;Sonn=sun=해;Eis=ice=얼음=hill/water;Wald=forest=숲=forest;'
+                + 'Esch=ash tree=물푸레나무=forest;Buch=beech=너도밤나무=forest;Salz=salt=소금=water;Kalt=cold=차가운;Lang=long=긴;Breit=broad=넓은;Hasel=hazel=개암나무=forest;Erl=alder=오리나무=forest/water;Kreuz=cross=십자가=town;Gold=gold=금;Adler=eagle=독수리=hill;Raben=raven=큰까마귀=forest;Bären=bear=곰=forest;Mittel=middle=가운데;Brunn=spring=샘=water;Wies=meadow=풀밭=field;Hasen=hare=토끼=field'),
+            placeTail: F('burg=fortress=성채=fort/town;berg=mountain=산=hill;heim=home=집·마을=town;dorf=village=마을=town/field;feld=field=들판=field;wald=forest=숲=forest;bach=stream=시내=water;stein=stone, rock=돌·바위=hill/fort;furt=ford=여울=water;hof=farmstead=농장=field/town;au=water meadow=물가 풀밭=water/field;hausen=houses=집들=town;see=lake=호수=water;bruck=bridge=다리=water/town;tal=valley=골짜기=hill/field;hafen=harbor=항구=coast;hain=grove=작은 숲=forest;horn=peak=봉우리=hill;'
+                + 'ingen=descendants of=~의 후손 (마을)=town;stadt=town, place=도시·터=town;rode=clearing=개간지=forest/field;weiler=hamlet=작은 마을=town/field;wang=meadow=풀밭=field;ach=river=강=water;beck=stream=시내=water;zell=monk\'s cell=수도원 방=town;loh=grove=작은 숲=forest;winkel=corner=구석=town/field;werder=river island=강섬=water;schlag=felled clearing=벌목지=forest'),
+            placePre: F('Ober=upper=위쪽;Unter=lower=아래쪽;Nieder=lower=아래쪽;Groß=great=큰;Klein=little=작은'),
+            placePost: F('am See=at the lake=호숫가=water'),
+            saint: { m: 'Sankt {}', f: 'Sankt {}' },
+            family: 'place', branches: { place: 3, dwell: 3, trade: 3, looks: 2 },
+            dwell: F('Bach=by the stream=시냇가;Brunner=by the well=샘가;Steiner=by the rocks=바위 곁;Imhof=at the farmstead=농장 안;Buchner=by the beeches=너도밤나무 곁;Wiesner=by the meadow=풀밭 곁;Waldner=in the forest=숲속;Holzer=in the woods=숲속;Moser=by the bog=늪가;Bühler=on the hill=언덕 위;Lindner=by the lindens=보리수 곁;Imboden=on the valley floor=골짜기 바닥;Thaler=in the valley=골짜기;Auer=by the water meadow=물가 풀밭'),
+            trade: F('Müller=miller=방앗간 주인;Schmidt=smith=대장장이;Schneider=tailor=재단사;Fischer=fisherman=어부;Weber=weaver=베 짜는 사람;Bauer=farmer=농부;Becker=baker=빵 굽는 사람;Wagner=wagon maker=수레 만드는 사람;Jäger=hunter=사냥꾼;Zimmermann=carpenter=목수;Koch=cook=요리사;Maurer=wall builder=미장이;Kaufmann=merchant=상인;Schäfer=shepherd=양치기;Böttcher=cooper=통 만드는 사람;Pfeiffer=piper=피리 부는 사람'),
+            looks: F('Klein=small=작은;Groß=big=큰;Lang=tall=키 큰;Kurz=short=키 작은;Schwarz=black-haired=검은 머리;Weiss=white-haired=흰 머리;Braun=brown-haired=갈색 머리;Roth=red-haired=빨강 머리;Fuchs=fox (red-haired, sly)=여우 (빨강 머리·꾀);Jung=young=젊은;Kahl=bald=대머리;Stark=strong=억센;Krause=curly-haired=곱슬머리;Neumann=newcomer=새로 온 사람'),
+            noble: 'von', of: 'von', titles: { m: ['Bruder', 'Sankt'], f: ['Schwester', 'Sankt'] }, royal: { m: ['König'], f: ['Königin'] },
         },
         celtic: {
-            head: F('Bran=raven=큰까마귀;Cad=battle=전투;Gwen=white, blessed=흰·복된;Gwyn=white, fair=흰;Mor=great=큰;Kier=dark=어두운;Finn=fair=흰;Aed=fire=불;Con=hound=사냥개;Duv=black=검은;Bri=high=높은;Mael=follower=따르는 이;Ard=high=높은;Rua=red=붉은;Teg=fair=고운;Llew=light=빛;Bryn=hill=언덕;Fer=man=사내'),
-            masc: F('an=little=작은;in=little=작은;ach==;wyn=white=흰;gal=valor=용맹'),
-            fem: F('wen=white, blessed=흰·복된;een=little=작은;nat=little=작은;ia=='),
+            head: F('Bran=raven=큰까마귀;Cad=battle=전투;Gwen=white, blessed=흰·복된;Gwyn=white, fair=흰;Mor=great=큰;Kier=dark=어두운;Finn=fair=흰;Aed=fire=불;Con=hound=사냥개;Duv=black=검은;Bri=hill, high=언덕·높은;Mael=follower=따르는 이;Ard=high=높은;Rua=red=붉은;Teg=fair=고운;Llew=light=빛;Bryn=hill=언덕;Fer=man=사내;'
+                + 'Cael=slender=날씬한;Cain=handsome, good=잘생긴;Cam=crooked=굽은;Ken=head=머리;Bleid=wolf=늑대;Art=bear=곰;Blath=flower=꽃;Barr=top=꼭대기;Brig=might=힘;Car=love=사랑;Cian=long, distant=먼;Don=brown=갈색;Gov=smith=대장장이;Cyn=first, chief=으뜸;Arian=silver=은;Rhi=king=왕'),
+            masc: F('an=little=작은;in=little=작은;ach==;wyn=white=흰;gal=valor=용맹;fael=prince=왕자;rix=king=왕;mar=great=큰'),
+            fem: F('wen=white, blessed=흰·복된;een=little=작은;nat=little=작은;ia==;ait=little=작은;finn=fair=흰'),
             // Celtic places put the place word first: Aber + glas, Dun + more.
-            placeHead: F('Aber=river mouth=하구=coast/water;Inver=river mouth=하구=coast/water;Llan=church enclosure=교회 마을=town;Kil=church=교회=town;Dun=fort=요새=fort/hill;Caer=fort=성=fort/town;Pen=head, top=꼭대기=hill;Tre=homestead=마을=town/field;Bally=town=마을=town;Glen=valley=골짜기=hill/field;Ard=height=높은 곳=hill;Strath=wide valley=넓은 골짜기=field/hill;Loch=lake=호수=water;Ros=headland, wood=곶·숲=coast/forest;Bryn=hill=언덕=hill;Coed=wood=숲=forest;Nant=stream, valley=시냇골=water/hill;Porth=harbor=항구=coast'),
-            placeTail: F('more=great=큰;beg=small=작은;glas=blue-green=푸른;wen=white=흰;duff=black=검은;ard=high=높은;roe=red=붉은;fin=fair=흰;derry=oak wood=참나무 숲;carrick=rock=바위;lyn=lake=호수;mawr=great=큰;fach=small=작은'),
-            family: 'celtic', noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] },
+            placeHead: F('Aber=river mouth=하구=coast/water;Inver=river mouth=하구=coast/water;Llan=church enclosure=교회 마을=town;Kil=church=교회=town;Dun=fort=요새=fort/hill;Caer=fort=성=fort/town;Pen=head, top=꼭대기=hill;Tre=homestead=마을=town/field;Bally=town=마을=town;Glen=valley=골짜기=hill/field;Ard=height=높은 곳=hill;Strath=wide valley=넓은 골짜기=field/hill;Loch=lake=호수=water;Ros=headland, wood=곶·숲=coast/forest;Bryn=hill=언덕=hill;Coed=wood=숲=forest;Nant=stream, valley=시냇골=water/hill;Porth=harbor=항구=coast;'
+                + 'Ben=mountain=산=hill;Knock=hill=언덕=hill;Drum=ridge=산등성이=hill;Inch=island=섬=water/coast;Ennis=island=섬=water/coast;Clon=meadow=풀밭=field;Kin=head=머리=hill;Lis=small ringfort=작은 원형 요새=fort;Rath=ringfort=원형 요새=fort;Carrick=rock=바위=hill/coast;Tully=hillock=작은 언덕=hill;Cwm=valley=골짜기=hill;Blaen=upland=고지대=hill;Pant=hollow=우묵한 곳=field;Pol=pool=웅덩이=water;Ynys=island=섬=coast;Kyle=narrows=좁은 해협=coast;Slieve=mountain=산=hill;Cashel=stone ringfort=돌 원형 요새=fort;Tober=well=우물=water;Derry=oak grove=참나무 숲=forest;Auch=field=들판=field;Moy=plain=평원=field;Shan=old=오래된'),
+            placeTail: F('more=great=큰;beg=small=작은;glas=blue-green=푸른;wen=white=흰;duff=black=검은;ard=high=높은;roe=red=붉은;fin=fair=흰;derry=oak wood=참나무 숲;carrick=rock=바위;lyn=lake=호수;mawr=great=큰;fach=small=작은;'
+                + 'bane=white=흰;boy=yellow=노란;brack=speckled=얼룩덜룩한;garv=rough=거친;gorm=blue, dark=검푸른;lea=light grey=잿빛;reagh=streaked=줄무늬진;noe=new=새로운;cool=nook=구석;sally=willows=버드나무'),
+            // Kil + a name = "church of" that saint (Kilbride: church of Brigit).
+            saint: { m: 'Kil{}', f: 'Kil{}' },
+            family: 'celtic', branches: { patron: 4, trade: 2, looks: 2 },
+            trade: F('MacGowan=son of the smith=대장장이의 아들;MacIntyre=son of the carpenter=목수의 아들;MacNab=son of the abbot=수도원장의 아들;MacPherson=son of the parson=교구 사제의 아들;MacTaggart=son of the priest=사제의 아들;MacClery=son of the cleric=성직자의 아들;MacWard=son of the bard=음유시인의 아들;Gow=smith=대장장이'),
+            looks: F('Lloyd=grey=잿빛;Vaughan=small=작은;Gough=red=붉은;Gwyn=white, fair=흰;Moyle=bald=대머리;Bain=fair=흰;Roy=red=붉은;Dow=black=검은;Begg=small=작은;More=big=큰;Duff=black=검은;Boyd=yellow-haired=노란 머리'),
+            noble: 'of', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King'], f: ['Queen'] },
         },
         norse: {
-            head: F('Thor=Thor (thunder god)=토르(천둥신);Ulf=wolf=늑대;Arn=eagle=독수리;Bjarn=bear=곰;Sig=victory=승리;Ragn=counsel of the gods=신들의 뜻;Gunn=battle=전투;Hall=rock=바위;As=god=신;Ing=the god Ing=잉(신);Ketil=cauldron=솥;Stein=stone=돌;Rafn=raven=큰까마귀;Frey=lord=주인;Vig=battle=싸움;Grim=mask=가면;Orm=serpent=뱀;Svan=swan=백조;Har=army=군대'),
-            masc: F('ulf=wolf=늑대;bjorn=bear=곰;mund=protection=보호;stein=stone=돌;kel=cauldron, helmet=솥·투구;vald=ruler=다스림;geir=spear=창;leif=heir=후손;vard=guardian=지킴이;fast=firm=굳은;vid=wood=나무'),
-            fem: F('frid=beautiful=아름다운;hild=battle=전투;dis=goddess=여신;run=secret=비밀;gerd=enclosure=울타리;borg=protection=보호'),
-            placeHead: F('Kirk=church=교회=town;Stain=stone=돌=hill;Ask=ash tree=물푸레나무=forest;Lang=long=긴;Brei=broad=넓은;Sand=sand=모래=coast;Fisk=fish=물고기=water/coast;Hval=whale=고래=coast;Myr=bog=늪=water/field;Hest=horse=말=field;Kald=cold=차가운;Skog=forest=숲=forest;Nor=north=북쪽;Aust=east=동쪽;Hvit=white=흰;Ulf=wolf=늑대=forest;Ravn=raven=큰까마귀;Thor=Thor=토르'),
-            placeTail: F('by=farm, village=마을=town/field;thorpe=outlying farm=외딴 농가=field;thwaite=clearing=빈터=forest/field;toft=homestead=집터=town;dale=valley=골짜기=hill/field;fell=mountain=산=hill;beck=stream=시내=water;holm=islet=작은 섬=coast/water;vik=bay=만=coast;ness=headland=곶=coast;kirk=church=교회=town;gate=street=거리=town;garth=enclosure=울타리=town/field;scar=rock, cliff=바위 절벽=hill/coast;fjord=fjord=피오르=coast;stad=place=터=town;lund=grove=작은 숲=forest;howe=mound=언덕 무덤=hill'),
-            family: 'norse', noble: 'af', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] },
+            head: F('Thor=Thor (thunder god)=토르(천둥신);Ulf=wolf=늑대;Arn=eagle=독수리;Bjarn=bear=곰;Sig=victory=승리;Ragn=counsel of the gods=신들의 뜻;Gunn=battle=전투;Hall=rock=바위;As=god=신;Ing=the god Ing=잉(신);Ketil=cauldron=솥;Stein=stone=돌;Rafn=raven=큰까마귀;Frey=lord=주인;Vig=battle=싸움;Grim=mask=가면;Orm=serpent=뱀;Svan=swan=백조;Har=army=군대;'
+                + 'Ey=island, luck=섬·행운;Odd=spear point=창끝;Hjalm=helmet=투구;Gang=path=길;Fast=firm=굳은;Thjod=people=백성;Hlif=shield=방패;Rand=shield rim=방패;Raud=red=붉은;Stor=big=큰;Hun=cub=새끼 곰;Hus=house=집;Hreid=nest, home=둥지;Dag=day=낮;Aud=wealth=부;Gaut=Geat (a tribe)=가우트족'),
+            masc: F('ulf=wolf=늑대;bjorn=bear=곰;mund=protection=보호;stein=stone=돌;kel=cauldron, helmet=솥·투구;vald=ruler=다스림;geir=spear=창;leif=heir=후손;vard=guardian=지킴이;fast=firm=굳은;vid=wood=나무;'
+                + 'grim=mask=가면;orm=serpent=뱀;finn=Finn=핀인;mod=courage=용기;brand=sword=칼;bard=beard=수염;rik=mighty=힘센'),
+            fem: F('frid=beautiful=아름다운;hild=battle=전투;dis=goddess=여신;run=secret=비밀;gerd=enclosure=울타리;borg=protection=보호;unn=wave=물결;bjorg=help=도움;ny=new=새로운;heid=honour=명예;thrud=strength=힘'),
+            placeHead: F('Kirk=church=교회=town;Stain=stone=돌=hill;Ask=ash tree=물푸레나무=forest;Lang=long=긴;Brei=broad=넓은;Sand=sand=모래=coast;Fisk=fish=물고기=water/coast;Hval=whale=고래=coast;Myr=bog=늪=water/field;Hest=horse=말=field;Kald=cold=차가운;Skog=forest=숲=forest;Nor=north=북쪽;Aust=east=동쪽;Hvit=white=흰;Ulf=wolf=늑대=forest;Ravn=raven=큰까마귀;Thor=Thor=토르;'
+                + 'Birk=birch=자작나무=forest;Alm=elm=느릅나무=forest;Berg=mountain=산=hill;Dal=valley=골짜기=hill/field;Aker=field=밭=field;Fen=marsh=늪=water;Heid=heath=황야=field/hill;Brun=brown=갈색;Blom=flower=꽃=field;Borg=fortress=요새=fort;Hus=house=집=town;Lin=flax=아마=field'),
+            placeTail: F('by=farm, village=마을=town/field;thorpe=outlying farm=외딴 농가=field;thwaite=clearing=빈터=forest/field;toft=homestead=집터=town;dale=valley=골짜기=hill/field;fell=mountain=산=hill;beck=stream=시내=water;holm=islet=작은 섬=coast/water;vik=bay=만=coast;ness=headland=곶=coast;kirk=church=교회=town;gate=street=거리=town;garth=enclosure=울타리=town/field;scar=rock, cliff=바위 절벽=hill/coast;fjord=fjord=피오르=coast;stad=place=터=town;lund=grove=작은 숲=forest;howe=mound=언덕 무덤=hill;'
+                + 'keld=spring=샘=water;foss=waterfall=폭포=water/hill;gill=ravine=협곡=hill/water;rigg=ridge=산등성이=hill;tarn=mountain lake=산속 호수=water/hill;ster=farm=농장=field;bost=farm=농장=field;berg=mountain=산=hill;bakke=bank, ridge=둑·언덕=hill;heim=home=집·마을=town;borg=fortress=요새=fort;ey=island=섬=coast/water'),
+            placePre: F('Store=big=큰;Lille=little=작은;Ytre=outer=바깥쪽;Indre=inner=안쪽'),
+            family: 'norse', branches: { patron: 6, dwell: 4 },
+            dwell: F('Dahl=valley=골짜기;Lund=grove=작은 숲;Berg=mountain=산;Strand=shore=바닷가;Holm=islet=작은 섬;Haugen=the mound=언덕 무덤;Bakke=slope=비탈;Lie=hillside=산비탈;Nes=headland=곶;Vik=bay=만;Moen=the heath=황야;Foss=waterfall=폭포;Hagen=the enclosure=울타리 친 땅;Rud=clearing=개간지;Gard=farm=농장'),
+            noble: 'af', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King'], f: ['Queen'] },
+        },
+        greek: {
+            head: F('Theo=god=신;Dio=of Zeus=제우스의;Niko=victory=승리;Aristo=best=가장 뛰어난;Demo=the people=백성;Kalli=beautiful=아름다운;Agatho=good=좋은;Eu=good, well=좋은;Xeno=stranger=나그네;Andro=man=사내;Hippo=horse=말;Philo=loving=사랑하는;Lyko=wolf=늑대;Kleo=glory=영광;Strato=army=군대;Neo=new=새로운;Archo=rule=다스림;Hermo=Hermes=헤르메스;Apollo=Apollo=아폴론;Nausi=ship=배;Aglao=splendid=빛나는;Chryso=gold=금;Poly=many=많은;Mega=great=큰;Timo=honour=명예;Pheido=sparing=아끼는;Agano=gentle=온화한;Metro=mother=어머니;Chaire=rejoicing=기뻐하는'),
+            masc: F('doros=gift=선물;kles=glory=영광;nikos=victory=승리;machos=battle=전투;stratos=army=군대;genes=born=태어난;phanes=appearing=나타난;philos=friend=벗;krates=power=힘;laos=people=백성;demos=the people=백성;ippos=horse=말;archos=ruler=통치자;menes=might=기운'),
+            fem: F('dora=gift=선물;kleia=glory=영광;nike=victory=승리;mache=battle=전투;strate=army=군대;geneia=born=태어난;phila=loved=사랑받는;ippe=horse=말;ia=='),
+            placeHead: F('Nea=new=새로운=town;Hiero=holy=거룩한=town;Helio=sun=해;Megalo=great=큰=town;Chryso=gold=금;Kalli=beautiful=아름다운;Leuko=white=흰;Akro=topmost=꼭대기=hill/fort;Petro=rock=바위=hill;Niko=victory=승리=town;Limno=lake=호수=water;Oino=wine=포도주=field;Chalko=copper=구리=hill;Hydro=water=물=water;Dryo=oak=참나무=forest;Pyrgo=tower=탑=fort;Melano=black=검은;Argyro=silver=은'),
+            placeTail: F('polis=city=도시=town/fort;limen=harbor=항구=coast;nesos=island=섬=coast/water;kome=village=마을=town/field;pyrgos=tower=탑=fort;akra=cape=곶=coast/hill;oros=mountain=산=hill;potamos=river=강=water;drymos=woodland=숲=forest;ion=place of=~의 터=town'),
+            // Greek joins drop the vowel where two meet (Aristo + ippos → Aristippos).
+            elide: true,
+            family: 'greek', branches: { patron: 3, place: 2 },
+            noble: 'of', of: 'of', titles: { m: ['Adelphos', 'Hagios'], f: ['Adelphe', 'Hagia'] }, royal: { m: ['Basileus'], f: ['Basilissa'] },
+            royalEpithets: F('Soter=the Saviour=구원자;Nikator=the Victor=승리자;Megas=the Great=위대한 이;Euergetes=the Benefactor=은인;Kallinikos=gloriously victorious=빛나는 승리자;Philadelphos=sibling-loving=형제를 아끼는 이'),
+            noOrdinals: true,
+            war: F('Monophthalmos=one-eyed=애꾸눈;Poliorketes=the Besieger=성을 함락하는 자;Keraunos=thunderbolt=벼락;Nikator=the Victor=승리자;Hoplomachos=armoured fighter=중무장 전사;Leon=the lion=사자'),
+        },
+        slavic: {
+            head: F('Vladi=rule=다스림;Slavo=glory=영광;Miro=peace=평화;Bogo=god=신;Bori=battle=싸움;Dobro=good=좋은;Rado=joy, counsel=기쁨·조언;Jaro=fierce, strong=굳센;Lyubo=love=사랑;Milo=dear=다정한;Bole=great=큰;Voji=warrior=전사;Brani=defend=지킴;Sveto=holy, light=거룩한·빛;Zlato=gold=금;Drago=precious=소중한;Ostro=sharp=날카로운;Luto=fierce=사나운;Stani=to become=되다;Dali=far=먼;Tiho=quiet=고요한;Veli=great=큰;Rati=war=전쟁;Vse=all=모든'),
+            masc: F('mir=peace, world=평화·세상;slav=glory=영광;bor=battle=싸움;gost=guest=손님;vit=lord=주인;polk=regiment=군대;volod=ruler=다스림;drag=dear=소중한;dan=given=주어진;gnev=anger=분노;mil=dear=다정한'),
+            fem: F('slava=glory=영광;mira=peace=평화;mila=dear=다정한;dana=given=주어진;ka=little=작은;a=='),
+            placeHead: F('Bel=white=흰;Novo=new=새로운=town;Cherno=black=검은;Zlato=gold=금;Gor=mountain=산=hill;Dub=oak=참나무=forest;Lip=linden=보리수=forest/town;Brez=birch=자작나무=forest;Kamen=stone=돌=hill/fort;Vod=water=물=water;Bystr=swift=빠른=water;Suh=dry=마른;Mokr=wet=젖은=water/field;Volk=wolf=늑대=forest;Vyshe=upper=위쪽=fort/town;Slav=glory=영광=town;Krasno=red, fair=붉은·고운;Les=forest=숲=forest;Pol=field=들=field;Ozer=lake=호수=water;Rib=fish=물고기=water;Star=old=오래된;Tikh=quiet=고요한'),
+            placeTail: F('grad=town, castle=도시·성=town/fort;gorod=town=도시=town/fort;ovo=belonging to=~의 (마을)=town/field;evo=belonging to=~의 (마을)=town/field;ets=little=작은=town;ica=little=작은=water/town;ovka=small village=작은 마을=field/town;selo=village=마을=town/field;gora=mountain=산=hill;dol=valley=골짜기=hill/field;vrh=peak=봉우리=hill;polje=field=들판=field;reka=river=강=water;voda=water=물=water;ozero=lake=호수=water'),
+            elide: true,
+            placePre: F('Gornji=upper=위쪽;Donji=lower=아래쪽;Veliki=great=큰;Mali=little=작은;Stari=old=오래된'),
+            saint: { m: 'Sveti {}', f: 'Sveta {}' },
+            family: 'slavic', branches: { patron: 3, place: 2, dwell: 2, trade: 2, looks: 2 },
+            dwell: F('Gorski=of the mountains=산 사람;Zagorski=beyond the hills=언덕 너머;Podgorski=below the hill=언덕 아래;Zarecki=beyond the river=강 건너;Zalesski=beyond the forest=숲 너머;Dubrovski=by the oak wood=참나무 숲가;Lipski=by the lindens=보리수 곁'),
+            trade: F('Kovač=smith=대장장이;Kuznetsov=smith\'s child=대장장이의 자식;Melnik=miller=방앗간 주인;Kravets=tailor=재단사;Rybak=fisherman=어부;Pekar=baker=빵 굽는 사람;Bondar=cooper=통 만드는 사람;Goncharov=potter\'s child=도공의 자식;Plotnikov=carpenter\'s child=목수의 자식;Kolar=wheelwright=수레바퀴 장인'),
+            looks: F('Belov=white=흰;Chernov=black=검은;Ryzhov=red-haired=빨강 머리;Sedov=grey-haired=흰머리;Novak=newcomer=새로 온 사람;Maly=small=작은;Krasnov=red, handsome=붉은·잘생긴;Lysenko=bald=대머리;Kudryashov=curly-haired=곱슬머리'),
+            noble: 'ski', of: 'of', titles: { m: ['Brat', 'Sveti'], f: ['Sestra', 'Sveta'] }, royal: { m: ['Knyaz'], f: ['Knyaginya'] },
         },
     };
     const CACHE_ROOTS = Object.keys(CACHE);
-    const CACHE_KINDS = ['common', 'noble', 'religious'];
+    const CACHE_KINDS = ['common', 'noble', 'religious', 'royal', 'warrior', 'scholar'];
+    const FAMILY_BRANCHES = ['patron', 'place', 'dwell', 'trade', 'looks'];
     // Place kinds → which place fragments fit (none listed = any fragment).
     const PLACE_CATS = {
         city: ['town', 'fort'], town: ['town', 'field'], street: ['town'], building: ['town', 'fort'], transit: ['water', 'coast', 'town'],
@@ -863,11 +967,13 @@
     }
     const VOWEL = /[aeiouyæœ]/i;
     // Glue two fragments: one letter where they'd double up (Wulf + frith → Wulfrith).
-    function glue(a, b) {
+    // With elide (Greek, Slavic) a vowel meeting a vowel drops the first one (Aristo + ippos → Aristippos).
+    function glue(a, b, elide = false) {
         if (!a) return b;
         if (!b) return a;
         const last = a[a.length - 1].toLowerCase();
         const first = b[0].toLowerCase();
+        if (elide && VOWEL.test(last) && VOWEL.test(first) && a.length > 2) return a.slice(0, -1) + b;
         if (last === first) return a + b.slice(1);
         return a + b;
     }
@@ -885,10 +991,26 @@
         const ok = list.filter(f => !f.cats || f.cats.some(c => cats.includes(c)));
         return ok.length ? ok : list;
     }
+    // Only fragments that fit, and nothing when none do (for the optional extras).
+    function strictCats(list = [], cats) {
+        if (!cats) return list;
+        return list.filter(f => !f.cats || f.cats.some(c => cats.includes(c)));
+    }
     function genderOf(form, rnd) {
         if (form.gender === 'feminine') return 'f';
         if (form.gender === 'masculine') return 'm';
         return rnd() < 0.5 ? 'm' : 'f';
+    }
+    function pickWeighted(weights, rnd) {
+        const keys = Object.keys(weights).filter(k => weights[k] > 0);
+        let r = rnd() * keys.reduce((s, k) => s + weights[k], 0);
+        for (const k of keys) { r -= weights[k]; if (r < 0) return k; }
+        return keys[keys.length - 1];
+    }
+    // Archo + archos, Slav + slava: the same word twice.
+    function sameStem(a, b) {
+        const x = dropVowel(a).toLowerCase(), y = b.toLowerCase();
+        return x.length >= 3 && y.startsWith(x.slice(0, 4));
     }
     // One given name: head + ending. The two parts never mean the same thing (Wulf + wulf).
     function cacheGiven(root, g, rnd) {
@@ -898,68 +1020,189 @@
             const h = pick(R.head, rnd);
             const t = pick(tails, rnd);
             if (t.en && h.en === t.en) continue;
-            const text = glue(h.t, t.t);
+            if (sameStem(h.t, t.t)) continue;
+            const text = glue(h.t, t.t, R.elide);
             if (!sayable(text)) continue;
             return { text, frags: [h, t], root };
         }
         const h = R.head[0], t = tails[0];
-        return { text: glue(h.t, t.t), frags: [h, t], root };
+        return { text: glue(h.t, t.t, R.elide), frags: [h, t], root };
     }
-    function cachePlace(root, cats, rnd) {
+    // A place: head + tail, now and then with "Great …" / "…-on-Sea", or named for a saint (St. Edwin's, Kilbran).
+    function cachePlace(root, cats, rnd, plain = false) {
         const R = CACHE[root];
+        if (!plain && R.saint && (!cats || cats.includes('town')) && rnd() < 0.07) {
+            const g = rnd() < 0.5 ? 'm' : 'f';
+            const who = cacheGiven(root, g, rnd);
+            const pattern = R.saint[g];
+            const name = pattern.startsWith('Kil') ? who.text.toLowerCase() : who.text;
+            const text = pattern.replace('{}', name);
+            const lead = pattern.split('{}')[0].trim().replace(/-$/, '');
+            const frag = lead === 'Kil' ? { t: 'Kil', en: 'church of', ko: '~의 교회' } : { t: lead, en: 'saint', ko: '성인' };
+            if (sayable(text)) return { text, frags: [frag, ...who.frags], root, saint: true };
+        }
         const heads = fitCats(R.placeHead, cats);
         const tails = fitCats(R.placeTail, cats);
+        let base = null;
         for (let i = 0; i < 20; i++) {
             const h = pick(heads, rnd);
             const t = pick(tails, rnd);
             if (t.en && h.en === t.en) continue;
             if (h.t.toLowerCase() === t.t.toLowerCase()) continue;
-            const text = capFirst(glue(h.t, t.t));
+            const text = capFirst(glue(h.t, t.t, R.elide));
             if (!sayable(text)) continue;
-            return { text, frags: [h, t], root };
+            base = { text, frags: [h, t], root };
+            break;
         }
-        return { text: capFirst(glue(heads[0].t, tails[0].t)), frags: [heads[0], tails[0]], root };
+        if (!base) base = { text: capFirst(glue(heads[0].t, tails[0].t, R.elide)), frags: [heads[0], tails[0]], root };
+        if (plain || rnd() >= 0.12) return base;
+        // Now and then an extra word: before (Great, Ober, Lille) or after (-on-Sea, Magna, am See).
+        const pre = strictCats(R.placePre, cats).filter(f => f.en !== base.frags[0].en);
+        const post = strictCats(R.placePost, cats);
+        const usePre = pre.length && (!post.length || rnd() < 0.5);
+        const list = usePre ? pre : post;
+        if (!list.length) return base;
+        const a = pick(list, rnd);
+        let text;
+        if (usePre) text = a.t.endsWith('-') ? a.t + base.text : `${a.t} ${base.text}`;
+        else text = a.t.startsWith('-') ? base.text + a.t : `${base.text} ${a.t}`;
+        return { text, frags: usePre ? [a, ...base.frags] : [...base.frags, a], root };
     }
     const SON = { t: 'son', en: 'son', ko: '아들' };
-    // A family name the way each root makes one.
+    const LATIN_END = (t) => ({ t, en: 'Latin ending', ko: '라틴식 끝' });
+    // Slavic family names change for women: -ov → -ova, -ski → -ska, Maly → Mala.
+    function slavicFem(text) {
+        if (/sk[iy]$/.test(text)) return text.replace(/sk[iy]$/, 'ska');
+        if (/(ov|ev|in)$/.test(text)) return `${text}a`;
+        if (/y$/.test(text)) return text.replace(/y$/, 'a');
+        return text;
+    }
+    function dropVowel(text) { return text.replace(/[aeiouy]+$/i, ''); }
+    // One family name of a given kind (branch): father's name, home place, where they lived, trade, or looks.
+    function cacheFamilyBranch(root, branch, g, rnd) {
+        const R = CACHE[root];
+        const place = () => cachePlace(root, null, rnd, true);
+        const fem = s => (root === 'slavic' && g === 'f' ? slavicFem(s) : s);
+        if (branch === 'patron') {
+            switch (R.family) {
+                case 'nomen': { // Roman family name: head + -ius (Silvius)
+                    const h = pick(R.head, rnd);
+                    return { text: glue(h.t, 'ius'), frags: [h, { t: 'ius', en: 'family of', ko: '~ 집안' }] };
+                }
+                case 'english': { // father's name + s / son
+                    const f = cacheGiven(root, 'm', rnd);
+                    const end = rnd() < 0.5 ? { t: 's', en: "'s (child of)", ko: '~의 (자식)' } : SON;
+                    return { text: f.text + end.t, frags: [...f.frags, end] };
+                }
+                case 'french': { // Fitz + father's name (FitzGerald)
+                    const f = cacheGiven(root, 'm', rnd);
+                    return { text: `Fitz${f.text}`, frags: [{ t: 'Fitz', en: 'son of', ko: '~의 아들' }, ...f.frags] };
+                }
+                case 'celtic': { // Mac / O' + a given name
+                    const f = cacheGiven(root, 'm', rnd);
+                    const pre = rnd() < 0.6 ? { t: 'Mac', en: 'son of', ko: '~의 아들' } : { t: "O'", en: 'descendant of', ko: '~의 후손' };
+                    return { text: `${pre.t}${f.text}`, frags: [pre, ...f.frags] };
+                }
+                case 'norse': { // father's name + son (or dottir for a daughter)
+                    const f = cacheGiven(root, 'm', rnd);
+                    const end = g === 'f' ? { t: 'dottir', en: 'daughter', ko: '딸' } : SON;
+                    const s = /s$/i.test(f.text) ? '' : 's';
+                    return { text: f.text + s + end.t, frags: [...f.frags, end] };
+                }
+                case 'greek': { // father's name + -ides (Theodorides)
+                    const f = cacheGiven(root, 'm', rnd);
+                    const base = f.text.replace(/(os|es|as|is|on)$/, '');
+                    return { text: `${dropVowel(base)}ides`, frags: [...f.frags, { t: 'ides', en: 'son of', ko: '~의 아들' }] };
+                }
+                case 'slavic': { // father's name + -ov / -ović
+                    const f = cacheGiven(root, 'm', rnd);
+                    const base = dropVowel(f.text);
+                    const end = rnd() < 0.6 ? { t: 'ov', en: "'s (child of)", ko: '~의 (자식)' } : { t: 'ović', en: 'son of', ko: '~의 아들' };
+                    const text = end.t === 'ov' ? fem(base + 'ov') : base + end.t;
+                    return { text, frags: [...f.frags, end] };
+                }
+                default: return place();
+            }
+        }
+        if (branch === 'place') {
+            const pl = place();
+            if (R.family === 'greek') return { text: `of ${pl.text}`, frags: pl.frags }; // Thales of Miletus
+            if (R.family === 'slavic') return { text: fem(`${dropVowel(pl.text)}ski`), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] };
+            return pl;
+        }
+        if (branch === 'dwell') {
+            if (R.dwellPre && (!R.dwell || rnd() < 0.6)) {
+                const pre = pick(R.dwellPre, rnd);
+                const word = pick(R.dwellWord.filter(w => !w.cats || w.cats.includes(pre.t.toLowerCase())), rnd);
+                return { text: pre.t + word.t, frags: [pre, word] };
+            }
+            const w = pick(R.dwell, rnd);
+            return { text: fem(w.t), frags: [w] };
+        }
+        if (branch === 'trade') { const w = pick(R.trade, rnd); return { text: fem(w.t), frags: [w] }; }
+        if (branch === 'looks') {
+            const w = pick(R.looks, rnd);
+            if (R.looksPre) return { text: R.looksPre.t + w.t, frags: [R.looksPre, w] }; // Le + blanc → Leblanc
+            return { text: fem(w.t), frags: [w] };
+        }
+        return place();
+    }
+    // A family name the way each root makes one, from its five kinds (branches) in turn.
     function cacheFamily(root, g, rnd) {
         const R = CACHE[root];
-        const place = () => cachePlace(root, null, rnd);
-        switch (R.family) {
-            case 'nomen': { // Roman family name: head + -ius (Silvius)
-                const h = pick(R.head, rnd);
-                return { text: glue(h.t, 'ius'), frags: [h, { t: 'ius', en: 'family of', ko: '~ 집안' }], root };
-            }
-            case 'english': { // a place (Ashford), or father's name + s / son
-                const r = rnd();
-                if (r < 0.5) return place();
-                const f = cacheGiven(root, 'm', rnd);
-                const end = r < 0.75 ? { t: 's', en: "'s (child of)", ko: '~의 (자식)' } : SON;
-                return { text: f.text + end.t, frags: [...f.frags, end], root };
-            }
-            case 'french': { // a place (Beaumont), or Le + a word (Le Blanc)
-                if (rnd() < 0.7) return place();
-                const h = pick(R.head, rnd);
-                return { text: `Le ${h.t}`, frags: [{ t: 'Le', en: 'the', ko: '그' }, h], root };
-            }
-            case 'celtic': { // Mac / O' + a given name
-                const f = cacheGiven(root, 'm', rnd);
-                const pre = rnd() < 0.6 ? { t: 'Mac', en: 'son of', ko: '~의 아들' } : { t: "O'", en: 'descendant of', ko: '~의 후손' };
-                return { text: pre.t === 'Mac' ? `Mac${f.text}` : `O'${f.text}`, frags: [pre, ...f.frags], root };
-            }
-            case 'norse': { // father's name + son (or dottir for a daughter)
-                const f = cacheGiven(root, 'm', rnd);
-                const end = g === 'f' ? { t: 'dottir', en: 'daughter', ko: '딸' } : SON;
-                const s = /s$/i.test(f.text) ? '' : 's';
-                return { text: f.text + s + end.t, frags: [...f.frags, end], root };
-            }
-            default: return place();
-        }
+        let branch = pickWeighted(R.branches || { place: 1 }, rnd);
+        if (R.family === 'greek' && g === 'f') branch = 'place'; // -ides means "son of")
+        return { ...cacheFamilyBranch(root, branch, g, rnd), root, branch };
     }
     // "de" + a vowel → d'Aubeval.
     function withParticle(p, place) {
         if (p === 'de' && /^[aeiouy]/i.test(place)) return { joined: `d'${place}`, particle: '' };
         return { joined: `${p} ${place}`, particle: p };
+    }
+    // Latin bynames agree with a woman: Magnus → Magna, Rufus → Rufa.
+    function latinAgree(f, root, g) {
+        if (root !== 'latin' || g !== 'f' || !/us$/.test(f.t)) return f;
+        return { ...f, t: f.t.replace(/us$/, 'a') };
+    }
+    // Kings and queens: an ordinal (II) or an epithet (the Fair, Magnus, Soter).
+    function royalEpithet(root, rnd, g = 'm') {
+        const R = CACHE[root];
+        const f = latinAgree((!R.noOrdinals && rnd() < 0.5) ? pick(ORDINALS, rnd) : pick(R.royalEpithets || ROYAL_EN, rnd), root, g);
+        return { text: f.t, frags: [f] };
+    }
+    // Warriors: Ironhand, Fairhair, the Red (or a Latin / Greek byname).
+    function warEpithet(root, rnd, g = 'm') {
+        const R = CACHE[root];
+        if (R.war) { const f = latinAgree(pick(R.war, rnd), root, g); return { text: f.t, frags: [f] }; }
+        if (rnd() < 0.35) { const f = pick(WAR_EN.whole, rnd); return { text: f.t, frags: [f] }; }
+        for (let i = 0; i < 20; i++) {
+            const h = pick(WAR_EN.head, rnd), t = pick(WAR_EN.tail, rnd);
+            if (h.en === t.en) continue;
+            return { text: h.t + t.t, frags: [h, t] };
+        }
+        return { text: 'Ironhand', frags: [WAR_EN.head[0], WAR_EN.tail[0]] };
+    }
+    // Scholars wrote their names in Latin: Ethelwin → Ethelwinus, Ashford → Ashfordensis (from Ashford).
+    function latinGiven(given, g) {
+        const t = given.text;
+        if (g === 'f') {
+            if (/a$/.test(t)) return given;
+            return { ...given, text: `${t.replace(/[eiouy]+$/, '')}a`, frags: [...given.frags, LATIN_END('a')] };
+        }
+        if (/us$/.test(t)) return given;
+        return { ...given, text: `${dropVowel(t.replace(/(os|es|as)$/, ''))}us`, frags: [...given.frags, LATIN_END('us')] };
+    }
+    // Holloway → Hollowa-, Moore → Moor-: drop a last y, e or o before -ius.
+    function latinStem(t) { return t.replace(/y$/i, '').replace(/[eo]$/i, ''); }
+    function scholarFamily(root, g, rnd, fixed = '') {
+        if (fixed) return { text: `${latinStem(fixed.replace(/\s+/g, ''))}ius`, fixed: true };
+        if (rnd() < 0.5) {
+            const f = cacheFamily(root, g, rnd);
+            if (['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|sk[aiy])$/.test(f.text)) return { text: `${latinStem(f.text)}ius`, frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
+        }
+        const pl = cachePlace(root, null, rnd, true);
+        const base = pl.text.replace(/(is|us|um|ia|os)$/i, '');
+        return { text: `${dropVowel(base)}ensis`, frags: [...pl.frags, { t: 'ensis', en: 'from', ko: '~ 출신' }], branch: 'place' };
     }
     // One whole Cache name (one root per name for now).
     function cacheOne(form, root, kind, rnd = Math.random) {
@@ -972,29 +1215,50 @@
         const parts = (Array.isArray(form.parts) ? form.parts : ['given']).filter(p => NAME_PARTS.includes(p));
         const fixed = parts.includes('family') ? cleanPiece(form.fixedFamily) : '';
         const pieces = [];
-        const given = cacheGiven(root, g, rnd);
+        let given = cacheGiven(root, g, rnd);
+        if (kind === 'scholar') given = latinGiven(given, g);
         if (kind === 'religious') pieces.push({ role: 'title', text: pick(R.titles[g], rnd), fixed: true });
+        if (kind === 'royal') pieces.push({ role: 'title', text: pick(R.royal[g], rnd), fixed: true });
         if (parts.includes('given') || !parts.length) pieces.push({ role: 'given', text: given.text, frags: given.frags });
-        if (parts.includes('middle')) { const m = cacheGiven(root, g, rnd); pieces.push({ role: 'middle', text: m.text, frags: m.frags }); }
+        if (parts.includes('middle')) {
+            let m = cacheGiven(root, g, rnd);
+            if (kind === 'scholar') m = latinGiven(m, g);
+            pieces.push({ role: 'middle', text: m.text, frags: m.frags });
+        }
         if (kind === 'religious') {
             // Monks and saints go by "of a place" instead of a family name.
-            const pl = cachePlace(root, null, rnd);
+            const pl = cachePlace(root, null, rnd, true);
             const w = withParticle(R.of, pl.text);
             pieces.push({ role: 'origin', text: w.joined, frags: pl.frags });
+        } else if (kind === 'royal') {
+            const e = royalEpithet(root, rnd, g);
+            pieces.push({ role: 'epithet', text: e.text, frags: e.frags });
+        } else if (kind === 'warrior') {
+            const e = warEpithet(root, rnd, g);
+            pieces.push({ role: 'epithet', text: e.text, frags: e.frags });
+        } else if (kind === 'scholar') {
+            // A Latin surname always: it is what makes a scholar's name (Copernicus, Erasmus Roterodamus).
+            const f = scholarFamily(root, g, rnd, fixed);
+            pieces.push(f.fixed ? { role: 'family', text: f.text, fixed: true } : { role: 'family', text: f.text, frags: f.frags, branch: f.branch });
         } else if (parts.includes('family')) {
-            if (kind === 'noble') {
-                const pl = fixed ? { text: fixed } : cachePlace(root, null, rnd);
+            if (kind === 'noble' && R.noble === 'ski') {
+                // Slavic nobles take -ski from their estate (no "von" or "de").
+                const pl = cachePlace(root, null, rnd, true);
+                pieces.push(fixed ? { role: 'family', text: fixed, fixed: true }
+                    : { role: 'family', text: (g === 'f' ? slavicFem : (s => s))(`${dropVowel(pl.text)}ski`), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] });
+            } else if (kind === 'noble') {
+                const pl = fixed ? { text: fixed } : cachePlace(root, null, rnd, true);
                 const w = withParticle(R.noble, pl.text);
                 if (w.particle) {
                     pieces.push({ role: 'particle', text: w.particle, fixed: true });
                     pieces.push(fixed ? { role: 'family', text: fixed, fixed: true } : { role: 'family', text: pl.text, frags: pl.frags });
                 } else pieces.push(fixed ? { role: 'family', text: w.joined, fixed: true } : { role: 'family', text: w.joined, frags: pl.frags });
             } else if (fixed) pieces.push({ role: 'family', text: fixed, fixed: true });
-            else { const f = cacheFamily(root, g, rnd); pieces.push({ role: 'family', text: f.text, frags: f.frags }); }
+            else { const f = cacheFamily(root, g, rnd); pieces.push({ role: 'family', text: f.text, frags: f.frags, branch: f.branch }); }
         }
-        if (!pieces.some(p => p.role === 'given')) pieces.splice(kind === 'religious' ? 1 : 0, 0, { role: 'given', text: given.text, frags: given.frags });
+        if (!pieces.some(p => p.role === 'given')) pieces.splice(pieces[0]?.role === 'title' ? 1 : 0, 0, { role: 'given', text: given.text, frags: given.frags });
         if (pieces.length === 1) return { name: pieces[0].text, frags: pieces[0].frags, root, cache: true };
-        return { name: pieces.map(p => p.text).join(' '), pieces, root, cache: true };
+        return { name: pieces.map(p => p.text).join(' '), pieces, root, cache: true, kind };
     }
     // Sound feel, by letters (no AI here to judge by ear).
     const SOUND_LETTERS = { soft: /[lrmnwy]|[aeiou]/g, hard: /[ktpdgb]|c(?![eiy])|ck/g, sharp: /sh|th|[szxfv]|c(?=[eiy])/g, bright: /[ie]/g, dark: /[oua]/g };
@@ -1052,31 +1316,39 @@
         const root = src.root || cacheRoots(form)[0];
         const R = CACHE[root];
         const g = genderOf(form, rnd);
+        const kind = src.kind || '';
         const banned = new Set([p.text, ...avoid].map(a => String(a).toLowerCase()));
         for (let i = 0; i < 40; i++) {
             let next;
-            if (p.role === 'given' || p.role === 'middle') next = cacheGiven(root, g, rnd);
-            else if (p.role === 'origin') { const pl = cachePlace(root, null, rnd); next = { text: withParticle(R.of, pl.text).joined, frags: pl.frags }; }
-            else if (p.role === 'family' && src.pieces.some(q => q.role === 'particle')) next = cachePlace(root, null, rnd);
+            if (p.role === 'given' || p.role === 'middle') { next = cacheGiven(root, g, rnd); if (kind === 'scholar') next = latinGiven(next, g); }
+            else if (p.role === 'origin') { const pl = cachePlace(root, null, rnd, true); next = { text: withParticle(R.of, pl.text).joined, frags: pl.frags }; }
+            else if (p.role === 'epithet') next = kind === 'royal' ? royalEpithet(root, rnd, g) : warEpithet(root, rnd, g);
+            else if (p.role === 'family' && kind === 'scholar') next = scholarFamily(root, g, rnd);
+            else if (p.role === 'family' && src.pieces.some(q => q.role === 'particle')) next = cachePlace(root, null, rnd, true);
+            else if (p.role === 'family' && /ski$|ska$/.test(p.text) && kind === 'noble') { const pl = cachePlace(root, null, rnd, true); next = { text: (g === 'f' ? slavicFem(`${dropVowel(pl.text)}ski`) : `${dropVowel(pl.text)}ski`), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] }; }
             else if (p.role === 'family') next = cacheFamily(root, g, rnd);
             else return null;
             if (banned.has(next.text.toLowerCase()) || banned.has(next.text.replace(/^(de|of|von|af|d')\s?/i, '').toLowerCase())) continue;
-            return { ...p, text: next.text, frags: next.frags };
+            const out = { ...p, text: next.text, frags: next.frags };
+            if (next.branch) out.branch = next.branch; else delete out.branch;
+            return out;
         }
         return null;
     }
-    // "fragments: Ethel noble + win friend / Ash ash tree + ford river crossing · Old English"
+    // "fragments: Ethel noble + win friend / at by + wood wood · where they lived / … · Old English"
     function fragsHtml(r) {
         if (!r.cache) return '';
         const L = T();
         const lang = detectLang();
-        const groups = r.pieces ? r.pieces.filter(p => p.frags?.length).map(p => p.frags) : (r.frags ? [r.frags] : []);
+        const groups = r.pieces ? r.pieces.filter(p => p.frags?.length) : (r.frags ? [{ frags: r.frags }] : []);
         if (!groups.length) return '';
         const one = f => {
             const mean = lang === 'ko' ? f.ko : f.en;
             return `<span class="tbd-frag"><b>${escapeHtml(f.t)}</b>${mean ? ` ${escapeHtml(mean)}` : ''}</span>`;
         };
-        const body = groups.map(g => g.map(one).join(' + ')).join('<span class="tbd-nick-dot" aria-hidden="true"> / </span>');
+        const body = groups.map(p => p.frags.map(one).join(' + ')
+            + (p.branch && L.branch?.[p.branch] ? ` <span class="tbd-frag-root">· ${escapeHtml(L.branch[p.branch])}</span>` : ''))
+            .join('<span class="tbd-nick-dot" aria-hidden="true"> / </span>');
         const root = r.root && L.roots[r.root] ? ` <span class="tbd-frag-root">· ${escapeHtml(L.roots[r.root])}</span>` : '';
         return `<div class="tbd-frags"><span class="tbd-nicks-label">${escapeHtml(L.fragments)}:</span> ${body}${root}</div>`;
     }
@@ -2757,7 +3029,7 @@
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml,
-            CACHE, CACHE_ROOTS, isCache, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, fragsHtml, aiForm, glue, sayable, soundScore,
+            CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
         };

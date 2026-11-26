@@ -930,7 +930,7 @@ test('v0.2.0: every Cache root makes sayable people and places, and says what ea
         assert.equal(people.length, 8);
         assert.equal(places.length, 8);
         for (const n of [...people, ...places]) {
-            assert.ok(n.cache && n.root === root && n.frags?.length === 2, n.name);
+            assert.ok(n.cache && n.root === root && n.frags?.length >= 2, n.name);
             assert.ok(api.sayable(n.name), n.name);
             assert.match(n.name, /^[A-Z]/);
         }
@@ -956,10 +956,10 @@ test('v0.2.0: noble houses, monks and saints, family names per root', () => {
         const n = api.cacheOne({ target: 'person', parts: ['given', 'family'] }, 'norman', 'noble', rnd);
         assert.ok(!/\bde [AEIOUY]/.test(n.name), n.name);
     }
-    const daughter = api.cacheFamily('norse', 'f', rnd);
+    const daughter = api.cacheFamilyBranch('norse', 'patron', 'f', rnd);
     assert.match(daughter.text, /dottir$/);
-    assert.match(api.cacheFamily('norse', 'm', rnd).text, /son$/);
-    assert.match(api.cacheFamily('celtic', 'm', rnd).text, /^(Mac|O')/);
+    assert.match(api.cacheFamilyBranch('norse', 'patron', 'm', rnd).text, /son$/);
+    assert.match(api.cacheFamilyBranch('celtic', 'patron', 'm', rnd).text, /^(Mac|O')/);
     assert.equal(api.glue('Wulf', 'frith'), 'Wulfrith');
 });
 
@@ -967,7 +967,7 @@ test('v0.2.0: Cache follows place kind, length, sound, letters and the avoid lis
     const { api } = load();
     const water = api.cacheNames({ target: 'place', method: 'cache', roots: ['oldenglish'], kind: 'water' }, 10, [], seeded(31));
     const waterTails = new Set(api.CACHE.oldenglish.placeTail.filter(f => f.cats?.includes('water')).map(f => f.t));
-    for (const n of water) assert.ok(waterTails.has(n.frags[1].t), n.name);
+    for (const n of water) assert.ok(n.frags.some(f => waterTails.has(f.t)), n.name);
     const must = api.cacheNames({ target: 'person', method: 'cache', roots: ['oldenglish'], parts: ['given'], mustContain: 'win' }, 5, [], seeded(32));
     assert.ok(must.every(n => n.name.toLowerCase().includes('win')));
     const short = api.cacheNames({ target: 'person', method: 'cache', roots: ['norse'], parts: ['given'], length: 'short' }, 5, [], seeded(33));
@@ -1103,4 +1103,151 @@ test('v0.2.1: start letters skip ones the root never uses', () => {
     const { api } = load();
     const seeds = api.rollSeeds(200, { target: 'person', vibe: 'fantasy', method: 'ai', aiRoots: ['latin'] }, seeded(9));
     assert.ok(seeds.every(s => !['W', 'K'].includes(s.start)));
+});
+
+test('v0.2.2: eight roots and six kinds, all named in both languages, every fragment with a clean meaning', () => {
+    const { api } = load();
+    assert.deepEqual([...api.CACHE_ROOTS], ['latin', 'oldenglish', 'norman', 'germanic', 'celtic', 'norse', 'greek', 'slavic']);
+    assert.deepEqual([...api.CACHE_KINDS], ['common', 'noble', 'religious', 'royal', 'warrior', 'scholar']);
+    for (const lang of ['en', 'ko']) {
+        const L = api.STRINGS[lang];
+        for (const r of api.CACHE_ROOTS) assert.ok(L.roots[r], `${lang} root ${r}`);
+        for (const k of api.CACHE_KINDS) assert.ok(L.ck[k], `${lang} kind ${k}`);
+        for (const b of ['patron', 'place', 'dwell', 'trade', 'looks']) assert.ok(L.branch[b], `${lang} branch ${b}`);
+    }
+    const cat = /^(town|water|forest|hill|field|fort|coast|at|by|under|du|dela)(\/|$)/;
+    let total = 0;
+    for (const root of api.CACHE_ROOTS) {
+        const R = api.CACHE[root];
+        let n = 0;
+        for (const key of ['head', 'masc', 'fem', 'placeHead', 'placeTail', 'placePre', 'placePost', 'dwellPre', 'dwellWord', 'dwell', 'trade', 'looks', 'war', 'royalEpithets']) {
+            for (const f of R[key] || []) {
+                n++;
+                // "Text=English=Korean=cats": a missing "=" pushes a category into the Korean meaning.
+                assert.ok(!cat.test(f.ko), `${root}.${key}: ${f.t}`);
+                if (!['masc', 'fem', 'placeTail'].includes(key)) assert.ok(f.en && f.ko, `${root}.${key}: ${f.t} has a meaning`);
+                assert.ok(!/[=;]/.test(f.t + f.en + f.ko), `${root}.${key}: ${f.t}`);
+            }
+        }
+        assert.ok(n >= 90, `${root} has ${n} fragments`);
+        assert.ok(R.titles?.m?.length && R.titles?.f?.length && R.royal?.m?.length && R.royal?.f?.length, root);
+        total += n;
+    }
+    assert.ok(total >= 900, `${total} fragments`);
+});
+
+test('v0.2.2: hundreds of names stay sayable and fresh', () => {
+    const { api } = load();
+    const rnd = seeded(71);
+    for (const root of api.CACHE_ROOTS) {
+        const people = api.cacheNames({ target: 'person', method: 'cache', roots: [root], parts: ['given', 'family'], ckinds: [...api.CACHE_KINDS] }, 200, [], rnd);
+        const places = api.cacheNames({ target: 'place', method: 'cache', roots: [root] }, 200, [], rnd);
+        const givens = people.map(n => n.pieces.find(p => p.role === 'given').text);
+        const bad = [...givens, ...places.map(n => n.name)].filter(t => !api.sayable(t));
+        assert.ok(bad.length <= 4, `${root}: ${bad.join(', ')}`);
+        assert.ok(new Set(givens).size >= 150, `${root}: only ${new Set(givens).size} different given names`);
+        assert.ok(new Set(places.map(n => n.name)).size >= 150, `${root} places`);
+        // No head and ending of the same word (Archo + archos).
+        assert.ok(!givens.some(t => /^(arch\w*arch|slav\w*slav)/i.test(t)), root);
+    }
+});
+
+test('v0.2.2: royal, warrior and scholar names', () => {
+    const { api } = load();
+    const rnd = seeded(81);
+    const king = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'masculine', fixedFamily: 'Holloway' }, 'oldenglish', 'royal', rnd);
+    assert.deepEqual([...king.pieces.map(p => p.role)], ['title', 'given', 'epithet']);
+    assert.equal(king.pieces[0].text, 'King');
+    assert.ok(king.pieces[0].fixed && !king.pieces[2].fixed);
+    assert.ok(!/Holloway/.test(king.name), 'kings go by a number or an epithet, not a kept family name');
+    assert.match(king.pieces[2].text, /^(II|III|IV|V|VI|VII|VIII|IX|the \w+)$/);
+    for (let i = 0; i < 30; i++) {
+        const q = api.cacheOne({ target: 'person', parts: ['given'], gender: 'feminine' }, 'latin', 'royal', rnd);
+        assert.equal(q.pieces[0].text, 'Regina');
+        assert.ok(!/us$/.test(q.pieces[2].text), `a queen is Magna, not Magnus: ${q.name}`);
+        const g = api.cacheOne({ target: 'person', parts: ['given'] }, 'greek', 'royal', rnd);
+        assert.ok(!/^(II|III|IV|V|VI|VII|VIII|IX)$/.test(g.pieces[2].text), `Greek kings use epithets: ${g.name}`);
+    }
+    const war = api.cacheOne({ target: 'person', parts: ['given', 'family'] }, 'norse', 'warrior', rnd);
+    assert.deepEqual([...war.pieces.map(p => p.role)], ['given', 'epithet']);
+    assert.ok(war.pieces[1].frags.length >= 1 && war.pieces[1].frags.every(f => f.ko));
+    // Swapping the byname keeps it a byname; swapping a king's keeps it royal.
+    const kRoll = api.cachePiece(king, 2, { target: 'person', gender: 'masculine' }, [], rnd);
+    assert.match(kRoll.text, /^(II|III|IV|V|VI|VII|VIII|IX|the \w+)$/);
+    for (const root of api.CACHE_ROOTS) {
+        const s = api.cacheOne({ target: 'person', parts: ['given'], gender: 'masculine' }, root, 'scholar', rnd);
+        assert.deepEqual([...s.pieces.map(p => p.role)], ['given', 'family']);
+        assert.match(s.pieces[0].text, /us$/, s.name);
+        assert.match(s.pieces[1].text, /(ius|ensis)$/, s.name);
+        assert.ok(!/(ides|ović|ski)ius$/.test(s.pieces[1].text), s.name);
+    }
+    const she = api.cacheOne({ target: 'person', parts: ['given'], gender: 'feminine' }, 'germanic', 'scholar', rnd);
+    assert.match(she.pieces[0].text, /a$/);
+    const kept = api.cacheOne({ target: 'person', parts: ['given', 'family'], fixedFamily: 'Holloway' }, 'norman', 'scholar', rnd);
+    assert.equal(kept.pieces[1].text, 'Hollowaius');
+    assert.ok(kept.pieces[1].fixed);
+    assert.equal(api.latinGiven({ text: 'Theodoros', frags: [] }, 'm').text, 'Theodorus');
+});
+
+test('v0.2.2: family names come from five kinds, each root in its own way', () => {
+    const { api } = load();
+    const rnd = seeded(91);
+    const seen = new Set();
+    for (let i = 0; i < 300; i++) seen.add(api.cacheFamily('oldenglish', 'm', rnd).branch);
+    assert.deepEqual([...seen].sort(), ['dwell', 'looks', 'patron', 'place', 'trade']);
+    for (let i = 0; i < 40; i++) {
+        const d = api.cacheFamilyBranch('oldenglish', 'dwell', 'm', rnd);
+        assert.ok(d.frags.length === 1 || /^(At|By|Under)/.test(d.text), d.text);
+        if (/^Under/.test(d.text)) assert.match(d.text, /^Under(wood|hill|down)$/);
+        const fr = api.cacheFamilyBranch('norman', 'dwell', 'm', rnd);
+        assert.match(fr.text, /^(Du|Dela)[a-zé]+$/, fr.text);
+        assert.match(api.cacheFamilyBranch('norman', 'looks', 'm', rnd).text, /^Le[a-z]+$/);
+        assert.match(api.cacheFamilyBranch('norman', 'patron', 'm', rnd).text, /^Fitz[A-Z]/);
+        const sf = api.cacheFamily('slavic', 'f', rnd).text;
+        assert.ok(!/(sk[iy]|ov|ev)$/.test(sf), `a Slavic woman's family name agrees: ${sf}`);
+        const gf = api.cacheFamily('greek', 'f', rnd).text;
+        assert.match(gf, /^of /, '-ides means "son of"');
+        assert.match(api.cacheFamilyBranch('greek', 'patron', 'm', rnd).text, /ides$/);
+    }
+    assert.equal(api.glue('Aristo', 'ippos', true), 'Aristippos');
+    assert.equal(api.glue('Theo', 'doros', true), 'Theodoros');
+    // Slavic nobles take -ski from the estate.
+    const pan = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'masculine' }, 'slavic', 'noble', rnd);
+    assert.match(pan.name, /ski$/);
+    assert.ok(!pan.pieces.some(p => p.role === 'particle'));
+});
+
+test('v0.2.2: places now and then get Great / -on-Sea / a saint, and only where they fit', () => {
+    const { api } = load();
+    const rnd = seeded(101);
+    const extras = { pre: 0, post: 0, saint: 0 };
+    for (let i = 0; i < 600; i++) {
+        const p = api.cachePlace('oldenglish', null, rnd);
+        if (p.saint) { extras.saint++; assert.match(p.text, /^St\. [A-Z][a-z]+'s$/); }
+        else if (/^(Great|Little|Upper|Lower|North|South|East|West|Long|Market) /.test(p.text)) extras.pre++;
+        else if (/(-on-Sea|-le-Street|-upon-Avon| Magna| Parva)$/.test(p.text)) extras.post++;
+    }
+    assert.ok(extras.pre > 5 && extras.post > 5 && extras.saint > 5, JSON.stringify(extras));
+    for (let i = 0; i < 300; i++) {
+        const w = api.cachePlace('oldenglish', ['water'], rnd);
+        assert.ok(!/(-on-Sea|-le-Street|^St\.|^Market )/.test(w.text), w.text);
+        const k = api.cachePlace('celtic', null, rnd);
+        if (k.saint) assert.match(k.text, /^Kil[a-z]+$/);
+    }
+    assert.equal(api.cachePlace('germanic', null, seeded(5), true).frags.length, 2, 'plain places (inside family names) never get extras');
+});
+
+test('v0.2.2: the fragments line says which kind of family name it is', () => {
+    const { api } = load({ lang: 'ko' });
+    api.settings();
+    const r = { name: 'Edwin Atwood', cache: true, root: 'oldenglish', pieces: [
+        { role: 'given', text: 'Edwin', frags: [{ t: 'Ed', en: 'wealth', ko: '부·행운' }, { t: 'win', en: 'friend', ko: '벗' }] },
+        { role: 'family', text: 'Atwood', branch: 'dwell', frags: [{ t: 'At', en: 'at', ko: '곁에' }, { t: 'wood', en: 'wood', ko: '숲' }] },
+    ] };
+    const line = api.fragsHtml(r).replace(/<[^>]+>/g, '');
+    assert.equal(line, 'fragments: Ed 부·행운 + win 벗 / At 곁에 + wood 숲 · 사는 곳 · 옛 영어');
+    const html = api.formHtml({ target: 'person', method: 'cache', roots: ['greek'], ckinds: ['royal'], parts: ['given'], extras: [] });
+    assert.match(html, /data-chip="root" data-v="slavic"/);
+    assert.match(html, /data-chip="ckind" data-v="royal" aria-pressed="true"/);
+    assert.match(html, /왕족·군주/);
 });
