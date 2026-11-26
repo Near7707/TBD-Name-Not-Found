@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.17
+// TBD — Name Not Found v0.2.18
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -652,6 +652,10 @@
         const usedSparks = new Set();
         // Sound-alike: each name copies a different part of the typed word, so the batch doesn't all copy its start.
         const focusStart = Math.floor(rnd() * LIKE_FOCUS.length);
+        // v0.2.18: with roots on, a batch-wide "vary the sounds" line still left a v in 14 of 20 names
+        // (-var- in 7), so about half the names get their own "no v" nudge. Per-name seeds are what the AI follows.
+        // The 0,1,1,0 beat keeps it off the Merge pair order, which flips every name.
+        const noVStart = Math.floor(rnd() * 2);
         for (let i = 0; i < count; i++) {
             const seed = {};
             // Like Cache, each name takes the picked roots in turn.
@@ -680,6 +684,7 @@
                 usedEndings.add(seed.ending);
             }
             if (shapes) seed.shape = pick(shapes, rnd);
+            if (rootsOn && !like && (i + Math.floor(i / 2) + noVStart) % 2 === 0 && !'VW'.includes(seed.start || '')) seed.noV = true;
             if (rootFamily) {
                 seed.family = ROOT_FAMILY_KINDS[(familyKindStart + i) % ROOT_FAMILY_KINDS.length];
                 // v0.2.16: a bare English kind ("from a trade") came back as English words (Ropewright, Redwhisker),
@@ -2171,7 +2176,9 @@
         // Any real word in the name stays in the roots' own languages (no English "Weaverby" for Latin + Norse);
         // this sits fine with the line that lets family names use real words.
         // v0.2.12: Latin drifted into Italian and French (Ursari, Corvelli, Granet).
-        const latinNote = roots.includes('latin') ? ' Latin means classical Latin forms (endings like -us, -ius, -a, -ia), not Italian or French ones.' : '';
+        // v0.2.18: Latin trade and looks family names came back as -a (Coriara, Lanaria, Hispida on a man's name).
+        const latinFamily = hasFamily ? ' A Latin family name from a trade or from looks keeps its -us, -ius or -arius form (not -a), unless it belongs to a woman.' : '';
+        const latinNote = roots.includes('latin') ? ` Latin means classical Latin forms (endings like -us, -ius, -a, -ia), not Italian or French ones.${latinFamily}` : '';
         const fresh = latinNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
         if (aiMerge(form)) {
             const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
@@ -2197,6 +2204,7 @@
         if (s.start) parts.push(`${phrase ? 'main word starts' : 'starts'} with "${s.start}"`);
         if (s.syllables) parts.push(`${phrase ? 'main word ' : ''}${s.syllables} syllable${s.syllables === 1 ? '' : 's'}`);
         if (s.ending) parts.push(`ends with "${s.ending}"`);
+        if (s.noV) parts.push('no "v" or "w" sound');
         if (!sound && s.texture) parts.push(`${s.texture} sound`);
         if (s.likeFocus) parts.push(`echo the "like" word${likeWords(form).length > 1 ? 's' : ''} mostly in ${s.likeFocus}`);
         if (!parts.length) parts.push('follow the "like" words above');

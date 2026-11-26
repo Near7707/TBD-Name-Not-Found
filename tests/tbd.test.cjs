@@ -1844,3 +1844,32 @@ test('v0.2.17: "Copy for review" shows each name\'s seed, the same line the AI s
     // Old results with no seed print no seed line.
     assert.doesNotMatch(api.reviewText([{ name: 'Pellam', form }]), /seed:/);
 });
+
+test('v0.2.18: with roots on, about half the names get a "no v" seed, spread over both Merge orders', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    for (const n of [3, 5, 11]) {
+        const seeds = [...api.rollSeeds(20, form, seeded(n))];
+        const noV = seeds.filter(s => s.noV);
+        assert.ok(noV.length >= 7 && noV.length <= 10, `seed ${n}: ${noV.length}`);
+        // Not all on one pair order.
+        assert.ok(noV.some(s => s.root === 'latin') && noV.some(s => s.root === 'norse'), `seed ${n}`);
+        // Never on a name told to start with V or W.
+        assert.ok(noV.every(s => !'VW'.includes(s.start)));
+        assert.match(api.seedLine(form, noV[0]), /no "v" or "w" sound/);
+    }
+    // No roots: no "no v" seed, and the prompt is as before.
+    assert.ok([...api.rollSeeds(20, { ...form, aiRoots: [] }, seeded(3))].every(s => !s.noV));
+    // "Like this" turns roots off, so no "no v" seed either.
+    assert.ok([...api.rollSeeds(10, { ...form, likeText: 'Pellam' }, seeded(3))].every(s => !s.noV));
+});
+
+test('v0.2.18: Latin trade and looks family names keep -us / -ius / -arius, not -a', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    assert.match(api.rootRule(form, ['latin', 'norse']), /trade or from looks keeps its -us, -ius or -arius form \(not -a\), unless it belongs to a woman/);
+    // Only with a family name, and only with Latin.
+    assert.doesNotMatch(api.rootRule({ ...form, parts: ['given'] }, ['latin', 'norse']), /-arius/);
+    assert.doesNotMatch(api.rootRule(form, ['norse', 'celtic']), /-arius/);
+    assert.doesNotMatch(api.rootRule({ ...form, fixedFamily: 'Ostrand' }, ['latin']), /-arius/);
+});
