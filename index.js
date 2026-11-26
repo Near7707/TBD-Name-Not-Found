@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.6
+// TBD — Name Not Found v0.2.7
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -820,6 +820,7 @@
             family: 'nomen', branches: { patron: 4, trade: 2, looks: 3 },
             trade: F('Faber=smith=대장장이;Pictor=painter=화가;Agricola=farmer=농부;Pastor=shepherd=목동;Sutor=shoemaker=구두장이;Nauta=sailor=뱃사람;Scriba=scribe=서기;Medicus=physician=의사;Piscator=fisherman=어부;Molitor=miller=방앗간 주인'),
             looks: F('Rufus=red-haired=빨강 머리;Longus=tall=키 큰;Crassus=stout=뚱뚱한;Paullus=small=작은;Niger=dark=거무스름한;Calvus=bald=대머리;Naso=big-nosed=코 큰;Barbatus=bearded=수염 난;Albinus=pale=하얀;Capito=big-headed=머리 큰'),
+            link: 'o',
             noble: 'de', of: 'de', titles: { m: ['Frater', 'Sanctus'], f: ['Soror', 'Sancta'] }, royal: { m: ['Rex', 'Imperator', 'Dux', 'Princeps'], f: ['Regina', 'Imperatrix', 'Ducissa', 'Principissa'] },
             royalEpithets: F('Magnus=the Great=위대한 이;Pius=the Pious=경건한 이;Iustus=the Just=정의로운 이;Felix=the Fortunate=행운의 이;Sapiens=the Wise=현명한 이;Victor=the Victor=승리자;Augustus=the Venerable=존엄한 이'),
             war: F('Ferox=fierce=사나운;Fortis=brave=용감한;Rufus=red-haired=빨강 머리;Audax=bold=대담한;Ferreus=made of iron=쇠 같은;Bellator=warrior=전사;Leo=lion=사자;Lupus=wolf=늑대;Torquatus=wearing a neck-ring=목걸이 두른'),
@@ -935,6 +936,7 @@
             royalEpithetsF: F('Soteira=the Saviour=구원자;Megale=the Great=위대한 이;Euergetis=the Benefactor=은인;Kallinike=gloriously victorious=빛나는 승리자;Philadelphos=sibling-loving=형제를 아끼는 이;Philopator=father-loving=아버지를 아끼는 이'),
             noOrdinals: true,
             war: F('Monophthalmos=one-eyed=애꾸눈;Poliorketes=the Besieger=성을 함락하는 자;Keraunos=thunderbolt=벼락;Nikator=the Victor=승리자;Hoplomachos=armoured fighter=중무장 전사;Leon=the lion=사자'),
+            warF: F('Leaina=the lioness=암사자;Keraunos=thunderbolt=벼락;Nikephoros=victory-bearing=승리를 가져오는 이;Kallinike=gloriously victorious=빛나는 승리자;Thraseia=the bold=대담한 이'),
         },
         slavic: {
             head: F('Vladi=rule=다스림;Slavo=glory=영광;Miro=peace=평화;Bogo=god=신;Bori=battle=싸움;Dobro=good=좋은;Rado=joy, counsel=기쁨·조언;Jaro=fierce, strong=굳센;Lyubo=love=사랑;Milo=dear=다정한;Bole=great=큰;Voji=warrior=전사;Brani=defend=지킴;Sveto=holy, light=거룩한·빛;Zlato=gold=금;Drago=precious=소중한;Ostro=sharp=날카로운;Luto=fierce=사나운;Stani=to become=되다;Dali=far=먼;Tiho=quiet=고요한;Veli=great=큰;Rati=war=전쟁;Vse=all=모든'),
@@ -949,7 +951,7 @@
             dwell: F('Gorski=of the mountains=산 사람;Zagorski=beyond the hills=언덕 너머;Podgorski=below the hill=언덕 아래;Zarecki=beyond the river=강 건너;Zalesski=beyond the forest=숲 너머;Dubrovski=by the oak wood=참나무 숲가;Lipski=by the lindens=보리수 곁'),
             trade: F('Kovač=smith=대장장이;Kuznetsov=smith\'s child=대장장이의 자식;Melnik=miller=방앗간 주인;Kravets=tailor=재단사;Rybak=fisherman=어부;Pekar=baker=빵 굽는 사람;Bondar=cooper=통 만드는 사람;Goncharov=potter\'s child=도공의 자식;Plotnikov=carpenter\'s child=목수의 자식;Kolar=wheelwright=수레바퀴 장인'),
             looks: F('Belov=white=흰;Chernov=black=검은;Ryzhov=red-haired=빨강 머리;Sedov=grey-haired=흰머리;Novak=newcomer=새로 온 사람;Maly=small=작은;Krasnov=red, handsome=붉은·잘생긴;Lysenko=bald=대머리;Kudryashov=curly-haired=곱슬머리'),
-            noble: 'ski', of: 'of', titles: { m: ['Brat', 'Sveti'], f: ['Sestra', 'Sveta'] }, royal: { m: ['Knyaz', 'Tsar', 'Voivode'], f: ['Knyaginya', 'Tsaritsa'] },
+            noble: 'ski', of: 'of', link: 'o', titles: { m: ['Brat', 'Sveti'], f: ['Sestra', 'Sveta'] }, royal: { m: ['Knyaz', 'Tsar', 'Voivode'], f: ['Knyaginya', 'Tsaritsa'] },
         },
     };
     const CACHE_ROOTS = Object.keys(CACHE);
@@ -1000,12 +1002,14 @@
     const VOWEL = /[aeiouyæœ]/i;
     // Glue two fragments: one letter where they'd double up (Wulf + frith → Wulfrith).
     // With elide (Greek, Slavic) a vowel meeting a vowel drops the first one (Aristo + ippos → Aristippos).
-    function glue(a, b, elide = false) {
+    function glue(a, b, elide = false, link = '') {
         if (!a) return b;
         if (!b) return a;
         const last = a[a.length - 1].toLowerCase();
         const first = b[0].toLowerCase();
         if (elide && VOWEL.test(last) && VOWEL.test(first) && a.length > 2) return a.slice(0, -1) + b;
+        // Latin and Slavic place names join two consonants with -o- (Noviomagus, Belozersk).
+        if (link && /[a-z]/.test(last) && /[a-z]/.test(first) && !VOWEL.test(last) && !VOWEL.test(first)) return a + link + b;
         if (last === first) return a + b.slice(1);
         return a + b;
     }
@@ -1081,12 +1085,14 @@
             const t = pick(tails, rnd);
             if (t.en && h.en === t.en) continue;
             if (h.t.toLowerCase() === t.t.toLowerCase()) continue;
-            const text = capFirst(glue(h.t, t.t, R.elide));
+            // Not the same word twice (Castr + castra).
+            if (t.t.length > 3 && h.t.length > 3 && (t.t.toLowerCase().startsWith(h.t.toLowerCase()) || h.t.toLowerCase().startsWith(t.t.toLowerCase()))) continue;
+            const text = capFirst(glue(h.t, t.t, R.elide, R.link));
             if (!sayable(text)) continue;
             base = { text, frags: [h, t], root };
             break;
         }
-        if (!base) base = { text: capFirst(glue(heads[0].t, tails[0].t, R.elide)), frags: [heads[0], tails[0]], root };
+        if (!base) base = { text: capFirst(glue(heads[0].t, tails[0].t, R.elide, R.link)), frags: [heads[0], tails[0]], root };
         if (plain || rnd() >= 0.12) return base;
         // Now and then an extra word: before (Great, Ober, Lille) or after (-on-Sea, Magna, am See).
         const pre = strictCats(R.placePre, cats).filter(f => f.en !== base.frags[0].en);
@@ -1104,22 +1110,35 @@
     const LATIN_END = (t) => ({ t, en: 'Latin ending', ko: '라틴식 끝' });
     // Slavic family names change for women: -ov → -ova, -ski → -ska, Maly → Mala.
     function slavicFem(text) {
-        if (/sk[iy]$/.test(text)) return text.replace(/sk[iy]$/, 'ska');
+        if (/([sc])k[iy]$/.test(text)) return text.replace(/([sc])k[iy]$/, '$1ka');
         if (/(ov|ev|in)$/.test(text)) return `${text}a`;
         if (/y$/.test(text)) return text.replace(/y$/, 'a');
         return text;
     }
     function dropVowel(text) { return text.replace(/[aeiouy]+$/i, ''); }
+    // Place + -ski the way Slavic names really do it: Novica → Novicki, Chernets → Chernecki,
+    // Slavovka → Slavovski, Les → Leski (never "-cski" or "-kski").
+    function slavicSki(place) {
+        const b = dropVowel(place);
+        if (/ts$/.test(b)) return `${b.slice(0, -2)}cki`;
+        if (/[cs]$/.test(b)) return `${b}ki`;
+        if (/k$/.test(b)) return `${b.slice(0, -1)}ski`;
+        return `${b}ski`;
+    }
     // One family name of a given kind (branch): father's name, home place, where they lived, trade, or looks.
     function cacheFamilyBranch(root, branch, g, rnd) {
         const R = CACHE[root];
         const place = () => cachePlace(root, null, rnd, true);
         const fem = s => (root === 'slavic' && g === 'f' ? slavicFem(s) : s);
+        // Roman women took the feminine family name (Silvia) and never a trade name.
+        const latinF = R.family === 'nomen' && g === 'f';
+        if (latinF && branch === 'trade') branch = 'looks';
         if (branch === 'patron') {
             switch (R.family) {
                 case 'nomen': { // Roman family name: head + -ius (Silvius)
                     const h = pick(R.head, rnd);
-                    return { text: glue(h.t, 'ius'), frags: [h, { t: 'ius', en: 'family of', ko: '~ 집안' }] };
+                    const end = latinF ? 'ia' : 'ius';
+                    return { text: glue(h.t, end), frags: [h, { t: end, en: 'family of', ko: '~ 집안' }] };
                 }
                 case 'english': { // father's name + s / son
                     const f = cacheGiven(root, 'm', rnd);
@@ -1159,7 +1178,7 @@
         if (branch === 'place') {
             const pl = place();
             if (R.family === 'greek') return { text: `of ${pl.text}`, frags: pl.frags }; // Thales of Miletus
-            if (R.family === 'slavic') return { text: fem(`${dropVowel(pl.text)}ski`), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] };
+            if (R.family === 'slavic') return { text: fem(slavicSki(pl.text)), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] };
             return pl;
         }
         if (branch === 'dwell') {
@@ -1173,6 +1192,11 @@
         }
         if (branch === 'trade') { const w = pick(R.trade, rnd); return { text: fem(w.t), frags: [w] }; }
         if (branch === 'looks') {
+            if (latinF) {
+                // Bynames agree: Longus → Longa, Niger → Nigra. Nouns like Naso stay with men.
+                const w = pick(R.looks.filter(x => /(us|er)$/.test(x.t)), rnd);
+                return { text: w.t.replace(/us$/, 'a').replace(/er$/, 'ra'), frags: [w] };
+            }
             const w = pick(R.looks, rnd);
             if (R.looksPre) return { text: R.looksPre.t + w.t, frags: [R.looksPre, w] }; // Le + blanc → Leblanc
             return { text: fem(w.t), frags: [w] };
@@ -1193,7 +1217,8 @@
     }
     // Latin bynames agree with a woman: Magnus → Magna, Rufus → Rufa.
     function latinAgree(f, root, g) {
-        if (root === 'latin' && g === 'f' && f.t === 'Victor') return { ...f, t: 'Victrix' };
+        const LATIN_F = { Victor: 'Victrix', Bellator: 'Bellatrix', Leo: 'Leaena' };
+        if (root === 'latin' && g === 'f' && LATIN_F[f.t]) return { ...f, t: LATIN_F[f.t] };
         if (root !== 'latin' || g !== 'f' || !/us$/.test(f.t)) return f;
         return { ...f, t: f.t.replace(/us$/, 'a') };
     }
@@ -1212,7 +1237,7 @@
     // Warriors: Ironhand, Fairhair, the Red (or a Latin / Greek byname).
     function warEpithet(root, rnd, g = 'm') {
         const R = CACHE[root];
-        if (R.war) { const f = latinAgree(pick(R.war, rnd), root, g); return { text: f.t, frags: [f] }; }
+        if (R.war) { const f = latinAgree(pick((g === 'f' && R.warF) || R.war, rnd), root, g); return { text: f.t, frags: [f] }; }
         if (rnd() < 0.35) { const f = pick(WAR_EN.whole, rnd); return { text: f.t, frags: [f] }; }
         for (let i = 0; i < 20; i++) {
             const h = pick(WAR_EN.head, rnd), t = pick(WAR_EN.tail, rnd);
@@ -1229,15 +1254,19 @@
             return { ...given, text: `${t.replace(/[eiouy]+$/, '')}a`, frags: [...given.frags, LATIN_END('a')] };
         }
         if (/us$/.test(t)) return given;
-        return { ...given, text: `${dropVowel(t.replace(/(os|es|as)$/, ''))}us`, frags: [...given.frags, LATIN_END('us')] };
+        // Greek names keep -es and -as (Sophocles, Aeneas); -laos → -laus, -os → -us.
+        if (/(es|as)$/.test(t)) return given;
+        if (/os$/.test(t)) return { ...given, text: t.replace(/os$/, 'us'), frags: [...given.frags, LATIN_END('us')] };
+        return { ...given, text: `${dropVowel(t)}us`, frags: [...given.frags, LATIN_END('us')] };
     }
-    // Holloway → Hollowa-, Moore → Moor-: drop a last y, e or o before -ius.
-    function latinStem(t) { return t.replace(/y$/i, '').replace(/[eo]$/i, ''); }
+    // Holloway → Hollow-, Moore → Moor-, Nauta → Naut-: drop a last y, then e, o or a before -ius.
+    function latinStem(t) { return t.replace(/y$/i, '').replace(/[eoa]$/i, ''); }
     function scholarFamily(root, g, rnd, fixed = '') {
         if (fixed) return { text: `${latinStem(fixed.replace(/\s+/g, ''))}ius`, fixed: true };
         if (rnd() < 0.5) {
-            const f = cacheFamily(root, g, rnd);
-            if (['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|sk[aiy])$/.test(f.text)) return { text: `${latinStem(f.text)}ius`, frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
+            // Latinized from the man's form (Kudryashov, not Kudryashova).
+            const f = cacheFamily(root, 'm', rnd);
+            if (['dwell', 'trade', 'looks'].includes(f.branch) && !/[\s']/.test(f.text) && !/(us|ius|[sc]k[aiy]|er)$/.test(f.text)) return { text: `${latinStem(f.text)}ius`, frags: [...f.frags, LATIN_END('ius')], branch: f.branch };
         }
         const pl = cachePlace(root, null, rnd, true);
         const base = pl.text.replace(/(is|us|um|ia|os)$/i, '');
@@ -1284,7 +1313,7 @@
                 // Slavic nobles take -ski from their estate (no "von" or "de").
                 const pl = cachePlace(root, null, rnd, true);
                 pieces.push(fixed ? { role: 'family', text: fixed, fixed: true }
-                    : { role: 'family', text: (g === 'f' ? slavicFem : (s => s))(`${dropVowel(pl.text)}ski`), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] });
+                    : { role: 'family', text: (g === 'f' ? slavicFem : (s => s))(slavicSki(pl.text)), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] });
             } else if (kind === 'noble') {
                 const pl = fixed ? { text: fixed } : cachePlace(root, null, rnd, true);
                 const w = withParticle(R.noble, pl.text);
@@ -1365,7 +1394,7 @@
             else if (p.role === 'epithet') next = kind === 'royal' ? royalEpithet(root, rnd, g) : warEpithet(root, rnd, g);
             else if (p.role === 'family' && kind === 'scholar') next = scholarFamily(root, g, rnd);
             else if (p.role === 'family' && src.pieces.some(q => q.role === 'particle')) next = cachePlace(root, null, rnd, true);
-            else if (p.role === 'family' && /ski$|ska$/.test(p.text) && kind === 'noble') { const pl = cachePlace(root, null, rnd, true); next = { text: (g === 'f' ? slavicFem(`${dropVowel(pl.text)}ski`) : `${dropVowel(pl.text)}ski`), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] }; }
+            else if (p.role === 'family' && /[sc]k[iya]$/.test(p.text) && kind === 'noble') { const pl = cachePlace(root, null, rnd, true); next = { text: (g === 'f' ? slavicFem(slavicSki(pl.text)) : slavicSki(pl.text)), frags: [...pl.frags, { t: 'ski', en: 'of, from', ko: '~의·~ 출신' }] }; }
             else if (p.role === 'family') next = cacheFamily(root, g, rnd);
             else return null;
             if (banned.has(next.text.toLowerCase()) || banned.has(next.text.replace(/^(de|of|von|af|d')\s?/i, '').toLowerCase())) continue;

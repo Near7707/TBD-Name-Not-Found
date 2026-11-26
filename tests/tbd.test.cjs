@@ -1177,14 +1177,14 @@ test('v0.2.2: royal, warrior and scholar names', () => {
     for (const root of api.CACHE_ROOTS) {
         const s = api.cacheOne({ target: 'person', parts: ['given'], gender: 'masculine' }, root, 'scholar', rnd);
         assert.deepEqual([...s.pieces.map(p => p.role)], ['given', 'family']);
-        assert.match(s.pieces[0].text, /us$/, s.name);
+        assert.match(s.pieces[0].text, /(us|es|as)$/, s.name);
         assert.match(s.pieces[1].text, /(ius|ensis)$/, s.name);
         assert.ok(!/(ides|ović|ski)ius$/.test(s.pieces[1].text), s.name);
     }
     const she = api.cacheOne({ target: 'person', parts: ['given'], gender: 'feminine' }, 'germanic', 'scholar', rnd);
     assert.match(she.pieces[0].text, /a$/);
     const kept = api.cacheOne({ target: 'person', parts: ['given', 'family'], fixedFamily: 'Holloway' }, 'norman', 'scholar', rnd);
-    assert.equal(kept.pieces[1].text, 'Hollowaius');
+    assert.equal(kept.pieces[1].text, 'Hollowius');
     assert.ok(kept.pieces[1].fixed);
     assert.equal(api.latinGiven({ text: 'Theodoros', frags: [] }, 'm').text, 'Theodorus');
 });
@@ -1213,7 +1213,7 @@ test('v0.2.2: family names come from five kinds, each root in its own way', () =
     assert.equal(api.glue('Theo', 'doros', true), 'Theodoros');
     // Slavic nobles take -ski from the estate.
     const pan = api.cacheOne({ target: 'person', parts: ['given', 'family'], gender: 'masculine' }, 'slavic', 'noble', rnd);
-    assert.match(pan.name, /ski$/);
+    assert.match(pan.name, /[sc]ki$/);
     assert.ok(!pan.pieces.some(p => p.role === 'particle'));
 });
 
@@ -1416,4 +1416,50 @@ test('rulers get more than one title, and Norman / Germanic bynames match the ti
         const e = api.cachePiece(q, 2, { target: 'person', gender: 'any' }, [], rnd);
         assert.doesNotMatch(e.text, /^le /, e.text);
     }
+});
+
+// ---------- v0.2.7: a sweep over every root, kind and gender, so odd names can't creep back in ----------
+function sweep(api, n = 60) {
+    const rnd = seeded(2027);
+    const people = [];
+    for (const root of api.CACHE_ROOTS) for (const kind of api.CACHE_KINDS) for (const gender of ['masculine', 'feminine']) {
+        for (let i = 0; i < n; i++) people.push({ root, kind, g: gender[0], n: api.cacheOne({ target: 'person', parts: ['given', 'family'], gender }, root, kind, rnd) });
+    }
+    const places = [];
+    for (const root of api.CACHE_ROOTS) for (let i = 0; i < n * 4; i++) places.push({ root, n: api.cachePlace(root, null, rnd, true) });
+    return { people, places };
+}
+const MALE_ONLY = ['Niger', 'Longus', 'Paullus', 'Crassus', 'Calvus', 'Barbatus', 'Rufus', 'Albinus', 'Naso', 'Capito', 'Leo', 'Bellator', 'Victor', 'Magnus', 'Pius',
+    'Nikator', 'Leon', 'Hoplomachos', 'Poliorketes', 'Monophthalmos', 'Soter', 'Megas', 'Euergetes', 'Kallinikos'];
+test('sweep: women never get a man-only byname or family name', () => {
+    const { api } = load();
+    const trades = new Set(api.CACHE.latin.trade.map(f => f.t));
+    for (const { root, g, n } of sweep(api).people) {
+        if (g !== 'f') continue;
+        const words = n.name.split(/\s+/);
+        for (const w of words) {
+            assert.ok(!MALE_ONLY.includes(w), `${root}: ${n.name}`);
+            if (root === 'latin') assert.ok(!trades.has(w), `Roman women had no trade name: ${n.name}`);
+        }
+        assert.doesNotMatch(n.name, /\b(le|der) [A-Z]/, n.name);
+        assert.doesNotMatch(n.name, /\b(Roi|Duc|Comte|König|Kaiser|Herzog|Fürst|Graf|King|Prince|Duke|Earl|Jarl|Rex|Imperator|Dux|Princeps|Basileus|Anax|Despotes|Archon|Knyaz|Tsar|Voivode)\b/, n.name);
+    }
+});
+test('sweep: Slavic -ski names, Latin scholars and places come out well-formed', () => {
+    const { api } = load();
+    const { people, places } = sweep(api);
+    for (const { n } of people) {
+        assert.doesNotMatch(n.name, /(cs|ks|tss)k[aiy]\b|[ck]sk[aiy]\b/, n.name);
+        assert.doesNotMatch(n.name, /aius\b|ovaius\b/, n.name);
+    }
+    for (const { root, n } of places) {
+        // Two consonants never meet at the join in Latin or Slavic place names (Petr + magus → Petromagus).
+        if ((root === 'latin' || root === 'slavic') && n.frags.length === 2) {
+            const [h, t] = n.frags;
+            if (/[^aeiouy]$/i.test(h.t) && /^[^aeiouy]/i.test(t.t)) assert.ok(!n.text.toLowerCase().includes((h.t + t.t).toLowerCase()), n.text);
+        }
+        assert.doesNotMatch(n.text.toLowerCase(), /(castr\w*castr|grad\w*grad)/, n.text);
+    }
+    assert.equal(api.latinGiven({ text: 'Apollokles', frags: [] }, 'm').text, 'Apollokles');
+    assert.equal(api.latinGiven({ text: 'Neolaos', frags: [] }, 'm').text, 'Neolaus');
 });
