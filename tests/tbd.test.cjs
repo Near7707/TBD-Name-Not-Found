@@ -1733,3 +1733,19 @@ test('v0.2.11: AI roots drop the inspiration word and ask for new names, not rea
     const plain = { ...form, aiRoots: [] };
     assert.ok(api.rollSeeds(10, plain, seeded(3)).some(s => s.spark));
 });
+
+// ---------- v0.2.12 ----------
+test('v0.2.12: nicknames of a full name (sent as parts) never repeat a part', () => {
+    const { api } = load();
+    const out = api.parseNames('[{"parts":{"given":"Orv","family":"Brandhov"},"note":"x","nicks":["Orv","Orvy","Brandhov"]}]');
+    assert.deepEqual([...out[0].nicks], ['Orvy']);
+});
+test('v0.2.12: Latin AI roots ask for classical Latin forms', () => {
+    const { api } = load();
+    const form = { target: 'person', vibe: 'medieval', parts: ['given', 'family'], extras: [], method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge' };
+    assert.match(api.buildMessages(form, api.rollSeeds(4, form, seeded(3)))[1].content, /classical Latin forms .*not Italian or French/);
+    const split = { ...form, aiRoots: ['latin'], aiRootMix: 'split', realNames: 'near' };
+    assert.match(api.buildMessages(split, api.rollSeeds(4, split, seeded(3)))[1].content, /classical Latin forms/);
+    const norse = { ...form, aiRoots: ['norse'] };
+    assert.doesNotMatch(api.buildMessages(norse, api.rollSeeds(4, norse, seeded(3)))[1].content, /classical Latin/);
+});

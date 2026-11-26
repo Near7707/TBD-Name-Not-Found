@@ -1,4 +1,4 @@
-// TBD — Name Not Found v0.2.11
+// TBD — Name Not Found v0.2.12
 // A SillyTavern extension that invents names (people, places, shops, items).
 // Randomness is rolled by the extension, not the AI, so results don't all sound the same.
 (() => {
@@ -2147,7 +2147,9 @@
         const invented = realMode(form) === 'invented';
         // Any real word in the name stays in the roots' own languages (no English "Weaverby" for Latin + Norse);
         // this sits fine with the line that lets family names use real words.
-        const fresh = invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '';
+        // v0.2.12: Latin drifted into Italian and French (Ursari, Corvelli, Granet).
+        const latinNote = roots.includes('latin') ? ' Latin means classical Latin forms (endings like -us, -ius, -a, -ia), not Italian or French ones.' : '';
+        const fresh = latinNote + (invented ? ` Put new ${what}s together from those parts, not ${what}s that already exist. Any real word in a ${what} comes from those roots' own languages, not from another language.` : '');
         if (aiMerge(form)) {
             const fam = hasFamily ? ' A family name follows the surname customs of one of its two roots.' : '';
             return `Name roots: blend two roots in each name, with word parts from both in the same ${what} (one root for one part, the other for another part); each name below says which two of ${rootNames(roots, 'and')}. Keep it easy to say.${fam}${fresh}`;
@@ -2417,7 +2419,9 @@
                 // Line answers may put the reading in brackets: "Quilla (퀼라)".
                 const m = name.match(/^(.+?)\s*[([]([^()[\]]+)[)\]]$/);
                 if (m) { name = m[1].trim(); if (!read) read = m[2].trim(); }
-                const nicks = n.nicks ? cleanNicks(n.nicks, name) : [];
+                // v0.2.12: full names come back as parts with no "name" yet, so compare with the parts too.
+                const whole = name || (n.parts && typeof n.parts === 'object' ? Object.values(n.parts).filter(v => typeof v === 'string').join(' ') : '');
+                const nicks = n.nicks ? cleanNicks(n.nicks, whole) : [];
                 return {
                     name, note: n.note.trim(), read: read.slice(0, 80), ...(n.parts ? { parts: n.parts } : {}),
                     ...(n.real ? { real: true } : {}), ...(n.realParts ? { realParts: n.realParts } : {}), ...(nicks.length ? { nicks } : {}),
