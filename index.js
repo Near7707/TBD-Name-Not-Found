@@ -1391,11 +1391,19 @@
     // v0.2.43: a two-word Latin place: a place word + an adjective that agrees with it (Aquae Albae,
     // Portus Magnus, Clara Vallis), or + a man's name (Forum Aureliani, like Forum Iulii).
     const LATIN_AGREE = { m: 'us', f: 'a', n: 'um', fp: 'ae', np: 'a' };
+    const STREET_WEIGHT = { Via: 3, Vicus: 3, Semita: 2, Clivus: 1 };
+    function pickBy(list, weight, rnd) {
+        let r = rnd() * list.reduce((a, f) => a + weight(f), 0);
+        for (const f of list) { r -= weight(f); if (r < 0) return f; }
+        return list[list.length - 1];
+    }
     function twoWordPlace(R, root, cats, rnd) {
         const need = (cats && cats.must) || cats;
         const nouns = need ? R.placeWords.filter(f => f.cats.some(c => need.includes(c))) : noStreet(R.placeWords);
         if (!nouns.length) return null;
-        const noun = pick(nouns, rnd);
+        // v0.2.47: in a Roman town most streets were a vicus or a via, few a clivus (a sloping street).
+        // (A street word like Vicus comes back on purpose, so it isn't counted as a first part then.)
+        const noun = need === STREET ? { ...pickBy(nouns, f => STREET_WEIGHT[f.t] || 1, rnd), street: true } : pick(nouns, rnd);
         if (rnd() < 0.25) {
             const who = cacheGiven(root, 'm', rnd);
             // v0.2.45: a Roman road takes the man's name as an adjective (Via Appia, Via Flaminia).
@@ -1478,7 +1486,7 @@
     const STREET_TO = {
         latin: p => {
             const base = dropVowel(noAccents(p.text).replace(/(is|us|um|ia|os)$/i, ''));
-            return { text: `Via ${base}ensis`, frags: [SF('Via', 'road', '길'), ...p.frags, SF('ensis', 'to (the road to)', '~로 가는')] };
+            return { text: `Via ${base}ensis`, frags: [SF('Via', 'road', '길'), ...p.frags, SF('ensis', '(road) to', '~로 가는')] };
         },
         norman: p => {
             const de = /^[aeiouyh]/i.test(noAccents(p.text)) ? "d'" : 'de ';
@@ -1496,7 +1504,7 @@
         latin: (rnd, want, town) => (rnd() < 0.2 ? STREET_TO.latin(town()) : twoWordPlace(CACHE.latin, 'latin', STREET, rnd)),
         norman: (rnd, want, town) => {
             const r = rnd();
-            if (r < 0.3) return STREET_TO.norman(town());
+            if (r < 0.2) return STREET_TO.norman(town());
             if (r < 0.75) {
                 const noun = pick(STREET_NOUNS.norman, rnd);
                 const w = pick(CACHE.norman.dwellWord.filter(d => d.t !== 'rue'), rnd);
@@ -1543,7 +1551,8 @@
         const to = [root, root2].filter(r => STREET_TO[r]);
         const r0 = rnd();
         if (tail && r0 < 0.5) st = streetWord(root, root2, rnd);
-        else if (to.length && r0 < 0.8) {
+        // v0.2.47: without one-word street endings, a road to a town only now and then (no Rue de ten times).
+        else if (to.length && r0 < (tail ? 0.8 : 0.35)) {
             const r = pick(to, rnd);
             // (Otherwise one root's own street below, so Rue de doesn't take its turn.)
             const p = r !== 'slavic' || root2 === 'slavic' ? shortTown(() => cachePlace(root, ['town'], rnd, true, root2)) : null;
@@ -1619,6 +1628,8 @@
             // v0.2.29: -arium too (Whitarium, Midarium).
             if (shortLatin && (t.t.length <= 4 || t.t === 'arium')) continue;
             // v0.2.36: a Norman head drops its last e before a vowel (Chesne + ay → Chesnay, not Chesneay).
+            // v0.2.47: dropping a vowel would split au / eu (Beau + ovo → Beaovo).
+            if (elide && /(au|eu)$/i.test(h.t) && VOWEL.test(t.t[0])) continue;
             const hh = (R.noHiatus || E.noHiatus) && !elide && /e$/.test(h.t) && VOWEL.test(t.t[0]) ? h.t.slice(0, -1) : h.t;
             // v0.2.38: a ch keeps the next word's h in a place name (Buchholz, Eichhagen — not Bucholz, Eichagen).
             const keepH = !elide && /ch$/i.test(hh) && /^h/i.test(t.t);
@@ -2003,7 +2014,7 @@
         // v0.2.28: a place named for a saint counts as one first part too ("saint"), or saints, never
         // "used", win every turn once the place heads run out (Sveti … 10 times in 20).
         const isSaintPlace = n => !!n.saint || (n.frags || []).some(f => f.en === 'saint' || f.en === 'church of');
-        const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
+        const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t) && !f.street).map(f => f.t.toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
         // v0.2.29: places spread out their endings the same way (-magus six times in 20).
         const tailsOf = n => (n.pieces || form.target === 'person' ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t) || f.use).map(f => (f.use || f.t).toLowerCase())
@@ -4149,7 +4160,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.46';
+    const TBD_VERSION = '0.2.47';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

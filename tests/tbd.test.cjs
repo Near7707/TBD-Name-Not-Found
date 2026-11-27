@@ -2684,3 +2684,25 @@ test('v0.2.46: a Slavic "road to" street only for a town with a Slavic ending (n
     }
     assert.ok(ska > 0);
 });
+
+test('v0.2.47: fewer "Rue de" in a Merge, more Vicus than Clivus, no Beaovo', () => {
+    const { api } = load();
+    const rnd = seeded(2030);
+    let rue = 0;
+    for (let b = 0; b < 10; b++) {
+        for (const n of api.cacheNames({ target: 'place', method: 'cache', kind: 'street', roots: ['norman', 'slavic'], rootMix: 'merge' }, 20, [], rnd)) {
+            if (/^Rue (de |d')(?!la )/.test(n.name)) rue++;
+            const h = n.frags.find(f => /(au|eu)$/i.test(f.t));
+            assert.ok(!h || n.name.includes(h.t), n.name);
+        }
+    }
+    assert.ok(rue / 10 <= 4, `Rue de ${rue / 10} a list`);
+    const seen = { Vicus: 0, Clivus: 0 };
+    for (let i = 0; i < 400; i++) {
+        const p = api.cachePlace('latin', ['town'], rnd);
+        const t = api.cachePlace('latin', Object.assign(['town'], { street: true }), rnd);
+        for (const w of Object.keys(seen)) if (new RegExp(`\\b${w}\\b`).test(t.text)) seen[w]++;
+        assert.ok(!/\b(Via|Clivus|Semita)\b/.test(p.text), p.text);
+    }
+    assert.ok(seen.Vicus > seen.Clivus, JSON.stringify(seen));
+});
