@@ -3311,7 +3311,7 @@
     }
     function reviewText(list = results) {
         const en = STRINGS.en;
-        const lines = ['TBD names for review'];
+        const lines = [`TBD names for review (v${TBD_VERSION})`];
         let lastForm = '';
         list.forEach((r, i) => {
             const formLine = reviewFormLine(r.form || {});
@@ -3937,9 +3937,12 @@
             <div><button type="button" class="${inPanel ? 'tbd-small-btn' : 'menu_button'} tbd-hist-clear">${escapeHtml(L.sHistoryClear)}</button></div>
             <label for="${id('ban')}">${escapeHtml(L.sBan)}</label>
             <textarea id="${id('ban')}" class="text_pole" rows="3" data-tbd-set="ban"></textarea>
-            <small>${escapeHtml(L.sBanHint)}</small>`;
+            <small>${escapeHtml(L.sBanHint)}</small>
+            <div class="tbd-ver">TBD v${TBD_VERSION}</div>`;
     }
 
+    // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
+    const TBD_VERSION = '0.2.41';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

@@ -2559,3 +2559,14 @@ test('v0.2.40: Greek and Slavic places have more endings', () => {
     }
     assert.ok(api.CACHE.slavic.placeTail.some(f => f.t === 'more' && f.cats.includes('coast')));
 });
+
+test('v0.2.41: the version in the code matches manifest.json and shows in the review text', () => {
+    const fs = require('fs'), path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+    const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));
+    const m = src.match(/const TBD_VERSION = '([^']+)'/);
+    assert.ok(m);
+    assert.equal(m[1], manifest.version);
+    const { api } = load();
+    assert.ok(api.reviewText().startsWith(`TBD names for review (v${manifest.version})`));
+});

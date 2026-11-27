@@ -765,3 +765,6 @@
 @media (max-width: 600px) {
     .tbd-foot .tbd-status:has(~ #tbd_review) { flex: 1 1 100%; }
 }
+
+/* v0.2.41: version line at the bottom of the settings */
+.tbd-ver { margin-top: 10px; text-align: center; font-family: var(--tbd-mono); font-size: 11px; opacity: 0.55; letter-spacing: 0.05em; }
