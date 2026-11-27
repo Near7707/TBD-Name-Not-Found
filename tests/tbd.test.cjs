@@ -2706,3 +2706,22 @@ test('v0.2.47: fewer "Rue de" in a Merge, more Vicus than Clivus, no Beaovo', ()
     }
     assert.ok(seen.Vicus > seen.Clivus, JSON.stringify(seen));
 });
+
+test('v0.2.48: Latin streets: no Via + genitive, street words spread, Sacer', () => {
+    const { api } = load();
+    let worst = 0, gen = 0, sacr = 0;
+    for (let b = 0; b < 30; b++) {
+        const list = api.cacheNames({ target: 'place', method: 'cache', roots: ['latin'], rootMix: 'split', kind: 'street' }, 20, [], seeded(2030 + b));
+        const count = {};
+        for (const n of list) {
+            const [a, c] = n.name.split(' ');
+            for (const w of ['Via', 'Vicus', 'Semita', 'Clivus']) if (a === w || c === w) count[w] = (count[w] || 0) + 1;
+            if (a === 'Via' && c && /i$/.test(c)) gen++;
+            if (/Sacrus/.test(n.name)) sacr++;
+        }
+        worst = Math.max(worst, ...Object.values(count));
+    }
+    assert.equal(gen, 0, 'a via takes no genitive');
+    assert.equal(sacr, 0, 'Sacer, not Sacrus');
+    assert.ok(worst <= 6, `one street word at most 6 times in 20 (got ${worst})`);
+});

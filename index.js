@@ -1392,6 +1392,7 @@
     // Portus Magnus, Clara Vallis), or + a man's name (Forum Aureliani, like Forum Iulii).
     const LATIN_AGREE = { m: 'us', f: 'a', n: 'um', fp: 'ae', np: 'a' };
     const STREET_WEIGHT = { Via: 3, Vicus: 3, Semita: 2, Clivus: 1 };
+    const STREET_FREE = 4;
     function pickBy(list, weight, rnd) {
         let r = rnd() * list.reduce((a, f) => a + weight(f), 0);
         for (const f of list) { r -= weight(f); if (r < 0) return f; }
@@ -1413,11 +1414,14 @@
             }
             const gen = /ius$/.test(who.text) ? who.text.replace(/us$/, 'i') : /us$/.test(who.text) ? who.text.replace(/us$/, 'i') : /ian$/.test(who.text) ? `${who.text}i` : '';
             // Not the same sound twice (Collis Columbici, Vicus Victini).
-            if (gen && !sameSound(noun.t, gen)) return { text: `${noun.t} ${gen}`, frags: [noun, { t: gen, en: `of ${who.text} (a man's name)`, ko: `${who.text}의 (사람 이름)` }], root };
+            // v0.2.48: but a via never takes the genitive (Via Laurelli); it gets an adjective then.
+            if (gen && noun.t !== 'Via' && !sameSound(noun.t, gen)) return { text: `${noun.t} ${gen}`, frags: [noun, { t: gen, en: `of ${who.text} (a man's name)`, ko: `${who.text}의 (사람 이름)` }], root };
         }
         const adjs = R.placeAdj.filter(a => (!a.cats || a.cats.some(c => noun.cats.includes(c) && (!need || need.includes(c)))) && !meaningClash(noun, a) && !sameSound(noun.t, a.t));
         const a = pick(adjs, rnd);
-        const word = { ...a, t: a.t + LATIN_AGREE[R.wordGender[noun.t]], use: a.t.toLowerCase() };
+        // v0.2.48: a stem like Sacr- takes -er, not -us, for a masculine word (Clivus Sacer, not Sacrus).
+        const end = LATIN_AGREE[R.wordGender[noun.t]];
+        const word = { ...a, t: end === 'us' && /[^aeiou]r$/.test(a.t) ? a.t.slice(0, -1) + 'er' : a.t + end, use: a.t.toLowerCase() };
         delete word.cats;
         const first = rnd() < 0.25;
         return { text: first ? `${word.t} ${noun.t}` : `${noun.t} ${word.t}`, frags: first ? [word, noun] : [noun, word], root };
@@ -1486,7 +1490,7 @@
     const STREET_TO = {
         latin: p => {
             const base = dropVowel(noAccents(p.text).replace(/(is|us|um|ia|os)$/i, ''));
-            return { text: `Via ${base}ensis`, frags: [SF('Via', 'road', '길'), ...p.frags, SF('ensis', '(road) to', '~로 가는')] };
+            return { text: `Via ${base}ensis`, frags: [SF('Via', 'road', '길', { street: true }), ...p.frags, SF('ensis', '(road) to', '~로 가는')] };
         },
         norman: p => {
             const de = /^[aeiouyh]/i.test(noAccents(p.text)) ? "d'" : 'de ';
@@ -2009,7 +2013,12 @@
         const usedEnds = usedHeads;
         const endUse = n => Math.max(0, ...endsOf(n).map(e => usedEnds.get(e) || 0));
         // The worse of the two counts first, then the two together (one part used twice beats both used once).
-        const useScore = n => { const h = headUse(n), e = endUse(n); return Math.max(h, e) * 10 + h + e; };
+        // v0.2.48: a street word (Via, Vicus) comes back on purpose, so it is free for its first few uses
+        // in one list and only then counts (Via 13 times in 20 on a bad board).
+        const usedStreets = new Map();
+        const streetsOf = n => (n.frags || []).filter(f => f.street).map(f => f.t.toLowerCase());
+        const streetUse = n => Math.max(0, ...streetsOf(n).map(w => (usedStreets.get(w) || 0) - STREET_FREE + 1));
+        const useScore = n => { const h = headUse(n), e = endUse(n), w = streetUse(n); return Math.max(h, e, w) * 10 + h + e + w; };
         const leastUse = list => Math.min(...list.map(useScore));
         // v0.2.28: a place named for a saint counts as one first part too ("saint"), or saints, never
         // "used", win every turn once the place heads run out (Sveti … 10 times in 20).
@@ -2081,6 +2090,7 @@
             for (const e of epithets(n)) usedEpi.add(e);
             for (const h of headsOf(n)) usedHeads.set(h, (usedHeads.get(h) || 0) + 1);
             for (const e of endsOf(n)) usedEnds.set(e, (usedEnds.get(e) || 0) + 1);
+            for (const w of streetsOf(n)) usedStreets.set(w, (usedStreets.get(w) || 0) + 1);
             for (const f of familiesOf(n)) usedFamilies.add(f);
             for (const t of memoryNames(n)) banned.add(t.toLowerCase());
             out.push(n);
@@ -4160,7 +4170,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.47';
+    const TBD_VERSION = '0.2.48';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
