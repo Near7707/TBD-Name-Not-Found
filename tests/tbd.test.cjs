@@ -2527,3 +2527,18 @@ test('v0.2.38: Norse, Norman and German woods, hills and forts have more endings
     assert.ok(!german.some(n => /ch(?!h)(agen|olz|orst|ardt|alde)/.test(n.name)), german.filter(n => /ch(agen|olz|orst|ardt|alde)/.test(n.name)).map(n => n.name).join());
     assert.ok(german.some(n => /chh/.test(n.name)));
 });
+
+test('v0.2.39: no plain German words as places; no Norwegian word before an English-north ending', () => {
+    const { api } = load();
+    const all = [];
+    for (let b = 0; b < 40; b++) {
+        for (const kind of ['any', 'mountain', 'water', 'forest']) {
+            all.push(...api.cacheNames({ target: 'place', method: 'cache', roots: ['germanic'], kind }, 20, [], seeded(2030 + b)));
+            all.push(...api.cacheNames({ target: 'place', method: 'cache', roots: ['norse'], kind }, 20, [], seeded(2030 + b)));
+        }
+    }
+    assert.ok(!all.some(n => /^(Eisberg|Steinschlag|Waldhorn)$/.test(n.name)));
+    const dane = all.filter(n => /^(Ytre|Lille|Indre|Store) /.test(n.name) && api.CACHE.norse.danelaw.has(n.frags[n.frags.length - 1].t));
+    assert.equal(dane.length, 0, dane.map(n => n.name).join());
+    assert.ok(all.some(n => /^(Ytre|Lille|Indre|Store) /.test(n.name)));
+});

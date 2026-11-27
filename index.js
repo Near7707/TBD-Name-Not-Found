@@ -1021,6 +1021,8 @@
             placeTail: F('burg=fortress=성채=fort/town;berg=mountain=산=hill;heim=home=집·마을=town;dorf=village=마을=town/field;feld=field=들판=field;wald=forest=숲=forest;bach=stream=시내=water;stein=stone, rock=돌·바위=hill/fort;furt=ford=여울=water;hof=farmstead=농장=field/town;au=water meadow=물가 풀밭=water/field;hausen=houses=집들=town;see=lake=호수=water;bruck=bridge=다리=water/town;tal=valley=골짜기=hill/field;hafen=harbor=항구=coast;hain=grove=작은 숲=forest;horn=peak=봉우리=hill;'
                 + 'ingen=descendants of=~의 후손 (마을)=town;stadt=town, place=도시·터=town;rode=clearing=개간지=forest/field;weiler=hamlet=작은 마을=town/field;wang=meadow=풀밭=field;ach=river=강=water;beck=stream=시내=water;zell=monk\'s cell=수도원 방=town;loh=grove=작은 숲=forest;winkel=corner=구석=town/field;werder=river island=강섬=water;schlag=felled clearing=벌목지=forest;holz=wood=숲=forest;hagen=hedged enclosure=울타리 친 터=forest/town;hardt=mountain forest=산림=forest/hill;horst=thicket knoll=덤불 둔덕=forest;reuth=clearing=개간지=forest/field;busch=thicket=덤불숲=forest;fels=rock=바위=hill/fort;eck=ridge spur, castle site=산모퉁이·성터=hill/fort;bühl=hill=언덕=hill;halde=slope=비탈=hill'),
             placePre: F('Ober=upper=위쪽;Unter=lower=아래쪽;Nieder=lower=아래쪽;Groß=great=큰;Klein=little=작은'),
+            // v0.2.39: place names that come out as plain German words (iceberg, rockfall, French horn).
+            notPlaces: new Set('eisberg steinschlag waldhorn'.split(' ')),
             placePost: F('am See=at the lake=호숫가=water'),
             saint: { m: 'Sankt {}', f: 'Sankt {}' },
             family: 'place', branches: { place: 3, dwell: 3, trade: 3, looks: 2 },
@@ -1080,6 +1082,9 @@
             placeTail: F('by=farm, village=마을=town/field;thorpe=outlying farm=외딴 농가=field;thwaite=clearing=빈터=forest/field;toft=homestead=집터=town;dale=valley=골짜기=hill/field;fell=mountain=산=hill;beck=stream=시내=water;holm=islet=작은 섬=coast/water;vik=bay=만=coast;ness=headland=곶=coast;kirk=church=교회=town;gate=street=거리=town;garth=enclosure=울타리=town/field;scar=rock, cliff=바위 절벽=hill/coast;fjord=fjord=피오르=coast;stad=place=터=town;lund=grove=작은 숲=forest;howe=mound=언덕 무덤=hill;'
                 + 'keld=spring=샘=water;foss=waterfall=폭포=water/hill;gill=ravine=협곡=hill/water;rigg=ridge=산등성이=hill;tarn=mountain lake=산속 호수=water/hill;ster=farm=농장=field;bost=farm=농장=field;berg=mountain=산=hill;bakke=bank, ridge=둑·언덕=hill;heim=home=집·마을=town;borg=fortress=요새=fort;ey=island=섬=coast/water;skog=forest=숲=forest;holt=wood=숲=forest;with=wood=숲=forest;rud=clearing=개간지=forest/field;mark=woodland, borderland=숲·변경=forest;li=hillside=산비탈=hill/forest'),
             placePre: F('Store=big=큰;Lille=little=작은;Ytre=outer=바깥쪽;Indre=inner=안쪽'),
+            // v0.2.39: endings from the north of England (the Danelaw). A Norwegian word in front
+            // (Ytre, Lille) would mix two lands' spellings, so these never get one.
+            danelaw: new Set('thorpe thwaite toft dale fell beck kirk gate garth scar howe keld gill rigg tarn with'.split(' ')),
             family: 'norse', branches: { patron: 6, dwell: 4 },
             dwell: F('Dahl=valley=골짜기;Lund=grove=작은 숲;Berg=mountain=산;Strand=shore=바닷가;Holm=islet=작은 섬;Haugen=the mound=언덕 무덤;Bakke=slope=비탈;Lie=hillside=산비탈;Nes=headland=곶;Vik=bay=만;Moen=the heath=황야;Foss=waterfall=폭포;Hagen=the enclosure=울타리 친 땅;Rud=clearing=개간지;Gard=farm=농장'),
             noble: 'af', of: 'of', titles: { m: ['Brother', 'Saint'], f: ['Sister', 'Saint'] }, royal: { m: ['King', 'Jarl', 'Prince'], f: ['Queen', 'Princess'] },
@@ -1413,6 +1418,7 @@
             const keepH = !elide && /ch$/i.test(hh) && /^h/i.test(t.t);
             const text = capFirst(keepH ? hh + t.t : glue(hh, t.t, elide, link));
             if (!sayable(text) || newDoubleVowel(text, hh, t.t)) continue;
+            if ((R.notPlaces && R.notPlaces.has(text.toLowerCase())) || (E.notPlaces && E.notPlaces.has(text.toLowerCase()))) continue;
             // r + vowel + r at the join (Akro + oros → Akroros).
             if (/ror/i.test(text) && !/ror/i.test(h.t) && !/ror/i.test(t.t)) continue;
             base = { text, frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root };
@@ -1424,7 +1430,8 @@
         // The extra word before comes from the head's root, the one after from the tail's.
         // Never an extra word that says what the name already says (Grandroche-le-Grand, Magnona Magna).
         const fresh = f => f.en !== base.frags[0].en && !base.frags.some(b => meaningClash(f, b) || oppositeClash(f, b));
-        const pre = strictCats(R.placePre, cats).filter(fresh).map(f => tagRoot(f, root, mix));
+        const dane = R.danelaw && E.danelaw && E.danelaw.has(base.frags[base.frags.length - 1].t);
+        const pre = dane ? [] : strictCats(R.placePre, cats).filter(fresh).map(f => tagRoot(f, root, mix));
         const post = strictCats(E.placePost, cats).filter(fresh).map(f => tagRoot(f, root2, mix));
         const usePre = pre.length && (!post.length || rnd() < 0.5);
         const list = usePre ? pre : post;
