@@ -1539,13 +1539,15 @@
         // Merge: one root's head and the other's street ending (Pontgasse, Hvitbrygge), a road to a merged
         // town in one root's way (Rue de Llanbourg, Heol Courgarv), or now and then one root's own street.
         const tail = CACHE[root2].placeTail.some(streetOnly);
+        // v0.2.46: a Slavic "road to" (-ska ulica) only for a town with a Slavic ending (Llanecka, not Chernototska).
         const to = [root, root2].filter(r => STREET_TO[r]);
         const r0 = rnd();
         if (tail && r0 < 0.5) st = streetWord(root, root2, rnd);
         else if (to.length && r0 < 0.8) {
             const r = pick(to, rnd);
-            const p = shortTown(() => cachePlace(root, ['town'], rnd, true, root2));
-            st = STREET_TO[r](p);
+            // (Otherwise one root's own street below, so Rue de doesn't take its turn.)
+            const p = r !== 'slavic' || root2 === 'slavic' ? shortTown(() => cachePlace(root, ['town'], rnd, true, root2)) : null;
+            st = p && STREET_TO[r](p);
             if (st) st = { ...st, frags: st.frags.map(f => (f.r ? f : tagRoot(f, r, true))) };
         }
         if (!st) {
@@ -4147,7 +4149,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.45';
+    const TBD_VERSION = '0.2.46';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

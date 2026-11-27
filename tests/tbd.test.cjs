@@ -2667,3 +2667,20 @@ test('v0.2.45: street boards name streets each root\'s way; street words stay ou
     assert.ok(api.CACHE.norman.placeHead.filter(f => f.cats && f.cats.includes('town')).length >= 8);
     assert.ok(api.CACHE.latin.placeWords.some(f => f.t === 'Via'));
 });
+
+test('v0.2.46: a Slavic "road to" street only for a town with a Slavic ending (no Chernototska ulica)', () => {
+    const { api } = load();
+    const rnd = seeded(2030);
+    let ska = 0;
+    for (const roots of [['slavic', 'norman'], ['greek', 'slavic'], ['norman', 'celtic', 'slavic']]) {
+        for (let b = 0; b < 10; b++) {
+            for (const n of api.cacheNames({ target: 'place', method: 'cache', kind: 'street', roots, rootMix: 'merge' }, 20, [], rnd)) {
+                if (!n.frags.some(f => f.t === 'ska ulica')) continue;
+                ska++;
+                const end = n.frags[n.frags.length - 2];
+                assert.ok(!end.r || end.r === 'slavic', n.name);
+            }
+        }
+    }
+    assert.ok(ska > 0);
+});
