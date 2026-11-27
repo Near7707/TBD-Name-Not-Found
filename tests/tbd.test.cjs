@@ -2493,3 +2493,18 @@ test('v0.2.36: spellings, plain words and English-looking Merge endings', () => 
         }
     }
 });
+
+test('v0.2.37: given-only names spread their endings (-ianus/-iana as one); asked letters win', () => {
+    const { api } = load();
+    for (let b = 0; b < 10; b++) {
+        const list = api.cacheNames({ target: 'person', method: 'cache', roots: ['latin'], ckinds: ['common'], parts: ['given'] }, 20, [], seeded(2030 + b));
+        const count = {};
+        for (const n of list) { const k = n.frags.slice(1).map(f => f.t).join('').replace(/(us|um|a)$/, ''); count[k] = (count[k] || 0) + 1; }
+        assert.ok(Math.max(...Object.values(count)) <= 3, JSON.stringify(count));
+        assert.ok(!list.some(n => n.name === 'Maxilla'));
+    }
+    const must = api.cacheNames({ target: 'person', method: 'cache', roots: ['oldenglish'], parts: ['given', 'family'], mustContain: 'win' }, 10, [], seeded(2030));
+    assert.ok(must.filter(n => /win/i.test(n.name)).length >= 9);
+    const slavic = api.cacheNames({ target: 'person', method: 'cache', roots: ['slavic'], ckinds: ['common'], gender: 'feminine', parts: ['given'] }, 20, [], seeded(2030));
+    assert.ok(!slavic.some(n => /^(Velika|Dala|Voja)$/.test(n.name)));
+});

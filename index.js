@@ -935,7 +935,7 @@
     const CACHE = {
         latin: {
             // v0.2.36: plain Latin words, not names (lord, holy, alone, calf, wind, water…).
-            notNames: new Set('dominus domina sanctus sancta solus sola bonus bona vitulus vitula novus ventus lucus rubus aqua terra lupa magna paca'.split(' ')),
+            notNames: new Set('dominus domina sanctus sancta solus sola bonus bona vitulus vitula novus ventus lucus rubus aqua terra lupa magna paca maxilla'.split(' ')),
             head: F('Silv=forest=숲;Luc=light=빛;Aur=gold=금;Sever=stern=엄격한;Clar=clear, bright=맑은;Fort=strong=강한;Flor=flower=꽃;Vit=life=생명;Fel=lucky=행운의;Ver=true=참된;Prim=first=첫째;Val=strong, well=굳센;Dom=lord=주인;Pac=peace=평화;Fid=faith=믿음;Sanct=holy=거룩한;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Stell=star=별;Ign=fire=불;Vent=wind=바람;Mar=sea=바다;Terr=earth=땅;Aqu=water=물;Noct=night=밤;Cael=sky=하늘;'
                 + 'Magn=great=큰;Ferr=iron=쇠;Lup=wolf=늑대;Urs=bear=곰;Aquil=eagle=독수리;Corv=raven=큰까마귀;Columb=dove=비둘기;Ros=rose=장미;Laur=laurel=월계수;Oliv=olive=올리브;Bon=good=좋은;Ben=well=잘;Grat=grace=은총;Iust=just=의로운;Fest=festive=축제의;Hilar=cheerful=쾌활한;Constant=steadfast=한결같은;Vict=victory=승리;August=venerable=존엄한;Max=greatest=가장 큰;Mart=Mars=마르스;Vesper=evening=저녁;Argent=silver=은'),
             masc: F('us==;ius==;ianus=belonging to=~에 속한;inus=like=~ 같은;ian=belonging to=~에 속한;ellus=little=작은;ulus=little=작은;icus=of, belonging to=~의;atus=having=~을 지닌'),
@@ -1101,8 +1101,9 @@
             warF: F('Leaina=the lioness=암사자;Keraunos=thunderbolt=벼락;Nikephoros=victory-bearing=승리를 가져오는 이;Kallinike=gloriously victorious=빛나는 승리자;Thraseia=the bold=대담한 이'),
         },
         slavic: {
-            // v0.2.36: a head + -a that is just an adjective (sharp, pain, fierce, good).
-            notNames: new Set('ostra bola luta dobra'.split(' ')),
+            // v0.2.36: a head + -a that is just a word (sharp, pain, fierce, good, great, "she gave"),
+            // or a man's pet name (Voja) on a woman.
+            notNames: new Set('ostra bola luta dobra velika dala voja'.split(' ')),
             head: F('Vladi=rule=다스림;Slavo=glory=영광;Miro=peace=평화;Bogo=god=신;Bori=battle=싸움;Dobro=good=좋은;Rado=joy, counsel=기쁨·조언;Jaro=fierce, strong=굳센;Lyubo=love=사랑;Milo=dear=다정한;Bole=great=큰;Voji=warrior=전사;Brani=defend=지킴;Sveto=holy, light=거룩한·빛;Zlato=gold=금;Drago=precious=소중한;Ostro=sharp=날카로운;Luto=fierce=사나운;Stani=to become=되다;Dali=far=먼;Tiho=quiet=고요한;Veli=great=큰;Rati=war=전쟁;Vse=all=모든'),
             masc: F('mir=peace, world=평화·세상;slav=glory=영광;bor=battle=싸움;gost=guest=손님;vit=lord=주인;polk=regiment=군대;volod=ruler=다스림;drag=dear=소중한;dan=given=주어진;gnev=anger=분노;mil=dear=다정한'),
             fem: F('slava=glory=영광;mira=peace=평화;mila=dear=다정한;dana=given=주어진;ka=little=작은;a=='),
@@ -1787,14 +1788,16 @@
         const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
         // v0.2.29: places spread out their endings the same way (-magus six times in 20).
-        const tailsOf = n => (n.pieces ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
+        const tailsOf = n => (n.pieces || form.target === 'person' ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
         // v0.2.30: people spread out their given-name endings too (-mila six times, -ianus five times),
         // and one list doesn't give the same family twice (Chernov and Chernova).
+        // v0.2.37: a given name alone (no pieces) counts too, and -ianus, -iana and -ian are one ending
+        // (Pacianus, Ignianus, Noviana: seven in ten), as are -inus/-ina, -ulus/-ula and the like.
         const givenTailsOf = n => {
-            const g = (n.pieces || []).find(p => p.role === 'given');
+            const g = n.pieces ? n.pieces.find(p => p.role === 'given') : (form.target === 'person' ? n : null);
             if (!g || !g.frags || g.frags.length < 2) return [];
-            return ['g:' + g.frags.slice(1).map(f => f.t).join('').toLowerCase().replace(/a$/, '')];
+            return ['g:' + g.frags.slice(1).map(f => f.t).join('').toLowerCase().replace(/(us|um|a)$/, '')];
         };
         // v0.2.31: and family names built of parts spread out the part before their ending
         // (-castrensis, -vitov three times): Castr|a + ensis, Miro + vit + ov.
@@ -1828,17 +1831,19 @@
             }
             if (!pool.length) continue;
             let best = pool;
+            // v0.2.37: what the user asked for (letters, length) comes before spreading parts out,
+            // or "must contain win" loses to "-win was used already".
+            if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
+            if (form.length && form.length !== 'any') {
+                const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
+                if (m.length) best = m;
+            }
             const freshEpi = best.filter(n => !epithets(n).some(e => usedEpi.has(e)));
             if (freshEpi.length) best = freshEpi;
             const freshFamily = best.filter(n => !familiesOf(n).some(f => usedFamilies.has(f)));
             if (freshFamily.length) best = freshFamily;
             const fewest = leastUse(best);
             best = best.filter(n => useScore(n) === fewest);
-            if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
-            if (form.length && form.length !== 'any') {
-                const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
-                if (m.length) best = m;
-            }
             if (form.sound && form.sound !== 'any') {
                 best = [...best].sort((a, b) => soundScore(cacheCore(b), form.sound) - soundScore(cacheCore(a), form.sound)).slice(0, 5);
             }
