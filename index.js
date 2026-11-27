@@ -962,7 +962,7 @@
             placeHead: F('Ash=ash tree=물푸레나무=forest;Brad=broad=넓은;Ald=old=오래된;Brom=broom=금작화=field;Thorn=thorn=가시나무=forest/field;Stan=stone=돌=hill/fort;Hart=stag=수사슴=forest;Lang=long=긴;Sut=south=남쪽;Nor=north=북쪽;Wes=west=서쪽;East=east=동쪽;Cran=crane=두루미=water;Brock=badger=오소리=forest;Fox=fox=여우=forest;Ever=wild boar=멧돼지=forest;Elm=elm=느릅나무=forest;Black=black=검은;Whit=white=흰;Hasel=hazel=개암나무=forest;Salt=salt=소금=coast;Kings=king\'s=왕의=town/fort;Chip=market=장터=town;Mil=mill=방앗간=water/town;'
                 + 'Ac=oak=참나무=forest;Bex=boxwood=회양목=forest;Ship=sheep=양=field;Swin=swine=돼지=field;Cald=cold=차가운;Clay=clay=점토=field;Craw=crow=까마귀;Bar=barley=보리=field;Apple=apple=사과=field;Ling=heather=헤더=field/hill;Farn=fern=고사리=field/forest;Buck=buck=수사슴=forest;Bever=beaver=비버=water;Wal=foreigners (Britons)=이방인(브리튼인);Mid=middle=가운데;Birch=birch=자작나무=forest'),
             placeTail: F('ton=farmstead=농가 마을=town/field;ham=homestead=마을=town/field;wick=dwelling, trading place=마을·장터=town;ford=river crossing=여울=water;bury=fort=성채=fort/town;ley=woodland clearing=숲속 빈터=forest/field;wood=wood=숲=forest;hurst=wooded hill=숲 언덕=forest/hill;den=valley=골짜기=hill/field;mere=lake=호수=water;well=spring=샘=water/town;stead=place=터=town/field;field=open land=들판=field;combe=valley=골짜기=hill;cliffe=cliff=절벽=hill/coast;don=hill=언덕=hill;worth=enclosure=울타리 친 땅=town/field;bourne=stream=시내=water;holt=wood=숲=forest;mouth=river mouth=하구=coast/water;port=harbor, market town=항구·장터=coast/town;ridge=ridge=산등성이=hill;brook=stream=시내=water;wold=forest upland=숲 고원=forest/hill;hithe=landing place=나루터=water/coast;'
-                + 'stoke=outlying farmstead=딸린 농가=field/town;stow=holy meeting place=거룩한 모임터=town;minster=great church=큰 교회·수도원=town;chester=old fort=옛 성채=fort/town;cot=cottage=오두막=town/field;croft=enclosed field=울 친 밭=field;fold=animal pen=가축 우리=field;hope=enclosed valley=막힌 골짜기=hill/field;law=rounded hill=둥근 언덕=hill;shaw=thicket=덤불숲=forest;hay=hedged land=산울타리 땅=field;royd=clearing=개간지=forest/field;moss=bog=늪=water/field;ey=island=섬=water/coast;pool=pool, harbour=웅덩이·항구=water/coast;bridge=bridge=다리=water/town'),
+                + 'stoke=outlying farmstead=딸린 농가=field/town;stow=holy meeting place=거룩한 모임터=town;minster=great church=큰 교회·수도원=town;chester=old fort=옛 성채=fort/town;cot=cottage=오두막=town/field;croft=enclosed field=울 친 밭=field;fold=animal pen=가축 우리=field;hope=enclosed valley=막힌 골짜기=hill/field;law=rounded hill=둥근 언덕=hill;shaw=thicket=덤불숲=forest;hay=hedged land=산울타리 땅=field;royd=clearing=개간지=forest/field;moss=bog=늪=water/field;ey=island=섬=water/coast;pool=pool, harbour=웅덩이·항구=water/coast;bridge=bridge=다리=water/town;ness=headland=곶=coast;haven=harbor=항구=coast'),
             placePre: F('Great=great=큰;Little=little=작은;Upper=upper=위쪽;Lower=lower=아래쪽;North=north=북쪽;South=south=남쪽;East=east=동쪽;West=west=서쪽;Long=long=긴;Market=market=장터=town'),
             placePost: F('-on-Sea=by the sea=바닷가=coast;-le-Street=near the Roman road=옛 로마 길가=town;-upon-Avon=on the river (avon = river)=강가 (avon = 강)=water/town;Magna=great (Latin)=큰 (라틴어);Parva=little (Latin)=작은 (라틴어)'),
             saint: { m: "St. {}'s", f: "St. {}'s" },
@@ -995,7 +995,7 @@
             placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Rive=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town;'
                 + 'Chesne=oak=참나무=forest;Loup=wolf=늑대=forest;Fleur=flower=꽃=field;Vieux=old=오래된;Ros=rose=장미=field;Chastel=castle=성=fort;Gué=ford=여울=water;Mesnil=dwelling=집터=town;Bec=stream=시내=water;Tour=tower=탑=fort;Sable=sand=모래=coast;Ormes=elms=느릅나무들=forest;Lande=heath=황야=field'),
             placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pré=meadow=풀밭=field;'
-                + 'tot=homestead (Norse)=집터 (노르드어)=town;beuf=hut (Norse)=오두막 (노르드어)=town;fleur=inlet=물굽이=coast/water;bec=stream=시내=water;ay=estate=영지=town;bourg=market town=장터 마을=town;lande=heath=황야=field;tour=tower=탑=fort;chastel=castle=성=fort;mesnil=dwelling=집터=town;bosc=wood (Norman)=숲 (노르만어)=forest;londe=grove (Norse)=작은 숲 (노르드어)=forest;tuit=clearing (Norse)=개간지 (노르드어)=forest/field;essart=clearing=개간지=forest/field;breuil=enclosed wood=울타리 친 숲=forest;haye=hedge, enclosed wood=산울타리·울 친 숲=forest;plessis=fenced enclosure=엮은 울타리 터=forest/fort;hogue=hill, mound (Norse)=언덕 (노르드어)=hill;dalle=valley (Norse)=골짜기 (노르드어)=hill/field;brecque=slope (Norse)=비탈 (노르드어)=hill;falaise=cliff=절벽=hill/coast;ferté=stronghold=요새=fort;motte=castle mound=성 둔덕=fort'),
+                + 'tot=homestead (Norse)=집터 (노르드어)=town;beuf=hut (Norse)=오두막 (노르드어)=town;fleur=inlet=물굽이=coast/water;bec=stream=시내=water;ay=estate=영지=town;bourg=market town=장터 마을=town;lande=heath=황야=field;tour=tower=탑=fort;chastel=castle=성=fort;mesnil=dwelling=집터=town;bosc=wood (Norman)=숲 (노르만어)=forest;londe=grove (Norse)=작은 숲 (노르드어)=forest;tuit=clearing (Norse)=개간지 (노르드어)=forest/field;essart=clearing=개간지=forest/field;breuil=enclosed wood=울타리 친 숲=forest;haye=hedge, enclosed wood=산울타리·울 친 숲=forest;plessis=fenced enclosure=엮은 울타리 터=forest/fort;hogue=hill, mound (Norse)=언덕 (노르드어)=hill;dalle=valley (Norse)=골짜기 (노르드어)=hill/field;brecque=slope (Norse)=비탈 (노르드어)=hill;falaise=cliff=절벽=hill/coast;ferté=stronghold=요새=fort;motte=castle mound=성 둔덕=fort;fleur=estuary, harbor (Norse)=강어귀 포구 (노르드어)=coast/water;hou=islet (Norse)=작은 섬 (노르드어)=coast;nez=headland (Norse)=곶 (노르드어)=coast;vic=bay (Norse)=만 (노르드어)=coast;havre=harbor=항구=coast'),
             placePre: F('Grand-=great=큰;Petit-=little=작은'),
             placePost: F('-sur-Mer=on the sea=바닷가=coast;-le-Grand=the great=큰;-le-Petit=the little=작은;-la-Forêt=by the forest=숲가=forest'),
             saint: { m: 'Saint-{}', f: 'Sainte-{}' },
@@ -1017,12 +1017,12 @@
                 + 'ger=spear=창;gast=guest=손님;land=land=땅;man=man=사람;rad=counsel=조언;ram=raven=큰까마귀;grim=mask=가면;gang=path=길;mut=mind, spirit=마음;wart=guardian=지킴이'),
             fem: F('hild=battle=전투;gard=enclosure=울타리;trud=strength=힘;lind=gentle=부드러운;burg=fortress=요새;run=secret=비밀;heid=kind, rank=됨됨이·지위;gund=battle=전투;swind=strength=힘'),
             placeHead: F('Stein=stone=돌=hill/fort;Ross=horse=말=field;Eich=oak=참나무=forest;Lind=linden=보리수=forest/town;Wolf=wolf=늑대=forest;Hoh=high=높은=hill/fort;Neu=new=새로운=town;Alt=old=오래된;Schwarz=black=검은=forest;Weiß=white=흰;Rot=red=붉은;Grün=green=푸른=field/forest;Tann=fir=전나무=forest;Birk=birch=자작나무=forest;Fels=rock=바위=hill;Mühl=mill=방앗간=water/town;Kirch=church=교회=town;Hirsch=stag=수사슴=forest;Falk=falcon=매=hill;Sonn=sun=해;Eis=ice=얼음=hill/water;Wald=forest=숲=forest;'
-                + 'Esch=ash tree=물푸레나무=forest;Buch=beech=너도밤나무=forest;Salz=salt=소금=water;Kalt=cold=차가운;Lang=long=긴;Breit=broad=넓은;Hasel=hazel=개암나무=forest;Erl=alder=오리나무=forest/water;Kreuz=cross=십자가=town;Gold=gold=금;Adler=eagle=독수리=hill;Raben=raven=큰까마귀=forest;Bären=bear=곰=forest;Mittel=middle=가운데;Brunn=spring=샘=water;Wies=meadow=풀밭=field;Hasen=hare=토끼=field'),
+                + 'Esch=ash tree=물푸레나무=forest;Buch=beech=너도밤나무=forest;Salz=salt=소금=water;Kalt=cold=차가운;Lang=long=긴;Breit=broad=넓은;Hasel=hazel=개암나무=forest;Erl=alder=오리나무=forest/water;Kreuz=cross=십자가=town;Gold=gold=금;Adler=eagle=독수리=hill;Raben=raven=큰까마귀=forest;Bären=bear=곰=forest;Mittel=middle=가운데;Brunn=spring=샘=water;Wies=meadow=풀밭=field;Hasen=hare=토끼=field;Sand=sand=모래=coast;Fisch=fish=물고기=water/coast;Möwen=gull=갈매기=coast;Dünen=dune=모래 언덕=coast'),
             placeTail: F('burg=fortress=성채=fort/town;berg=mountain=산=hill;heim=home=집·마을=town;dorf=village=마을=town/field;feld=field=들판=field;wald=forest=숲=forest;bach=stream=시내=water;stein=stone, rock=돌·바위=hill/fort;furt=ford=여울=water;hof=farmstead=농장=field/town;au=water meadow=물가 풀밭=water/field;hausen=houses=집들=town;see=lake=호수=water;bruck=bridge=다리=water/town;tal=valley=골짜기=hill/field;hafen=harbor=항구=coast;hain=grove=작은 숲=forest;horn=peak=봉우리=hill;'
-                + 'ingen=descendants of=~의 후손 (마을)=town;stadt=town, place=도시·터=town;rode=clearing=개간지=forest/field;weiler=hamlet=작은 마을=town/field;wang=meadow=풀밭=field;ach=river=강=water;beck=stream=시내=water;zell=monk\'s cell=수도원 방=town;loh=grove=작은 숲=forest;winkel=corner=구석=town/field;werder=river island=강섬=water;schlag=felled clearing=벌목지=forest;holz=wood=숲=forest;hagen=hedged enclosure=울타리 친 터=forest/town;hardt=mountain forest=산림=forest/hill;horst=thicket knoll=덤불 둔덕=forest;reuth=clearing=개간지=forest/field;busch=thicket=덤불숲=forest;fels=rock=바위=hill/fort;eck=ridge spur, castle site=산모퉁이·성터=hill/fort;bühl=hill=언덕=hill;halde=slope=비탈=hill'),
+                + 'ingen=descendants of=~의 후손 (마을)=town;stadt=town, place=도시·터=town;rode=clearing=개간지=forest/field;weiler=hamlet=작은 마을=town/field;wang=meadow=풀밭=field;ach=river=강=water;beck=stream=시내=water;zell=monk\'s cell=수도원 방=town;loh=grove=작은 숲=forest;winkel=corner=구석=town/field;werder=river island=강섬=water;schlag=felled clearing=벌목지=forest;holz=wood=숲=forest;hagen=hedged enclosure=울타리 친 터=forest/town;hardt=mountain forest=산림=forest/hill;horst=thicket knoll=덤불 둔덕=forest;reuth=clearing=개간지=forest/field;busch=thicket=덤불숲=forest;fels=rock=바위=hill/fort;eck=ridge spur, castle site=산모퉁이·성터=hill/fort;bühl=hill=언덕=hill;halde=slope=비탈=hill;münde=river mouth=하구=coast/water;sund=sound, strait=해협=coast;förde=inlet=좁은 만=coast;oog=small island=작은 섬=coast;siel=sluice harbor=수문 포구=coast;deich=dike=둑=coast'),
             placePre: F('Ober=upper=위쪽;Unter=lower=아래쪽;Nieder=lower=아래쪽;Groß=great=큰;Klein=little=작은'),
             // v0.2.39: place names that come out as plain German words (iceberg, rockfall, French horn).
-            notPlaces: new Set('eisberg steinschlag waldhorn'.split(' ')),
+            notPlaces: new Set('eisberg steinschlag waldhorn sandstein sandburg goldfisch goldeich sandeich waldeich lindeich'.split(' ')),
             placePost: F('am See=at the lake=호숫가=water'),
             saint: { m: 'Sankt {}', f: 'Sankt {}' },
             family: 'place', branches: { place: 3, dwell: 3, trade: 3, looks: 2 },
@@ -1080,7 +1080,7 @@
             placeHead: F('Kirk=church=교회=town;Stain=stone=돌=hill;Ask=ash tree=물푸레나무=forest;Lang=long=긴;Brei=broad=넓은;Sand=sand=모래=coast;Fisk=fish=물고기=water/coast;Hval=whale=고래=coast;Myr=bog=늪=water/field;Hest=horse=말=field;Kald=cold=차가운;Skog=forest=숲=forest;Nor=north=북쪽;Aust=east=동쪽;Hvit=white=흰;Ulf=wolf=늑대=forest;Ravn=raven=큰까마귀;Thor=Thor=토르;'
                 + 'Birk=birch=자작나무=forest;Alm=elm=느릅나무=forest;Berg=mountain=산=hill;Dal=valley=골짜기=hill/field;Aker=field=밭=field;Fen=marsh=늪=water;Heid=heath=황야=field/hill;Brun=brown=갈색;Blom=flower=꽃=field;Borg=fortress=요새=fort;Hus=house=집=town;Lin=flax=아마=field'),
             placeTail: F('by=farm, village=마을=town/field;thorpe=outlying farm=외딴 농가=field;thwaite=clearing=빈터=forest/field;toft=homestead=집터=town;dale=valley=골짜기=hill/field;fell=mountain=산=hill;beck=stream=시내=water;holm=islet=작은 섬=coast/water;vik=bay=만=coast;ness=headland=곶=coast;kirk=church=교회=town;gate=street=거리=town;garth=enclosure=울타리=town/field;scar=rock, cliff=바위 절벽=hill/coast;fjord=fjord=피오르=coast;stad=place=터=town;lund=grove=작은 숲=forest;howe=mound=언덕 무덤=hill;'
-                + 'keld=spring=샘=water;foss=waterfall=폭포=water/hill;gill=ravine=협곡=hill/water;rigg=ridge=산등성이=hill;tarn=mountain lake=산속 호수=water/hill;ster=farm=농장=field;bost=farm=농장=field;berg=mountain=산=hill;bakke=bank, ridge=둑·언덕=hill;heim=home=집·마을=town;borg=fortress=요새=fort;ey=island=섬=coast/water;skog=forest=숲=forest;holt=wood=숲=forest;with=wood=숲=forest;rud=clearing=개간지=forest/field;mark=woodland, borderland=숲·변경=forest;li=hillside=산비탈=hill/forest'),
+                + 'keld=spring=샘=water;foss=waterfall=폭포=water/hill;gill=ravine=협곡=hill/water;rigg=ridge=산등성이=hill;tarn=mountain lake=산속 호수=water/hill;ster=farm=농장=field;bost=farm=농장=field;berg=mountain=산=hill;bakke=bank, ridge=둑·언덕=hill;heim=home=집·마을=town;borg=fortress=요새=fort;ey=island=섬=coast/water;skog=forest=숲=forest;holt=wood=숲=forest;with=wood=숲=forest;rud=clearing=개간지=forest/field;mark=woodland, borderland=숲·변경=forest;li=hillside=산비탈=hill/forest;sund=sound, strait=해협=coast;havn=harbor=항구=coast;sker=skerry=암초 섬=coast'),
             placePre: F('Store=big=큰;Lille=little=작은;Ytre=outer=바깥쪽;Indre=inner=안쪽'),
             // v0.2.39: endings from the north of England (the Danelaw). A Norwegian word in front
             // (Ytre, Lille) would mix two lands' spellings, so these never get one.
@@ -1113,12 +1113,14 @@
             head: F('Vladi=rule=다스림;Slavo=glory=영광;Miro=peace=평화;Bogo=god=신;Bori=battle=싸움;Dobro=good=좋은;Rado=joy, counsel=기쁨·조언;Jaro=fierce, strong=굳센;Lyubo=love=사랑;Milo=dear=다정한;Bole=great=큰;Voji=warrior=전사;Brani=defend=지킴;Sveto=holy, light=거룩한·빛;Zlato=gold=금;Drago=precious=소중한;Ostro=sharp=날카로운;Luto=fierce=사나운;Stani=to become=되다;Dali=far=먼;Tiho=quiet=고요한;Veli=great=큰;Rati=war=전쟁;Vse=all=모든'),
             masc: F('mir=peace, world=평화·세상;slav=glory=영광;bor=battle=싸움;gost=guest=손님;vit=lord=주인;polk=regiment=군대;volod=ruler=다스림;drag=dear=소중한;dan=given=주어진;gnev=anger=분노;mil=dear=다정한'),
             fem: F('slava=glory=영광;mira=peace=평화;mila=dear=다정한;dana=given=주어진;ka=little=작은;a=='),
-            placeHead: F('Bel=white=흰;Novo=new=새로운=town;Cherno=black=검은;Zlato=gold=금;Gor=mountain=산=hill;Dub=oak=참나무=forest;Lip=linden=보리수=forest/town;Brez=birch=자작나무=forest;Kamen=stone=돌=hill/fort;Vod=water=물=water;Bystr=swift=빠른=water;Suh=dry=마른;Mokr=wet=젖은=water/field;Volk=wolf=늑대=forest;Vyshe=upper=위쪽=fort/town;Slav=glory=영광=town;Krasno=red, fair=붉은·고운;Les=forest=숲=forest;Pol=field=들=field;Ozer=lake=호수=water;Rib=fish=물고기=water;Star=old=오래된;Tikh=quiet=고요한'),
+            placeHead: F('Bel=white=흰;Novo=new=새로운=town;Cherno=black=검은;Zlato=gold=금;Gor=mountain=산=hill;Dub=oak=참나무=forest;Lip=linden=보리수=forest/town;Brez=birch=자작나무=forest;Kamen=stone=돌=hill/fort;Vod=water=물=water;Bystr=swift=빠른=water;Suh=dry=마른;Mokr=wet=젖은=water/field;Volk=wolf=늑대=forest;Vyshe=upper=위쪽=fort/town;Slav=glory=영광=town;Krasno=red, fair=붉은·고운;Les=forest=숲=forest;Pol=field=들=field;Ozer=lake=호수=water;Rib=fish=물고기=water/coast;Star=old=오래된;Tikh=quiet=고요한;Sine=blue=푸른=coast/water;Pesk=sand=모래=coast;Soli=salt=소금=coast'),
             placeTail: F('grad=town, castle=도시·성=town/fort;gorod=town=도시=town/fort;ovo=belonging to=~의 (마을)=town/field;evo=belonging to=~의 (마을)=town/field;ets=little=작은=town;ica=little=작은=water/town;ovka=small village=작은 마을=field/town;selo=village=마을=town/field;gora=mountain=산=hill;dol=valley=골짜기=hill/field;vrh=peak=봉우리=hill;polje=field=들판=field;reka=river=강=water;voda=water=물=water;ozero=lake=호수=water;'
-                + 'brod=ford=여울=water/town;potok=stream=시내=water;brdo=hill=언덕=hill;breg=hill, bank=언덕·기슭=hill/water;more=sea=바다=coast;ostrov=island=섬=coast/water;luka=harbor, meadow=포구·풀밭=coast/field;gradec=small castle=작은 성=fort/town;gradište=old fort=성터=fort;ostrog=stockade=목책 요새=fort;planina=mountain range=산줄기=hill;hrib=hill=언덕=hill'),
+                + 'brod=ford=여울=water/town;potok=stream=시내=water;brdo=hill=언덕=hill;breg=hill, bank, shore=언덕·기슭·물가=hill/water/coast;more=sea=바다=coast;ostrov=island=섬=coast/water;luka=harbor, meadow=포구·풀밭=coast/field;gradec=small castle=작은 성=fort/town;gradište=old fort=성터=fort;ostrog=stockade=목책 요새=fort;planina=mountain range=산줄기=hill;hrib=hill=언덕=hill;otok=island=섬=coast;zaliv=bay=만=coast;zaton=sheltered bay=후미=coast/water;ustje=river mouth=하구=coast/water'),
             elide: true,
             placePre: F('Gornji=upper=위쪽;Donji=lower=아래쪽;Veliki=great=큰;Mali=little=작은;Stari=old=오래된'),
             saint: { m: 'Sveti {}', f: 'Sveta {}' },
+            // v0.2.42: plain words for a current, not places.
+            notPlaces: new Set('vodotok bystrotok'.split(' ')),
             family: 'slavic', branches: { patron: 3, place: 2, dwell: 2, trade: 2, looks: 2 },
             dwell: F('Gorski=of the mountains=산 사람;Zagorski=beyond the hills=언덕 너머;Podgorski=below the hill=언덕 아래;Zarecki=beyond the river=강 건너;Zalesski=beyond the forest=숲 너머;Dubrovski=by the oak wood=참나무 숲가;Lipski=by the lindens=보리수 곁'),
             trade: F('Kovač=smith=대장장이;Kuznetsov=smith\'s child=대장장이의 자식;Melnik=miller=방앗간 주인;Kravets=tailor=재단사;Rybak=fisherman=어부;Pekar=baker=빵 굽는 사람;Bondar=cooper=통 만드는 사람;Goncharov=potter\'s child=도공의 자식;Plotnikov=carpenter\'s child=목수의 자식;Kolar=wheelwright=수레바퀴 장인'),
@@ -1137,6 +1139,8 @@
         city: ['town', 'fort'], town: ['town', 'field'], street: ['town'], building: ['town', 'fort'], transit: ['water', 'coast', 'town'],
         park: ['field', 'town'], mountain: ['hill'], water: ['water'], forest: ['forest'], sea: ['coast', 'water'], fort: ['fort', 'hill'],
     };
+    // v0.2.42: a sea or island name wants a sea fragment; water ones (spring, lake) may sit beside it but not alone.
+    PLACE_CATS.sea.must = ['coast'];
     // "Cache + AI" (polish) is a Cache name first, so it counts as Cache everywhere the form is concerned.
     const METHODS = ['ai', 'cache', 'polish'];
     function isCache(form = {}) {
@@ -1393,7 +1397,8 @@
         }
         // v0.2.25: a picked place kind wants one fragment of that kind (no "forest" called Magnana),
         // unless the root has too few to find one in time.
-        const ofKind = f => !!(f.cats && cats && f.cats.some(c => cats.includes(c)));
+        const need = (cats && cats.must) || cats;
+        const ofKind = f => !!(f.cats && need && f.cats.some(c => need.includes(c)));
         // v0.2.25: an Old English word + a short Latin ending sounds like a joke (Kingsetum, Birchona).
         const shortLatin = mix && root === 'oldenglish' && root2 === 'latin';
         // v0.2.29: and few Latin endings are left after an English word (mostly -magus), so this pair
@@ -1410,6 +1415,8 @@
             if (sameSound(h.t, t.t)) continue;
             if (meaningClash(h, t) || twoAdjectives(h, t)) continue;
             if (cats && i < 30 && !ofKind(h) && !ofKind(t)) continue;
+            // v0.2.42: and its ending is not a lake or a stream (no sea called Möwensee, Ammolimne).
+            if (need !== cats && i < 30 && t.cats && !ofKind(t)) continue;
             // v0.2.35: Welsh and Gaelic place words don't mix (no Llanderry, Slievemawr, Brynboy).
             if ((R.branchOf || E.branchOf) && !celtFits((R.branchOf || {})[h.t] || '', (E.branchOf || {})[t.t] || '', want)) continue;
             // v0.2.29: -arium too (Whitarium, Midarium).
@@ -1418,6 +1425,8 @@
             const hh = (R.noHiatus || E.noHiatus) && !elide && /e$/.test(h.t) && VOWEL.test(t.t[0]) ? h.t.slice(0, -1) : h.t;
             // v0.2.38: a ch keeps the next word's h in a place name (Buchholz, Eichhagen — not Bucholz, Eichagen).
             const keepH = !elide && /ch$/i.test(hh) && /^h/i.test(t.t);
+            // v0.2.42: a plain c before an h would read as "ch" (Blanc + hou → Blanchou).
+            if (!keepH && /c$/i.test(hh) && /^h/i.test(t.t)) continue;
             const text = capFirst(keepH ? hh + t.t : glue(hh, t.t, elide, link));
             if (!sayable(text) || newDoubleVowel(text, hh, t.t)) continue;
             if ((R.notPlaces && R.notPlaces.has(text.toLowerCase())) || (E.notPlaces && E.notPlaces.has(text.toLowerCase()))) continue;
@@ -1433,8 +1442,8 @@
         // Never an extra word that says what the name already says (Grandroche-le-Grand, Magnona Magna).
         const fresh = f => f.en !== base.frags[0].en && !base.frags.some(b => meaningClash(f, b) || oppositeClash(f, b));
         const dane = R.danelaw && E.danelaw && E.danelaw.has(base.frags[base.frags.length - 1].t);
-        const pre = dane ? [] : strictCats(R.placePre, cats).filter(fresh).map(f => tagRoot(f, root, mix));
-        const post = strictCats(E.placePost, cats).filter(fresh).map(f => tagRoot(f, root2, mix));
+        const pre = dane ? [] : strictCats(R.placePre, need).filter(fresh).map(f => tagRoot(f, root, mix));
+        const post = strictCats(E.placePost, need).filter(fresh).map(f => tagRoot(f, root2, mix));
         const usePre = pre.length && (!post.length || rnd() < 0.5);
         const list = usePre ? pre : post;
         if (!list.length) return base;
@@ -3942,7 +3951,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.41';
+    const TBD_VERSION = '0.2.42';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

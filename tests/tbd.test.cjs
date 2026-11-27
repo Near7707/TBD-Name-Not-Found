@@ -2570,3 +2570,22 @@ test('v0.2.41: the version in the code matches manifest.json and shows in the re
     const { api } = load();
     assert.ok(api.reviewText().startsWith(`TBD names for review (v${manifest.version})`));
 });
+
+test('v0.2.42: a sea place always has a sea part, and never ends in a lake or stream', () => {
+    const { api } = load();
+    for (const root of api.CACHE_ROOTS) {
+        for (let b = 0; b < 6; b++) {
+            const list = api.cacheNames({ target: 'place', method: 'cache', roots: [root], kind: 'sea' }, 20, [], seeded(2030 + b));
+            for (const n of list) {
+                const fr = n.frags || [];
+                assert.ok(fr.some(f => f.cats && f.cats.includes('coast')), `${root}: ${n.name} has no sea part`);
+                const R = api.CACHE[root];
+                const tail = [...fr].reverse().find(f => R.placeTail.some(t => t.t === f.t));
+                if (tail && tail.cats) assert.ok(tail.cats.includes('coast') || !tail.cats.includes('water'), `${root}: ${n.name} ends in ${tail.t}`);
+                assert.ok(!/ am See$|-upon-Avon$/.test(n.name), `${root}: ${n.name}`);
+                assert.ok(!/c(h(ou|avre|aven)$)/i.test(n.name) || /ch(h)/i.test(n.name), `${root}: ${n.name} reads as ch`);
+            }
+        }
+    }
+    assert.ok(api.CACHE.germanic.notPlaces.has('goldfisch'));
+});
