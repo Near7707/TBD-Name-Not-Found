@@ -2508,3 +2508,22 @@ test('v0.2.37: given-only names spread their endings (-ianus/-iana as one); aske
     const slavic = api.cacheNames({ target: 'person', method: 'cache', roots: ['slavic'], ckinds: ['common'], gender: 'feminine', parts: ['given'] }, 20, [], seeded(2030));
     assert.ok(!slavic.some(n => /^(Velika|Dala|Voja)$/.test(n.name)));
 });
+
+test('v0.2.38: Norse, Norman and German woods, hills and forts have more endings; ch keeps the h', () => {
+    const { api } = load();
+    for (const [root, kind] of [['norse', 'forest'], ['norman', 'forest'], ['norman', 'mountain'], ['germanic', 'forest'], ['germanic', 'mountain'], ['germanic', 'fort']]) {
+        for (let b = 0; b < 8; b++) {
+            const list = api.cacheNames({ target: 'place', method: 'cache', roots: [root], kind }, 20, [], seeded(2030 + b));
+            const R = api.CACHE[root], count = {};
+            for (const n of list) {
+                const t = [...n.frags].reverse().find(f => R.placeTail.some(x => x.t === f.t));
+                if (t) count[t.t] = (count[t.t] || 0) + 1;
+            }
+            assert.ok(Math.max(0, ...Object.values(count)) <= 4, `${root} ${kind} ${JSON.stringify(count)}`);
+        }
+    }
+    const german = [];
+    for (let b = 0; b < 20; b++) german.push(...api.cacheNames({ target: 'place', method: 'cache', roots: ['germanic'], kind: 'forest' }, 20, [], seeded(2030 + b)));
+    assert.ok(!german.some(n => /ch(?!h)(agen|olz|orst|ardt|alde)/.test(n.name)), german.filter(n => /ch(agen|olz|orst|ardt|alde)/.test(n.name)).map(n => n.name).join());
+    assert.ok(german.some(n => /chh/.test(n.name)));
+});
