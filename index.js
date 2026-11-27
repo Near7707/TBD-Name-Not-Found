@@ -1667,6 +1667,8 @@
         else text = a.t.startsWith('-') ? base.text + a.t : `${base.text} ${a.t}`;
         // Ashwell + -le-Street runs three l's together: keep the plain name then.
         if (!sayable(text)) return base;
+        // v0.2.49: marked, so one list doesn't give both Norstad and Ytre Norstad.
+        a = { ...a, addon: true };
         return { text, frags: usePre ? [a, ...base.frags] : [...base.frags, a], root };
     }
     const SON = { t: 'son', en: 'son', ko: '아들' };
@@ -1997,6 +1999,15 @@
         const [lo, hi] = SYLLABLES[form.length] || SYLLABLES.any;
         const out = [];
         const seen = new Set();
+        // v0.2.49: a place is also seen by its name without the add-on word (Norstad = Ytre Norstad,
+        // Vertlieu = Grand-Vertlieu), so one list doesn't give the same place twice.
+        const coreOf = n => {
+            const a = n.pieces ? null : (n.frags || []).find(f => f.addon);
+            let t = n.name;
+            if (a && t.startsWith(a.t)) t = t.slice(a.t.length);
+            else if (a && t.endsWith(a.t)) t = t.slice(0, -a.t.length);
+            return '#' + t.trim().toLowerCase();
+        };
         // Each name takes turns through the chosen roots, starting at a random one.
         // Merge: names take turns through pairs of two different roots instead.
         const pairs = cacheMerge(form) ? rootPairs(roots, rnd) : null;
@@ -2055,7 +2066,7 @@
                     // The family name and title side with either root.
                     const n = pr ? cacheOne(form, pick(pr, rnd), pick(kinds, rnd), rnd, pr) : cacheOne(form, root, pick(kinds, rnd), rnd);
                     const texts = memoryNames(n).map(t => t.toLowerCase());
-                    if (seen.has(n.name.toLowerCase()) || texts.some(t => banned.has(t))) continue;
+                    if (seen.has(n.name.toLowerCase()) || seen.has(coreOf(n)) || texts.some(t => banned.has(t))) continue;
                     list.push(n);
                 }
                 return list;
@@ -2087,6 +2098,7 @@
             }
             const n = pick(best, rnd);
             seen.add(n.name.toLowerCase());
+            seen.add(coreOf(n));
             for (const e of epithets(n)) usedEpi.add(e);
             for (const h of headsOf(n)) usedHeads.set(h, (usedHeads.get(h) || 0) + 1);
             for (const e of endsOf(n)) usedEnds.set(e, (usedEnds.get(e) || 0) + 1);
@@ -4170,7 +4182,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.48';
+    const TBD_VERSION = '0.2.49';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

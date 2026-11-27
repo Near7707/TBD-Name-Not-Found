@@ -2725,3 +2725,17 @@ test('v0.2.48: Latin streets: no Via + genitive, street words spread, Sacer', ()
     assert.equal(sacr, 0, 'Sacer, not Sacrus');
     assert.ok(worst <= 6, `one street word at most 6 times in 20 (got ${worst})`);
 });
+
+test('v0.2.49: one list never gives a place both with and without its add-on word', () => {
+    const { api } = load();
+    for (const root of ['norse', 'norman', 'germanic', 'oldenglish']) {
+        for (let b = 0; b < 15; b++) {
+            const list = api.cacheNames({ target: 'place', method: 'cache', roots: [root], rootMix: 'split', kind: 'any' }, 20, [], seeded(2030 + b));
+            const cores = list.map(n => {
+                const a = n.frags.find(f => f.addon);
+                return (a ? n.name.replace(a.t, '') : n.name).trim().toLowerCase();
+            });
+            assert.equal(new Set(cores).size, cores.length, `${root}: ${list.map(n => n.name).join(', ')}`);
+        }
+    }
+});
