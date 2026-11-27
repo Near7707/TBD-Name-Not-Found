@@ -2336,6 +2336,8 @@ test('v0.2.30: Archive — given endings and families spread out, Mesnil no long
     assert.ok(mesnil / 6 <= 3.5, String(mesnil / 6));
 });
 
+const STREET_WORDS = /^(rue|ruelle|venelle|chemin|de|d'|heol|stryd|sráid|bóthar)$/;
+
 test('v0.2.31: Archive — first parts and endings spread out together, family-name endings too', () => {
     const { api } = load();
     const rnd = seeded(2030);
@@ -2344,7 +2346,8 @@ test('v0.2.31: Archive — first parts and endings spread out together, family-n
         // 99: one word (as first part or ending) about three times in 20 at most (Pont…, …lieu).
         const places = api.cacheNames({ target: 'place', method: 'cache', kind: 'street', roots: ['norman', 'celtic'], rootMix: 'merge' }, 20, [], rnd);
         const w = {};
-        for (const r of places) for (const f of r.frags) { const t = f.t.toLowerCase().replace(/^-|-$/g, ''); w[t] = (w[t] || 0) + 1; }
+        // v0.2.45: the street word itself (Rue, Heol, de) comes back on purpose; the words around it spread out.
+        for (const r of places) for (const f of r.frags) { const t = f.t.toLowerCase().replace(/^-|-$/g, ''); if (STREET_WORDS.test(t)) continue; w[t] = (w[t] || 0) + 1; }
         anyMax += Math.max(...Object.values(w));
         // 100: scholar family names don't pile up one ending (-castrensis three times).
         const people = api.cacheNames({ target: 'person', method: 'cache', roots: ['latin'], ckinds: ['scholar'], gender: 'masculine', parts: ['given', 'family'] }, 20, [], rnd);
@@ -2636,4 +2639,31 @@ test('v0.2.44: Latin -etum only after a tree or plant, and Magna / Parva agree',
             }
         }
     }
+});
+
+test('v0.2.45: street boards name streets each root\'s way; street words stay out of other names', () => {
+    const { api } = load();
+    const rnd = seeded(2030);
+    const STREETY = /(^|\s)(Rue|Ruelle|Venelle|Chemin|Grande?-\w+|Street|Lane|Row|ulica|Hodos|Agyia|Stoa|Stryd|Heol|Sráid|Bóthar|Via|Clivus|Semita|Vicus|Straße)(\s|$)|(gasse|straße|weg|markt|graben|steig|tor|gate|gata|veg|stig|smug|brygge)$/;
+    for (const roots of [['latin'], ['oldenglish'], ['norman'], ['germanic'], ['celtic'], ['norse'], ['greek'], ['slavic'], ['norman', 'celtic'], ['greek', 'slavic']]) {
+        let streets = 0, total = 0;
+        for (let b = 0; b < 5; b++) {
+            const list = api.cacheNames({ target: 'place', method: 'cache', kind: 'street', roots, rootMix: 'merge' }, 20, [], rnd);
+            for (const n of list) { total++; if (STREETY.test(n.name)) streets++; assert.ok(n.frags.every(f => f.ko !== undefined), n.name); }
+        }
+        assert.ok(streets / total >= 0.45, `${roots}: ${streets}/${total}`);
+    }
+    // Street-only words never reach other places, family names or "of" places.
+    const ONLY = /(gasse|straße|steig|graben|gata|smug|brygge|stig)$|\b(Via|Clivus|Semita|Rue|ulica|Stryd|Heol|Hodos)\b|Bäcker|Schmied|Gerber|Mickle|Smed|Torg/;
+    for (const root of ['germanic', 'norse', 'latin', 'norman', 'slavic']) {
+        for (const kind of ['any', 'town', 'forest', 'fort']) {
+            for (const n of api.cacheNames({ target: 'place', method: 'cache', kind, roots: [root] }, 20, [], rnd)) assert.ok(!ONLY.test(n.name), `${kind}: ${n.name}`);
+        }
+        // (People only by street endings and words: Gerbert is a real given name.)
+        const ENDS = /(gasse|straße|steig|graben|gata|smug|brygge|stig)\b|\b(Via|Clivus|Semita|Rue|ulica|Stryd|Heol|Hodos)\b/;
+        for (const n of api.cacheNames({ target: 'person', method: 'cache', roots: [root], ckinds: ['common', 'noble', 'religious', 'scholar'], parts: ['given', 'family'] }, 40, [], rnd)) assert.ok(!ENDS.test(n.name), n.name);
+    }
+    // Grande-Rue / Via Aurelia shapes, and more Norman town heads.
+    assert.ok(api.CACHE.norman.placeHead.filter(f => f.cats && f.cats.includes('town')).length >= 8);
+    assert.ok(api.CACHE.latin.placeWords.some(f => f.t === 'Via'));
 });

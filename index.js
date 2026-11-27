@@ -949,12 +949,15 @@
                 + 'Silva=forest=숲=forest;Lucus=sacred grove=성스러운 숲=forest;Nemus=grove=작은 숲=forest;Saltus=wooded upland=숲 고원=forest/hill;'
                 + 'Mons=mountain=산=hill;Collis=hill=언덕=hill;Rupes=crag=바위산=hill/fort;Vallis=valley=골짜기=hill/field;'
                 + 'Portus=harbor=항구=coast;Insula=island=섬=coast/water;Litus=shore=바닷가=coast;Sinus=bay=만=coast;'
-                + 'Forum=market=장터=town;Vicus=village=마을=town;Villa=estate=영지=town/field;Colonia=settlement=정착지=town;'
-                + 'Castra=army camp=진지=fort;Castrum=fort=요새=fort;Turris=tower=탑=fort;Campus=field=들판=field;Pratum=meadow=풀밭=field'),
+                + 'Forum=market=장터=town;Vicus=village, street=마을·거리=town/street;Villa=estate=영지=town/field;Colonia=settlement=정착지=town;'
+                + 'Castra=army camp=진지=fort;Castrum=fort=요새=fort;Turris=tower=탑=fort;Campus=field=들판=field;Pratum=meadow=풀밭=field;'
+                + 'Via=street, road=길=street;Clivus=sloping street=비탈길=street;Semita=lane=골목길=street'),
             wordGender: { Aquae: 'fp', Fons: 'm', Lacus: 'm', Pons: 'm', Rivus: 'm', Vadum: 'n', Silva: 'f', Lucus: 'm', Nemus: 'n', Saltus: 'm', Mons: 'm', Collis: 'm', Rupes: 'f', Vallis: 'f',
-                Portus: 'm', Insula: 'f', Litus: 'n', Sinus: 'm', Forum: 'n', Vicus: 'm', Villa: 'f', Colonia: 'f', Castra: 'np', Castrum: 'n', Turris: 'f', Campus: 'm', Pratum: 'n' },
+                Portus: 'm', Insula: 'f', Litus: 'n', Sinus: 'm', Forum: 'n', Vicus: 'm', Villa: 'f', Colonia: 'f', Castra: 'np', Castrum: 'n', Turris: 'f', Campus: 'm', Pratum: 'n', Via: 'f', Clivus: 'm', Semita: 'f' },
             placeAdj: F('Alb=white=흰;Nov=new=새로운;Magn=great=큰;Alt=high=높은;Aure=golden=금빛;Long=long=긴;Clar=bright=맑은;Bon=good=좋은;Regi=royal=왕의;Parv=little=작은;Lat=broad=넓은;Quiet=quiet=고요한;Argente=silver=은빛;'
-                + 'Calid=hot=뜨거운=water;Frigid=cold=차가운=water/hill;Opac=shady=그늘진=forest;Umbros=shady=그늘진=forest/hill;Ventos=windy=바람 부는=hill/coast;Nivos=snowy=눈 덮인=hill;Saxos=rocky=바위투성이=hill/coast/fort;Tut=safe=안전한=coast/fort;Florid=flowery=꽃 핀=field'),
+                + 'Calid=hot=뜨거운=water;Frigid=cold=차가운=water/hill;Opac=shady=그늘진=forest;Umbros=shady=그늘진=forest/hill;Ventos=windy=바람 부는=hill/coast;Nivos=snowy=눈 덮인=hill;Saxos=rocky=바위투성이=hill/coast/fort;Tut=safe=안전한=coast/fort;Florid=flowery=꽃 핀=field;'
+                + 'Sacr=sacred=거룩한=street;Rect=straight=곧은=street;Iugari=of the yoke-makers=멍에 장인들의=street;Argentari=of the silversmiths=은세공인들의=street;'
+                + 'Frumentari=of the grain dealers=곡물상들의=street;Vitrari=of the glassmakers=유리 장인들의=street;Sandaliari=of the sandal-makers=샌들 장인들의=street'),
             placePost: F('Magna=great=큰;Parva=little=작은;Superior=upper=위쪽;Inferior=lower=아래쪽'),
             family: 'nomen', branches: { patron: 4, trade: 2, looks: 3 },
             trade: F('Faber=smith=대장장이;Pictor=painter=화가;Agricola=farmer=농부;Pastor=shepherd=목동;Sutor=shoemaker=구두장이;Nauta=sailor=뱃사람;Scriba=scribe=서기;Medicus=physician=의사;Piscator=fisherman=어부;Molitor=miller=방앗간 주인'),
@@ -1003,7 +1006,7 @@
             noHiatus: true,
             // Joins that turn into another French or English word.
             notNames: new Set('beret guise belette rosette lamine thin thine bonnet grandine'.split(' ')),
-            placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Rive=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town;'
+            placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Rive=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town;Ville=town=마을=town;Bourg=market town=장터 마을=town;Cour=estate=영지=town/field;Brette=Bretons=브르타뉴 사람들=town;Port=harbor=항구=town;'
                 + 'Chesne=oak=참나무=forest;Loup=wolf=늑대=forest;Fleur=flower=꽃=field;Vieux=old=오래된;Ros=rose=장미=field;Chastel=castle=성=fort;Gué=ford=여울=water;Mesnil=dwelling=집터=town;Bec=stream=시내=water;Tour=tower=탑=fort;Sable=sand=모래=coast;Ormes=elms=느릅나무들=forest;Lande=heath=황야=field'),
             placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pré=meadow=풀밭=field;'
                 + 'tot=homestead (Norse)=집터 (노르드어)=town;beuf=hut (Norse)=오두막 (노르드어)=town;fleur=inlet=물굽이=coast/water;bec=stream=시내=water;ay=estate=영지=town;bourg=market town=장터 마을=town;lande=heath=황야=field;tour=tower=탑=fort;chastel=castle=성=fort;mesnil=dwelling=집터=town;bosc=wood (Norman)=숲 (노르만어)=forest;londe=grove (Norse)=작은 숲 (노르드어)=forest;tuit=clearing (Norse)=개간지 (노르드어)=forest/field;essart=clearing=개간지=forest/field;breuil=enclosed wood=울타리 친 숲=forest;haye=hedge, enclosed wood=산울타리·울 친 숲=forest;plessis=fenced enclosure=엮은 울타리 터=forest/fort;hogue=hill, mound (Norse)=언덕 (노르드어)=hill;dalle=valley (Norse)=골짜기 (노르드어)=hill/field;brecque=slope (Norse)=비탈 (노르드어)=hill;falaise=cliff=절벽=hill/coast;ferté=stronghold=요새=fort;motte=castle mound=성 둔덕=fort;fleur=estuary, harbor (Norse)=강어귀 포구 (노르드어)=coast/water;hou=islet (Norse)=작은 섬 (노르드어)=coast;nez=headland (Norse)=곶 (노르드어)=coast;vic=bay (Norse)=만 (노르드어)=coast;havre=harbor=항구=coast'),
@@ -1027,9 +1030,9 @@
             masc: F('bert=bright=빛나는;hard=hardy=굳센;mund=protection=보호;wald=rule=다스림;rich=ruler=통치자;win=friend=벗;fried=peace=평화;helm=helmet=투구;bald=bold=대담한;wig=battle=싸움;olf=wolf=늑대;brand=sword, fire=칼·불길;mar=famous=이름난;'
                 + 'ger=spear=창;gast=guest=손님;land=land=땅;man=man=사람;rad=counsel=조언;ram=raven=큰까마귀;grim=mask=가면;gang=path=길;mut=mind, spirit=마음;wart=guardian=지킴이'),
             fem: F('hild=battle=전투;gard=enclosure=울타리;trud=strength=힘;lind=gentle=부드러운;burg=fortress=요새;run=secret=비밀;heid=kind, rank=됨됨이·지위;gund=battle=전투;swind=strength=힘'),
-            placeHead: F('Stein=stone=돌=hill/fort;Ross=horse=말=field;Eich=oak=참나무=forest;Lind=linden=보리수=forest/town;Wolf=wolf=늑대=forest;Hoh=high=높은=hill/fort;Neu=new=새로운=town;Alt=old=오래된;Schwarz=black=검은=forest;Weiß=white=흰;Rot=red=붉은;Grün=green=푸른=field/forest;Tann=fir=전나무=forest;Birk=birch=자작나무=forest;Fels=rock=바위=hill;Mühl=mill=방앗간=water/town;Kirch=church=교회=town;Hirsch=stag=수사슴=forest;Falk=falcon=매=hill;Sonn=sun=해;Eis=ice=얼음=hill/water;Wald=forest=숲=forest;'
-                + 'Esch=ash tree=물푸레나무=forest;Buch=beech=너도밤나무=forest;Salz=salt=소금=water;Kalt=cold=차가운;Lang=long=긴;Breit=broad=넓은;Hasel=hazel=개암나무=forest;Erl=alder=오리나무=forest/water;Kreuz=cross=십자가=town;Gold=gold=금;Adler=eagle=독수리=hill;Raben=raven=큰까마귀=forest;Bären=bear=곰=forest;Mittel=middle=가운데;Brunn=spring=샘=water;Wies=meadow=풀밭=field;Hasen=hare=토끼=field;Sand=sand=모래=coast;Fisch=fish=물고기=water/coast;Möwen=gull=갈매기=coast;Dünen=dune=모래 언덕=coast'),
-            placeTail: F('burg=fortress=성채=fort/town;berg=mountain=산=hill;heim=home=집·마을=town;dorf=village=마을=town/field;feld=field=들판=field;wald=forest=숲=forest;bach=stream=시내=water;stein=stone, rock=돌·바위=hill/fort;furt=ford=여울=water;hof=farmstead=농장=field/town;au=water meadow=물가 풀밭=water/field;hausen=houses=집들=town;see=lake=호수=water;bruck=bridge=다리=water/town;tal=valley=골짜기=hill/field;hafen=harbor=항구=coast;hain=grove=작은 숲=forest;horn=peak=봉우리=hill;'
+            placeHead: F('Stein=stone=돌=hill/fort/street;Bäcker=bakers=빵 굽는 이들=street;Schmied=smith=대장장이=street;Weber=weavers=베 짜는 이들=street;Gerber=tanners=무두장이=street;Burg=castle=성=street;Ross=horse=말=field/street;Eich=oak=참나무=forest;Lind=linden=보리수=forest/town/street;Wolf=wolf=늑대=forest;Hoh=high=높은=hill/fort;Neu=new=새로운=town/street;Alt=old=오래된;Schwarz=black=검은=forest;Weiß=white=흰;Rot=red=붉은;Grün=green=푸른=field/forest;Tann=fir=전나무=forest;Birk=birch=자작나무=forest;Fels=rock=바위=hill;Mühl=mill=방앗간=water/town/street;Kirch=church=교회=town/street;Hirsch=stag=수사슴=forest;Falk=falcon=매=hill;Sonn=sun=해;Eis=ice=얼음=hill/water;Wald=forest=숲=forest;'
+                + 'Esch=ash tree=물푸레나무=forest;Buch=beech=너도밤나무=forest;Salz=salt=소금=water;Kalt=cold=차가운;Lang=long=긴;Breit=broad=넓은;Hasel=hazel=개암나무=forest;Erl=alder=오리나무=forest/water;Kreuz=cross=십자가=town/street;Gold=gold=금;Adler=eagle=독수리=hill;Raben=raven=큰까마귀=forest;Bären=bear=곰=forest;Mittel=middle=가운데;Brunn=spring=샘=water/street;Wies=meadow=풀밭=field;Hasen=hare=토끼=field;Sand=sand=모래=coast;Fisch=fish=물고기=water/coast;Möwen=gull=갈매기=coast;Dünen=dune=모래 언덕=coast'),
+            placeTail: F('burg=fortress=성채=fort/town;berg=mountain=산=hill;heim=home=집·마을=town;dorf=village=마을=town/field;feld=field=들판=field;wald=forest=숲=forest;bach=stream=시내=water;stein=stone, rock=돌·바위=hill/fort;furt=ford=여울=water;hof=farmstead=농장=field/town;au=water meadow=물가 풀밭=water/field;hausen=houses=집들=town;see=lake=호수=water;bruck=bridge=다리=water/town;tal=valley=골짜기=hill/field;hafen=harbor=항구=coast;hain=grove=작은 숲=forest;horn=peak=봉우리=hill;gasse=lane=골목길=street;straße=street=거리=street;weg=way=길=street;markt=market=장터=street;graben=moat street=해자 길=street;steig=steep path=비탈길=street;tor=gate=성문=street;'
                 + 'ingen=descendants of=~의 후손 (마을)=town;stadt=town, place=도시·터=town;rode=clearing=개간지=forest/field;weiler=hamlet=작은 마을=town/field;wang=meadow=풀밭=field;ach=river=강=water;beck=stream=시내=water;zell=monk\'s cell=수도원 방=town;loh=grove=작은 숲=forest;winkel=corner=구석=town/field;werder=river island=강섬=water;schlag=felled clearing=벌목지=forest;holz=wood=숲=forest;hagen=hedged enclosure=울타리 친 터=forest/town;hardt=mountain forest=산림=forest/hill;horst=thicket knoll=덤불 둔덕=forest;reuth=clearing=개간지=forest/field;busch=thicket=덤불숲=forest;fels=rock=바위=hill/fort;eck=ridge spur, castle site=산모퉁이·성터=hill/fort;bühl=hill=언덕=hill;halde=slope=비탈=hill;münde=river mouth=하구=coast/water;sund=sound, strait=해협=coast;förde=inlet=좁은 만=coast;oog=small island=작은 섬=coast;siel=sluice harbor=수문 포구=coast;deich=dike=둑=coast'),
             placePre: F('Ober=upper=위쪽;Unter=lower=아래쪽;Nieder=lower=아래쪽;Groß=great=큰;Klein=little=작은'),
             // v0.2.39: place names that come out as plain German words (iceberg, rockfall, French horn).
@@ -1088,9 +1091,9 @@
             masc: F('ulf=wolf=늑대;bjorn=bear=곰;mund=protection=보호;stein=stone=돌;kel=cauldron, helmet=솥·투구;vald=ruler=다스림;geir=spear=창;leif=heir=후손;vard=guardian=지킴이;fast=firm=굳은;vid=wood=나무;'
                 + 'grim=mask=가면;orm=serpent=뱀;finn=Finn=핀인;mod=courage=용기;brand=sword=칼;bard=beard=수염;rik=mighty=힘센'),
             fem: F('frid=beautiful=아름다운;hild=battle=전투;dis=goddess=여신;run=secret=비밀;gerd=enclosure=울타리;borg=protection=보호;unn=wave=물결;bjorg=help=도움;ny=new=새로운;heid=honour=명예;thrud=strength=힘'),
-            placeHead: F('Kirk=church=교회=town;Stain=stone=돌=hill;Ask=ash tree=물푸레나무=forest;Lang=long=긴;Brei=broad=넓은;Sand=sand=모래=coast;Fisk=fish=물고기=water/coast;Hval=whale=고래=coast;Myr=bog=늪=water/field;Hest=horse=말=field;Kald=cold=차가운;Skog=forest=숲=forest;Nor=north=북쪽;Aust=east=동쪽;Hvit=white=흰;Ulf=wolf=늑대=forest;Ravn=raven=큰까마귀;Thor=Thor=토르;'
+            placeHead: F('Kirk=church=교회=town/street;Mickle=great=큰=street;Smed=smith=대장장이=street;Torg=market=장터=street;Stain=stone=돌=hill/street;Ask=ash tree=물푸레나무=forest;Lang=long=긴;Brei=broad=넓은;Sand=sand=모래=coast;Fisk=fish=물고기=water/coast/street;Hval=whale=고래=coast;Myr=bog=늪=water/field;Hest=horse=말=field;Kald=cold=차가운;Skog=forest=숲=forest;Nor=north=북쪽;Aust=east=동쪽;Hvit=white=흰;Ulf=wolf=늑대=forest;Ravn=raven=큰까마귀;Thor=Thor=토르;'
                 + 'Birk=birch=자작나무=forest;Alm=elm=느릅나무=forest;Berg=mountain=산=hill;Dal=valley=골짜기=hill/field;Aker=field=밭=field;Fen=marsh=늪=water;Heid=heath=황야=field/hill;Brun=brown=갈색;Blom=flower=꽃=field;Borg=fortress=요새=fort;Hus=house=집=town;Lin=flax=아마=field'),
-            placeTail: F('by=farm, village=마을=town/field;thorpe=outlying farm=외딴 농가=field;thwaite=clearing=빈터=forest/field;toft=homestead=집터=town;dale=valley=골짜기=hill/field;fell=mountain=산=hill;beck=stream=시내=water;holm=islet=작은 섬=coast/water;vik=bay=만=coast;ness=headland=곶=coast;kirk=church=교회=town;gate=street=거리=town;garth=enclosure=울타리=town/field;scar=rock, cliff=바위 절벽=hill/coast;fjord=fjord=피오르=coast;stad=place=터=town;lund=grove=작은 숲=forest;howe=mound=언덕 무덤=hill;'
+            placeTail: F('by=farm, village=마을=town/field;thorpe=outlying farm=외딴 농가=field;thwaite=clearing=빈터=forest/field;toft=homestead=집터=town;dale=valley=골짜기=hill/field;fell=mountain=산=hill;beck=stream=시내=water;holm=islet=작은 섬=coast/water;vik=bay=만=coast;ness=headland=곶=coast;kirk=church=교회=town;gate=street=거리=street;gata=street=거리=street;veg=way=길=street;stig=path=오솔길=street;smug=alley=골목=street;brygge=wharf=부두=street;garth=enclosure=울타리=town/field;scar=rock, cliff=바위 절벽=hill/coast;fjord=fjord=피오르=coast;stad=place=터=town;lund=grove=작은 숲=forest;howe=mound=언덕 무덤=hill;'
                 + 'keld=spring=샘=water;foss=waterfall=폭포=water/hill;gill=ravine=협곡=hill/water;rigg=ridge=산등성이=hill;tarn=mountain lake=산속 호수=water/hill;ster=farm=농장=field;bost=farm=농장=field;berg=mountain=산=hill;bakke=bank, ridge=둑·언덕=hill;heim=home=집·마을=town;borg=fortress=요새=fort;ey=island=섬=coast/water;skog=forest=숲=forest;holt=wood=숲=forest;with=wood=숲=forest;rud=clearing=개간지=forest/field;mark=woodland, borderland=숲·변경=forest;li=hillside=산비탈=hill/forest;sund=sound, strait=해협=coast;havn=harbor=항구=coast;sker=skerry=암초 섬=coast'),
             placePre: F('Store=big=큰;Lille=little=작은;Ytre=outer=바깥쪽;Indre=inner=안쪽'),
             // v0.2.39: endings from the north of England (the Danelaw). A Norwegian word in front
@@ -1142,7 +1145,7 @@
     const CACHE_ROOTS = Object.keys(CACHE);
     // First parts of names and places (Chryso-, Zlato-), to spread them out in one list.
     const TAIL_TEXTS = new Set(CACHE_ROOTS.flatMap(k => CACHE[k].placeTail.map(f => f.t)));
-    const HEAD_TEXTS = new Set(CACHE_ROOTS.flatMap(k => [...CACHE[k].head, ...CACHE[k].placeHead, ...(CACHE[k].placeWords || [])].map(f => f.t)));
+    const HEAD_TEXTS = new Set(CACHE_ROOTS.flatMap(k => [...CACHE[k].head, ...CACHE[k].placeHead, ...(CACHE[k].placeWords || []).filter(f => !streetOnly(f))].map(f => f.t)));
     const CACHE_KINDS = ['common', 'noble', 'religious', 'royal', 'warrior', 'scholar'];
     const FAMILY_BRANCHES = ['patron', 'place', 'dwell', 'trade', 'looks'];
     // Place kinds → which place fragments fit (none listed = any fragment).
@@ -1152,6 +1155,12 @@
     };
     // v0.2.42: a sea or island name wants a sea fragment; water ones (spring, lake) may sit beside it but not alone.
     PLACE_CATS.sea.must = ['coast'];
+    // v0.2.45: a street board tries a street first (Rue du Moulin, Mühlgasse, Nova ulica); the rest are districts.
+    PLACE_CATS.street.street = true;
+    const STREET = ['street'];
+    // Street-only fragments (Via, -gasse, Bäcker-) stay out of every other place, family name and "of" place.
+    function streetOnly(f) { return !!(f.cats && f.cats.every(c => c === 'street')); }
+    function noStreet(list) { return list.filter(f => !streetOnly(f)); }
     // "Cache + AI" (polish) is a Cache name first, so it counts as Cache everywhere the form is concerned.
     const METHODS = ['ai', 'cache', 'polish'];
     function isCache(form = {}) {
@@ -1384,16 +1393,21 @@
     const LATIN_AGREE = { m: 'us', f: 'a', n: 'um', fp: 'ae', np: 'a' };
     function twoWordPlace(R, root, cats, rnd) {
         const need = (cats && cats.must) || cats;
-        const nouns = need ? R.placeWords.filter(f => f.cats.some(c => need.includes(c))) : R.placeWords;
+        const nouns = need ? R.placeWords.filter(f => f.cats.some(c => need.includes(c))) : noStreet(R.placeWords);
         if (!nouns.length) return null;
         const noun = pick(nouns, rnd);
         if (rnd() < 0.25) {
             const who = cacheGiven(root, 'm', rnd);
+            // v0.2.45: a Roman road takes the man's name as an adjective (Via Appia, Via Flaminia).
+            if (noun.t === 'Via' && /ius$/.test(who.text)) {
+                const adj = who.text.replace(/us$/, 'a');
+                if (!sameSound(noun.t, adj)) return { text: `Via ${adj}`, frags: [noun, { t: adj, en: `of ${who.text} (a man's name)`, ko: `${who.text}의 (사람 이름)` }], root };
+            }
             const gen = /ius$/.test(who.text) ? who.text.replace(/us$/, 'i') : /us$/.test(who.text) ? who.text.replace(/us$/, 'i') : /ian$/.test(who.text) ? `${who.text}i` : '';
             // Not the same sound twice (Collis Columbici, Vicus Victini).
             if (gen && !sameSound(noun.t, gen)) return { text: `${noun.t} ${gen}`, frags: [noun, { t: gen, en: `of ${who.text} (a man's name)`, ko: `${who.text}의 (사람 이름)` }], root };
         }
-        const adjs = R.placeAdj.filter(a => (!a.cats || a.cats.some(c => noun.cats.includes(c))) && !meaningClash(noun, a) && !sameSound(noun.t, a.t));
+        const adjs = R.placeAdj.filter(a => (!a.cats || a.cats.some(c => noun.cats.includes(c) && (!need || need.includes(c)))) && !meaningClash(noun, a) && !sameSound(noun.t, a.t));
         const a = pick(adjs, rnd);
         const word = { ...a, t: a.t + LATIN_AGREE[R.wordGender[noun.t]], use: a.t.toLowerCase() };
         delete word.cats;
@@ -1410,11 +1424,147 @@
         const end = /um$/.test(place) ? 'um' : /us$/.test(place) ? 'us' : 'a';
         return word.slice(0, -1) + end;
     }
+
+    // v0.2.45: streets. Each root names them its own way: Rue du Moulin, Mühlgasse, Kirkgata, Mill Lane,
+    // Nova ulica, Hiera Hodos, Stryd Fawr, Via Lata. A road can also be named for the town it leads to
+    // (Rue de Caen, Hamburger Straße, Krasnogorska ulica, Via Ostiensis, Heol Caerdydd).
+    const SF = (t, en, ko, extra = {}) => ({ t, en, ko, ...extra });
+    const STREET_NOUNS = {
+        norman: [SF('Rue', 'street', '거리', { g: 'f' }), SF('Ruelle', 'alley', '골목', { g: 'f' }), SF('Venelle', 'alley', '골목', { g: 'f' }), SF('Chemin', 'way', '길', { g: 'm' })],
+        oldenglish: [SF('Street', 'street', '거리'), SF('Lane', 'lane', '골목길'), SF('Row', 'row of houses', '집들이 늘어선 길')],
+        slavic: [SF('ulica', 'street', '거리')],
+        greek: [SF('Hodos', 'road', '길'), SF('Agyia', 'street', '거리'), SF('Stoa', 'colonnade', '주랑')],
+        W: [SF('Stryd', 'street', '거리'), SF('Heol', 'road', '길')],
+        G: [SF('Sráid', 'street', '거리', { g: 'f' }), SF('Bóthar', 'road', '길', { g: 'm' })],
+    };
+    const STREET_ADJ = {
+        // [feminine, masculine, en, ko]
+        norman: [['Neuve', 'Neuf', 'new', '새'], ['Haute', 'Haut', 'upper', '윗'], ['Basse', 'Bas', 'lower', '아랫'], ['Verte', 'Vert', 'green', '푸른'], ['Grande', 'Grand', 'great', '큰']],
+        oldenglish: 'High=high=큰;Mill=mill=방앗간;Church=church=교회;Bridge=bridge=다리;Market=market=장터;Fish=fish=물고기;Bread=bread=빵;Wood=wood=숲;Water=water=물;Castle=castle=성;Silver=silver=은;Milk=milk=우유;Friar=friar=수도사;Sheep=sheep=양;Cross=cross=십자가;Well=well=우물',
+        slavic: 'Nova=new=새;Stara=old=옛;Gornja=upper=윗;Donja=lower=아랫;Velika=great=큰;Mala=little=작은;Kamena=stone=돌;Crkvena=church=교회;Mlinska=mill=방앗간;Kovačka=smiths=대장장이들의;Kožarska=tanners=무두장이들의;Mesnička=butchers=푸줏간의;Ribarska=fishers=어부들의;Lončarska=potters=옹기장이들의;Zlatarska=goldsmiths=금세공인들의',
+        greek: 'Mese=middle=가운뎃;Stene=narrow=좁은;Kerameike=of the potters=옹기장이들의;Kale=fair=고운;Hiera=sacred=거룩한;Makra=long=긴;Nea=new=새;Palaia=old=옛;Megale=great=큰;Plateia=broad=넓은;Leuke=white=흰;Chryse=golden=금빛;Basilike=royal=왕의',
+        W: 'Fawr=great=큰;Fach=small=작은;Goch=red=붉은;Ddu=black=검은;Wen=white=흰;Newydd=new=새;Hir=long=긴;Uchaf=upper=윗;Isaf=lower=아랫;Las=blue-green=푸른;Lwyd=grey=잿빛;Felen=yellow=노란',
+        // [after a feminine noun (lenited), after a masculine one, en, ko]
+        G: [['Mhór', 'Mór', 'great', '큰'], ['Bheag', 'Beag', 'small', '작은'], ['Nua', 'Nua', 'new', '새'], ['Dhubh', 'Dubh', 'black', '검은'], ['Bhán', 'Bán', 'white', '흰'], ['Ghlas', 'Glas', 'green', '푸른'], ['Ard', 'Ard', 'high', '높은']],
+    };
+    for (const k of ['oldenglish', 'slavic', 'greek', 'W']) STREET_ADJ[k] = F(STREET_ADJ[k]);
+    // A street word + a word for it (counted as its "ending" so one list doesn't repeat it).
+    function streetTwo(nounKey, adjKey, rnd, first = false, root = '') {
+        const noun = pick(STREET_NOUNS[nounKey], rnd);
+        let a = pick(STREET_ADJ[adjKey], rnd);
+        if (Array.isArray(a)) a = SF(noun.g === 'm' ? a[1] : a[0], a[2], a[3]);
+        const word = { ...a, use: a.t.toLowerCase() };
+        if (sameSound(noun.t, word.t)) return null;
+        const text = first ? `${word.t} ${noun.t}` : `${noun.t} ${word.t}`;
+        return { text, frags: first ? [word, noun] : [noun, word], root };
+    }
+    // One word: a head + a street ending (Mühlgasse, Kirkgata, Mickle + gate). Each half is checked
+    // on its own, since such words join whole words (Kirchgasse, Fischmarkt).
+    function streetWord(root, root2, rnd) {
+        const R = CACHE[root], E = CACHE[root2 || root];
+        const mix = !!root2 && root2 !== root;
+        const heads = fitCats(R.placeHead, STREET);
+        const tails = E.placeTail.filter(streetOnly);
+        if (!tails.length) return null;
+        for (let i = 0; i < 30; i++) {
+            const h = pick(heads, rnd), t = pick(tails, rnd);
+            if (h.en === t.en || sameSound(h.t, t.t) || meaningClash(h, t)) continue;
+            const text = capFirst(h.t + t.t);
+            if (!sayable(h.t) || !sayable(t.t) || /(.)\1\1/i.test(text)) continue;
+            return { text, frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root };
+        }
+        return null;
+    }
+    const STREET_TO = {
+        latin: p => {
+            const base = dropVowel(noAccents(p.text).replace(/(is|us|um|ia|os)$/i, ''));
+            return { text: `Via ${base}ensis`, frags: [SF('Via', 'road', '길'), ...p.frags, SF('ensis', 'to (the road to)', '~로 가는')] };
+        },
+        norman: p => {
+            const de = /^[aeiouyh]/i.test(noAccents(p.text)) ? "d'" : 'de ';
+            return { text: `Rue ${de}${p.text}`, frags: [SF('Rue', 'street', '거리'), SF(de.trim(), 'to', '~로 가는'), ...p.frags] };
+        },
+        germanic: p => (/[aiouy]$/i.test(p.text) ? null : { text: `${p.text}${/e$/.test(p.text) ? 'r' : 'er'} Straße`, frags: [...p.frags, SF('er Straße', 'road to', '~로 가는 길')] }),
+        slavic: p => {
+            const adj = slavicFem(slavicSki(p.text));
+            return sayable(adj) ? { text: `${adj} ulica`, frags: [...p.frags, SF('ska ulica', 'road to', '~로 가는 길')] } : null;
+        },
+        celtic: p => ({ text: `Heol ${p.text}`, frags: [SF('Heol', 'road (to)', '~로 가는 길'), ...p.frags] }),
+        oldenglish: p => ({ text: `${p.text} Lane`, frags: [...p.frags, SF('Lane', 'lane (to)', '~로 가는 길')] }),
+    };
+    const STREETS = {
+        latin: (rnd, want, town) => (rnd() < 0.2 ? STREET_TO.latin(town()) : twoWordPlace(CACHE.latin, 'latin', STREET, rnd)),
+        norman: (rnd, want, town) => {
+            const r = rnd();
+            if (r < 0.3) return STREET_TO.norman(town());
+            if (r < 0.75) {
+                const noun = pick(STREET_NOUNS.norman, rnd);
+                const w = pick(CACHE.norman.dwellWord.filter(d => d.t !== 'rue'), rnd);
+                const art = w.cats && w.cats.includes('dela') ? 'de la ' : 'du ';
+                return { text: `${noun.t} ${art}${capFirst(w.t)}`, frags: [noun, SF(`${art}${capFirst(w.t)}`, `of the ${w.en}`, w.ko, { use: w.t })] };
+            }
+            const two = streetTwo('norman', 'norman', rnd);
+            // The great street goes first and joins up: Grande-Rue, Grand-Chemin.
+            if (two && /^Grand/.test(two.frags[1].t)) return { text: `${two.frags[1].t}-${two.frags[0].t}`, frags: [two.frags[1], two.frags[0]] };
+            return two;
+        },
+        oldenglish: (rnd, want, town) => (rnd() < 0.2 ? STREET_TO.oldenglish(town()) : streetTwo('oldenglish', 'oldenglish', rnd, true)),
+        germanic: (rnd, want, town) => (rnd() < 0.2 ? STREET_TO.germanic(town()) : streetWord('germanic', '', rnd)),
+        norse: rnd => streetWord('norse', '', rnd),
+        slavic: (rnd, want, town) => (rnd() < 0.3 ? STREET_TO.slavic(town()) : streetTwo('slavic', 'slavic', rnd, true)),
+        greek: rnd => streetTwo('greek', 'greek', rnd, true),
+        celtic: (rnd, want, town) => {
+            const lang = want || (rnd() < 0.5 ? 'W' : 'G');
+            if (lang === 'W' && rnd() < 0.2) return STREET_TO.celtic(town('W'));
+            return streetTwo(lang, lang, rnd);
+        },
+    };
+    // A road is named for a town of a few syllables, not a long one (no Via Rubosteadensis).
+    function shortTown(make) {
+        let p;
+        for (let i = 0; i < 4; i++) { p = make(); if (p.text.length <= 9) break; }
+        return p;
+    }
+    function streetPlace(root, root2, rnd, want = '') {
+        if (rnd() >= 0.7) return null;
+        const mix = !!root2 && root2 !== root;
+        let st = null;
+        if (!mix) {
+            const town = (w = want) => shortTown(() => cachePlace(root, ['town'], rnd, true, '', w));
+            st = STREETS[root] ? STREETS[root](rnd, want, town) : null;
+            return st ? { ...st, root } : null;
+        }
+        // Merge: a road to a merged town, in one root's way (Rue de Llanville), or one root's head
+        // and the other's street ending (Pontgasse).
+        // Merge: one root's head and the other's street ending (Pontgasse, Hvitbrygge), a road to a merged
+        // town in one root's way (Rue de Llanbourg, Heol Courgarv), or now and then one root's own street.
+        const tail = CACHE[root2].placeTail.some(streetOnly);
+        const to = [root, root2].filter(r => STREET_TO[r]);
+        const r0 = rnd();
+        if (tail && r0 < 0.5) st = streetWord(root, root2, rnd);
+        else if (to.length && r0 < 0.8) {
+            const r = pick(to, rnd);
+            const p = shortTown(() => cachePlace(root, ['town'], rnd, true, root2));
+            st = STREET_TO[r](p);
+            if (st) st = { ...st, frags: st.frags.map(f => (f.r ? f : tagRoot(f, r, true))) };
+        }
+        if (!st) {
+            const r = pick([root, root2].filter(x => STREETS[x]), rnd);
+            const town = (w = want) => shortTown(() => cachePlace(r, ['town'], rnd, true, '', w));
+            st = r ? STREETS[r](rnd, want, town) : null;
+            if (st) st = { ...st, frags: st.frags.map(f => tagRoot(f, r, true)) };
+        }
+        return st ? { ...st, root } : null;
+    }
     function cachePlace(root, cats, rnd, plain = false, root2 = '', want = '') {
         const R = CACHE[root];
         const mix = !!root2 && root2 !== root;
         const E = mix ? CACHE[root2] : R;
         const elide = R.elide || E.elide, link = R.link || E.link;
+        if (cats && cats.street && !plain) {
+            const st = streetPlace(root, root2, rnd, want);
+            if (st) return st;
+        }
         if (!mix && !plain && R.saint && (!cats || cats.includes('town')) && rnd() < 0.07) {
             const g = rnd() < 0.5 ? 'm' : 'f';
             // v0.2.35: Welsh saints' places are Llan + the name, Gaelic ones Kil + the name.
@@ -1432,8 +1582,8 @@
             if (two) return two;
         }
         // v0.2.35: with a wanted Celtic language, only its words (and shared ones) to begin with.
-        const heads = celtOnly(fitCats(R.placeHead, cats), R, want);
-        let tails = celtOnly(fitCats(E.placeTail, cats), E, want, true);
+        const heads = celtOnly(cats ? fitCats(R.placeHead, cats) : noStreet(R.placeHead), R, want);
+        let tails = celtOnly(cats ? fitCats(E.placeTail, cats) : noStreet(E.placeTail), E, want, true);
         // v0.2.36: in a Merge, a Celtic ending that reads as English (boy, more) only after a Celtic head.
         if (mix && E.englishLook) {
             const kept = tails.filter(f => !E.englishLook.has(f.t));
@@ -3997,7 +4147,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.44';
+    const TBD_VERSION = '0.2.45';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
