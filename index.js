@@ -935,7 +935,7 @@
     const CACHE = {
         latin: {
             // v0.2.36: plain Latin words, not names (lord, holy, alone, calf, wind, water…).
-            notNames: new Set('dominus domina sanctus sancta solus sola bonus bona vitulus vitula novus ventus lucus rubus aqua terra lupa magna paca maxilla'.split(' ')),
+            notNames: new Set('dominus domina sanctus sancta solus sola bonus bona vitulus vitula novus ventus lucus rubus aqua terra lupa magna paca maxilla benana'.split(' ')),
             head: F('Silv=forest=숲;Luc=light=빛;Aur=gold=금;Sever=stern=엄격한;Clar=clear, bright=맑은;Fort=strong=강한;Flor=flower=꽃;Vit=life=생명;Fel=lucky=행운의;Ver=true=참된;Prim=first=첫째;Val=strong, well=굳센;Dom=lord=주인;Pac=peace=평화;Fid=faith=믿음;Sanct=holy=거룩한;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Stell=star=별;Ign=fire=불;Vent=wind=바람;Mar=sea=바다;Terr=earth=땅;Aqu=water=물;Noct=night=밤;Cael=sky=하늘;'
                 + 'Magn=great=큰;Ferr=iron=쇠;Lup=wolf=늑대;Urs=bear=곰;Aquil=eagle=독수리;Corv=raven=큰까마귀;Columb=dove=비둘기;Ros=rose=장미;Laur=laurel=월계수;Oliv=olive=올리브;Bon=good=좋은;Ben=well=잘;Grat=grace=은총;Iust=just=의로운;Fest=festive=축제의;Hilar=cheerful=쾌활한;Constant=steadfast=한결같은;Vict=victory=승리;August=venerable=존엄한;Max=greatest=가장 큰;Mart=Mars=마르스;Vesper=evening=저녁;Argent=silver=은'),
             masc: F('us==;ius==;ianus=belonging to=~에 속한;inus=like=~ 같은;ian=belonging to=~에 속한;ellus=little=작은;ulus=little=작은;icus=of, belonging to=~의;atus=having=~을 지닌'),
@@ -1005,7 +1005,7 @@
             // Two vowels at the join (Huaud, Joiet, Thiette, Roelle) don't sound French…
             noHiatus: true,
             // Joins that turn into another French or English word.
-            notNames: new Set('beret guise belette rosette lamine thin thine bonnet grandine'.split(' ')),
+            notNames: new Set('beret guise belette rosette lamine thin thine bonnet grandine hardier'.split(' ')),
             placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Rive=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town;Ville=town=마을=town;Bourg=market town=장터 마을=town;Cour=estate=영지=town/field;Brette=Bretons=브르타뉴 사람들=town;Port=harbor=항구=town;'
                 + 'Chesne=oak=참나무=forest;Loup=wolf=늑대=forest;Fleur=flower=꽃=field;Vieux=old=오래된;Ros=rose=장미=field;Chastel=castle=성=fort;Gué=ford=여울=water;Mesnil=dwelling=집터=town;Bec=stream=시내=water;Tour=tower=탑=fort;Sable=sand=모래=coast;Ormes=elms=느릅나무들=forest;Lande=heath=황야=field'),
             placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pré=meadow=풀밭=field;'
@@ -1123,7 +1123,7 @@
         slavic: {
             // v0.2.36: a head + -a that is just a word (sharp, pain, fierce, good, great, "she gave"),
             // or a man's pet name (Voja) on a woman.
-            notNames: new Set('ostra bola luta dobra velika dala voja'.split(' ')),
+            notNames: new Set('ostra bola luta dobra velika dala voja lutka'.split(' ')),
             head: F('Vladi=rule=다스림;Slavo=glory=영광;Miro=peace=평화;Bogo=god=신;Bori=battle=싸움;Dobro=good=좋은;Rado=joy, counsel=기쁨·조언;Jaro=fierce, strong=굳센;Lyubo=love=사랑;Milo=dear=다정한;Bole=great=큰;Voji=warrior=전사;Brani=defend=지킴;Sveto=holy, light=거룩한·빛;Zlato=gold=금;Drago=precious=소중한;Ostro=sharp=날카로운;Luto=fierce=사나운;Stani=to become=되다;Dali=far=먼;Tiho=quiet=고요한;Veli=great=큰;Rati=war=전쟁;Vse=all=모든'),
             masc: F('mir=peace, world=평화·세상;slav=glory=영광;bor=battle=싸움;gost=guest=손님;vit=lord=주인;polk=regiment=군대;volod=ruler=다스림;drag=dear=소중한;dan=given=주어진;gnev=anger=분노;mil=dear=다정한'),
             fem: F('slava=glory=영광;mira=peace=평화;mila=dear=다정한;dana=given=주어진;ka=little=작은;a=='),
@@ -1356,13 +1356,17 @@
         const elide = R.elide || E.elide;
         const heads = celtOnly(R.head, R, want).filter(f => !(g === 'f' && R.mascOnly && R.mascOnly.has(f.t)));
         const tails = celtOnly(g === 'f' ? E.fem : E.masc, E, want, true);
-        const make = (h, t) => ({ text: glue(h.t, t.t, elide), frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root });
+        // v0.2.50: Slavic -ka drops the linking vowel before it (Slavka, Zlatka, not Slavoka).
+        const kaJoin = (h, t) => (E === CACHE.slavic && t.t === 'ka' ? h.t.replace(/[aeiouy]$/i, '') + 'ka' : glue(h.t, t.t, elide));
+        const make = (h, t) => ({ text: kaJoin(h, t), frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root });
         for (let i = 0; i < 20; i++) {
             const h = pick(heads, rnd);
             const t = pick(tails, rnd);
             if (t.en && h.en === t.en) continue;
             if (sameStem(h.t, t.t) || sameSound(h.t, t.t)) continue;
-            const text = glue(h.t, t.t, elide);
+            // …but not after two consonants or g, k, h (Dobrka, Bogka, Tihka).
+            if (E === CACHE.slavic && t.t === 'ka' && /([^aeiouy]{2}|[gkh])$/i.test(h.t.replace(/[aeiouy]$/i, ''))) continue;
+            const text = kaJoin(h, t);
             if (!sayable(text)) continue;
             // v0.2.26: the ending must still be there (Mega + a → Mega) and not leave a doubled vowel.
             if (text.toLowerCase() === h.t.toLowerCase() || newDoubleVowel(text, h.t, t.t)) continue;
@@ -1684,14 +1688,20 @@
     // Place + -ski the way Slavic names really do it: Novica → Novicki, Chernets → Chernecki,
     // Slavovka → Slavovski, Les → Leski (never "-cski" or "-kski").
     // v0.2.27: -ski can make a place hard to say (Krasnovrh → Krasnovrhska): try another place then.
+    const SKI_MAX = 11;
     function skiPlace(makePlace) {
-        let pl, text;
+        // v0.2.50: and a short one if it can (Zalesski, not Bystrozalivski): the first sayable one of
+        // SKI_MAX letters or fewer, else the shortest sayable one.
+        let best = null, last = null;
         for (let i = 0; i < 8; i++) {
-            pl = makePlace();
-            text = slavicSki(pl.text);
-            if (sayable(slavicFem(text))) break;
+            const pl = makePlace();
+            const text = slavicSki(pl.text);
+            last = { pl, text };
+            if (!sayable(slavicFem(text))) continue;
+            if (text.length <= SKI_MAX) return last;
+            if (!best || text.length < best.text.length) best = last;
         }
-        return { pl, text };
+        return best || last;
     }
     function slavicSki(place) {
         const b = dropVowel(place);
@@ -2052,10 +2062,19 @@
         // (-castrensis, -vitov three times): Castr|a + ensis, Miro + vit + ov.
         const familyTailsOf = n => (n.pieces || []).filter(p => (p.role === 'family' || p.role === 'patronymic') && !p.fixed && (p.frags || []).length >= 3)
             .map(p => 'f:' + p.frags[p.frags.length - 2].t.toLowerCase());
-        const endsOf = n => [...tailsOf(n), ...givenTailsOf(n), ...familyTailsOf(n)];
+        // v0.2.50: a family or origin made of two place parts counts each part by its stem, so one list
+        // doesn't give four lakes (Limnalsos, Limnonesos, Nealimne, Elaiolimne).
+        const familyPlaceOf = n => (n.pieces || []).filter(p => (p.role === 'family' || p.role === 'origin') && !p.fixed && (p.frags || []).length === 2 && (p.branch === 'place' || /^of /.test(p.text)))
+            .flatMap(p => p.frags.map(f => 'p:' + f.t.toLowerCase().replace(/[aeiouy]+$/, '')));
+        const endsOf = n => [...tailsOf(n), ...givenTailsOf(n), ...familyTailsOf(n), ...familyPlaceOf(n)];
         const usedFamilies = new Set();
+        // v0.2.50: a family name of one part is keyed by that part (its man's form: Calvus/Calva, Maly/Mala,
+        // Niger/Nigra); others drop the woman's or daughter's ending (Florius/Floria, ap/ferch, -sson/-sdottir).
+        const familyKey = p => (p.frags && p.frags.length === 1 ? p.frags[0].t : p.text).toLowerCase()
+            .replace(/^(ap|ab|ferch) /, '').replace(/(son|dottir)$/, '')
+            .replace(/(sk|ck)a$/, '$1i').replace(/(ov|ev|in)a$/, '$1').replace(/(ius|ia)$/, 'i');
         const familiesOf = n => (n.pieces || []).filter(p => (p.role === 'family' || p.role === 'patronymic') && !p.fixed)
-            .map(p => p.text.toLowerCase().replace(/(sk|ck)a$/, '$1i').replace(/(ov|ev|in)a$/, '$1'));
+            .map(familyKey);
         const epithets = n => (n.pieces || []).filter(p => p.role === 'epithet' && !ORDINAL_TEXTS.has(p.text)).map(p => p.text.toLowerCase());
         for (let i = 0; i < count; i++) {
             const pair = pairs ? pairs[i % pairs.length] : null;
@@ -4182,7 +4201,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.49';
+    const TBD_VERSION = '0.2.50';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

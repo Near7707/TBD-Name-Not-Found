@@ -2739,3 +2739,30 @@ test('v0.2.49: one list never gives a place both with and without its add-on wor
         }
     }
 });
+
+test('v0.2.50: no man/woman pair of one family, Slavic -ka, short -ski, word names, place parts spread', () => {
+    const { api } = load();
+    const key = p => (p.frags && p.frags.length === 1 ? p.frags[0].t : p.text).toLowerCase()
+        .replace(/^(ap|ab|ferch) /, '').replace(/(son|dottir)$/, '')
+        .replace(/(sk|ck)a$/, '$1i').replace(/(ov|ev|in)a$/, '$1').replace(/(ius|ia)$/, 'i');
+    for (const root of ['latin', 'slavic', 'celtic', 'norse', 'greek']) {
+        for (let b = 0; b < 15; b++) {
+            const list = api.cacheNames({ target: 'person', method: 'cache', roots: [root], ckinds: ['common'], parts: ['given', 'family'] }, 20, [], seeded(2030 + b));
+            const fams = list.map(n => n.pieces.find(p => p.role === 'family' || p.role === 'patronymic')).filter(Boolean).map(key);
+            assert.equal(new Set(fams).size, fams.length, `${root}: ${list.map(n => n.name).join(', ')}`);
+            for (const n of list) {
+                const g = n.pieces.find(p => p.role === 'given');
+                assert.ok(!/[aeiouy]ka$/i.test(g.text) || g.frags[1].t !== 'ka', g.text);
+                assert.ok(!/^(hardier|benana|lutka)$/i.test(g.text), g.text);
+                const f = n.pieces.find(p => p.role === 'family');
+                if (root === 'slavic' && f && /(sk|ck)[iay]$/.test(f.text) && f.frags.length > 1) assert.ok(f.text.length <= 13, f.text);
+            }
+            if (root === 'greek') {
+                const parts = new Map();
+                for (const n of list) for (const p of n.pieces) if ((p.frags || []).length === 2 && /^of /.test(p.text))
+                    for (const fr of p.frags) { const s = fr.t.toLowerCase().replace(/[aeiouy]+$/, ''); parts.set(s, (parts.get(s) || 0) + 1); }
+                assert.ok(Math.max(0, ...parts.values()) <= 3, [...parts].join(' '));
+            }
+        }
+    }
+});
