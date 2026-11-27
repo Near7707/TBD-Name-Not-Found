@@ -2542,3 +2542,20 @@ test('v0.2.39: no plain German words as places; no Norwegian word before an Engl
     assert.equal(dane.length, 0, dane.map(n => n.name).join());
     assert.ok(all.some(n => /^(Ytre|Lille|Indre|Store) /.test(n.name)));
 });
+
+test('v0.2.40: Greek and Slavic places have more endings', () => {
+    const { api } = load();
+    for (const [root, kind, most] of [['greek', 'water', 5], ['greek', 'forest', 5], ['greek', 'mountain', 5], ['greek', 'sea', 4], ['greek', 'town', 5], ['greek', 'fort', 4],
+        ['slavic', 'water', 4], ['slavic', 'mountain', 4], ['slavic', 'sea', 4], ['slavic', 'fort', 4]]) {
+        for (let b = 0; b < 8; b++) {
+            const list = api.cacheNames({ target: 'place', method: 'cache', roots: [root], kind }, 20, [], seeded(2030 + b));
+            const R = api.CACHE[root], count = {};
+            for (const n of list) {
+                const t = [...n.frags].reverse().find(f => R.placeTail.some(x => x.t === f.t || x.t === f.t.replace(/^e/, 'o')));
+                if (t) count[t.t] = (count[t.t] || 0) + 1;
+            }
+            assert.ok(Math.max(0, ...Object.values(count)) <= most, `${root} ${kind} ${JSON.stringify(count)}`);
+        }
+    }
+    assert.ok(api.CACHE.slavic.placeTail.some(f => f.t === 'more' && f.cats.includes('coast')));
+});
