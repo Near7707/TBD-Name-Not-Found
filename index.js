@@ -1402,6 +1402,14 @@
     }
     // A place: head + tail, now and then with "Great …" / "…-on-Sea", or named for a saint (St. Edwin's, Kilbran).
     // Merge: the head from one root and the tail from another (root2); no saint's name then.
+    // v0.2.44: Latin -etum is "a grove of" a tree or plant (Pinetum, Quercetum, Lauretum), never of a wolf or of gold.
+    const PLANT_WORDS = /\b(oak|beech|pine|ash tree|birch|elm|linden|fir|laurel|olive|alder|hazel|cypress|wine|vine|flower|apple|yew|willow|thorn|broom|reed|rush)\b/;
+    // v0.2.44: Latin Magna / Parva agree with the place before them (Albetum Magnum, Campus Parvus, Aquilia Magna).
+    function latinPost(word, place) {
+        if (!/^(Magn|Parv)a$/.test(word)) return word;
+        const end = /um$/.test(place) ? 'um' : /us$/.test(place) ? 'us' : 'a';
+        return word.slice(0, -1) + end;
+    }
     function cachePlace(root, cats, rnd, plain = false, root2 = '', want = '') {
         const R = CACHE[root];
         const mix = !!root2 && root2 !== root;
@@ -1450,6 +1458,7 @@
             if (t.t.length > 3 && h.t.length > 3 && (t.t.toLowerCase().startsWith(h.t.toLowerCase()) || h.t.toLowerCase().startsWith(t.t.toLowerCase()))) continue;
             if (sameSound(h.t, t.t)) continue;
             if (meaningClash(h, t) || twoAdjectives(h, t)) continue;
+            if (t.t === 'etum' && !PLANT_WORDS.test(h.en || '')) continue;
             if (cats && i < 30 && !ofKind(h) && !ofKind(t)) continue;
             // v0.2.42: and its ending is not a lake or a stream (no sea called Möwensee, Ammolimne).
             if (need !== cats && i < 30 && t.cats && !ofKind(t)) continue;
@@ -1485,6 +1494,7 @@
         if (!list.length) return base;
         let a = pick(list, rnd);
         if (SLAVIC_ADJ[a.t]) a = { ...a, t: slavicAgree(a.t, base.text) };
+        if (E === CACHE.latin) a = { ...a, t: latinPost(a.t, base.text) };
         let text;
         if (usePre) text = a.t.endsWith('-') ? a.t + base.text : `${a.t} ${base.text}`;
         else text = a.t.startsWith('-') ? base.text + a.t : `${base.text} ${a.t}`;
@@ -3987,7 +3997,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.43';
+    const TBD_VERSION = '0.2.44';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

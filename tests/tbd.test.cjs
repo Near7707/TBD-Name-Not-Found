@@ -2619,3 +2619,21 @@ test('v0.2.43: Latin places come as two words too, with the adjective agreeing',
         assert.ok(!n.frags.some(f => R.placeWords.some(w => w.t === f.t) && / /.test(n.name) && !/ (Magna|Parva|Superior|Inferior)$/.test(n.name)), `merge: ${n.name}`);
     }
 });
+
+test('v0.2.44: Latin -etum only after a tree or plant, and Magna / Parva agree', () => {
+    const { api } = load();
+    const plant = /\b(oak|beech|pine|ash tree|birch|elm|linden|fir|laurel|olive|alder|hazel|cypress|wine|vine|flower|apple|yew|willow|thorn|broom|reed|rush)\b/;
+    const words = api.CACHE.latin.placeWords.map(f => f.t);
+    for (const roots of [['latin'], ['latin', 'greek'], ['slavic', 'latin']]) {
+        for (const kind of ['', 'forest']) {
+            for (let b = 0; b < 4; b++) {
+                for (const n of api.cacheNames({ target: 'place', method: 'cache', roots, rootMix: roots.length > 1 ? 'merge' : 'split', kind }, 20, [], seeded(2030 + b))) {
+                    const i = n.frags.findIndex(f => f.t === 'etum');
+                    if (i > 0) assert.match(n.frags[i - 1].en, plant, `${n.name}`);
+                    const m = n.name.match(/^(\S+) (Magn|Parv)(a|um|us)$/);
+                    if (m && !words.includes(m[1])) assert.equal(m[3], /um$/.test(m[1]) ? 'um' : /us$/.test(m[1]) ? 'us' : 'a', n.name);
+                }
+            }
+        }
+    }
+});
