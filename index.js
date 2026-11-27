@@ -934,6 +934,8 @@
     const ORDINALS = F('II=the Second=2세;III=the Third=3세;IV=the Fourth=4세;V=the Fifth=5세;VI=the Sixth=6세;VII=the Seventh=7세;VIII=the Eighth=8세;IX=the Ninth=9세');
     const CACHE = {
         latin: {
+            // v0.2.36: plain Latin words, not names (lord, holy, alone, calf, wind, water…).
+            notNames: new Set('dominus domina sanctus sancta solus sola bonus bona vitulus vitula novus ventus lucus rubus aqua terra lupa magna paca'.split(' ')),
             head: F('Silv=forest=숲;Luc=light=빛;Aur=gold=금;Sever=stern=엄격한;Clar=clear, bright=맑은;Fort=strong=강한;Flor=flower=꽃;Vit=life=생명;Fel=lucky=행운의;Ver=true=참된;Prim=first=첫째;Val=strong, well=굳센;Dom=lord=주인;Pac=peace=평화;Fid=faith=믿음;Sanct=holy=거룩한;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Stell=star=별;Ign=fire=불;Vent=wind=바람;Mar=sea=바다;Terr=earth=땅;Aqu=water=물;Noct=night=밤;Cael=sky=하늘;'
                 + 'Magn=great=큰;Ferr=iron=쇠;Lup=wolf=늑대;Urs=bear=곰;Aquil=eagle=독수리;Corv=raven=큰까마귀;Columb=dove=비둘기;Ros=rose=장미;Laur=laurel=월계수;Oliv=olive=올리브;Bon=good=좋은;Ben=well=잘;Grat=grace=은총;Iust=just=의로운;Fest=festive=축제의;Hilar=cheerful=쾌활한;Constant=steadfast=한결같은;Vict=victory=승리;August=venerable=존엄한;Max=greatest=가장 큰;Mart=Mars=마르스;Vesper=evening=저녁;Argent=silver=은'),
             masc: F('us==;ius==;ianus=belonging to=~에 속한;inus=like=~ 같은;ian=belonging to=~에 속한;ellus=little=작은;ulus=little=작은;icus=of, belonging to=~의;atus=having=~을 지닌'),
@@ -952,7 +954,7 @@
             war: F('Ferox=fierce=사나운;Fortis=brave=용감한;Rufus=red-haired=빨강 머리;Audax=bold=대담한;Ferreus=made of iron=쇠 같은;Bellator=warrior=전사;Leo=lion=사자;Lupus=wolf=늑대;Torquatus=wearing a neck-ring=목걸이 두른'),
         },
         oldenglish: {
-            head: F('Ethel=noble=고귀한;Ed=wealth, fortune=부·행운;Alf=elf=요정;Os=god=신;God=god=신;Leof=dear=사랑하는;Wulf=wolf=늑대;Sig=victory=승리;Cuth=famous=이름난;Here=army=군대;Hild=battle=전투;Wil=will=의지;Beorn=warrior=전사;Ald=old=오래된;Win=friend=벗;Bert=bright=빛나는;Mild=gentle=온화한;Ceol=ship=배;Wig=battle=싸움;Swith=strong=강한;'
+            head: F('Ethel=noble=고귀한;Ed=wealth, fortune=부·행운;Alf=elf=요정;Os=god=신;God=god=신;Leof=dear=사랑하는;Wulf=wolf=늑대;Sig=victory=승리;Cuth=famous=이름난;Here=army=군대;Hild=battle=전투;Wil=will=의지;Beorn=warrior=전사;Ald=old=오래된;Win=friend=벗;Briht=bright=빛나는;Mild=gentle=온화한;Ceol=ship=배;Wig=battle=싸움;Swith=strong=강한;'
                 + 'Cyne=royal=왕다운;Cen=bold, keen=용감한;Deor=dear=소중한;Eorl=warrior, noble=전사·귀족;Frith=peace=평화;Gar=spear=창;Wiht=spirit=정령;Wyn=joy=기쁨;Beald=bold=대담한;Brun=brown=갈색;Blith=happy=즐거운;Heah=high=높은;Eofor=boar=멧돼지;Hroth=fame=명성;Ecg=sword edge=칼날;Noth=courage=용기;Cwic=alive=살아 있는;Frea=lord=주인;Guth=battle=전투'),
             masc: F('win=friend=벗;ric=ruler=통치자;wulf=wolf=늑대;mund=protection=보호;ward=guardian=지킴이;stan=stone=돌;red=counsel=조언;frith=peace=평화;helm=helmet=투구;bert=bright=빛나는;gar=spear=창;'
                 + 'here=army=군대;laf=heir=후손;noth=courage=용기;sige=victory=승리;wald=rule=다스림;heard=hardy=굳센;mer=famous=이름난;bald=bold=대담한'),
@@ -990,16 +992,16 @@
             noHiatus: true,
             // Joins that turn into another French or English word.
             notNames: new Set('beret guise belette rosette lamine thin thine bonnet grandine'.split(' ')),
-            placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Riv=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town;'
+            placeHead: F('Beau=beautiful=아름다운;Bel=fine=고운;Mont=mountain=산=hill/fort;Roche=rock=바위=hill/coast;Val=valley=골짜기=hill/field;Bois=wood=숲=forest;Font=spring=샘=water;Pont=bridge=다리=water/town;Clair=clear=맑은=water;Blanc=white=흰;Vert=green=푸른=field/forest;Grand=great=큰;Haut=high=높은=hill/fort;Castel=castle=성=fort;Rive=riverbank=강가=water;Mal=bad=나쁜;Neuf=new=새로운=town;'
                 + 'Chesne=oak=참나무=forest;Loup=wolf=늑대=forest;Fleur=flower=꽃=field;Vieux=old=오래된;Ros=rose=장미=field;Chastel=castle=성=fort;Gué=ford=여울=water;Mesnil=dwelling=집터=town;Bec=stream=시내=water;Tour=tower=탑=fort;Sable=sand=모래=coast;Ormes=elms=느릅나무들=forest;Lande=heath=황야=field'),
-            placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pre=meadow=풀밭=field;'
+            placeTail: F('ville=town=마을=town;mont=mountain=산=hill/fort;court=estate=영지=town/field;val=valley=골짜기=hill/field;champ=field=들판=field;fort=stronghold=성채=fort;lieu=place=곳;bois=wood=숲=forest;mare=pond=연못=water;fontaine=spring=샘=water/town;roche=rock=바위=hill/coast;pont=bridge=다리=water/town;port=harbor=항구=coast;rive=riverbank=강가=water;mer=sea=바다=coast;pré=meadow=풀밭=field;'
                 + 'tot=homestead (Norse)=집터 (노르드어)=town;beuf=hut (Norse)=오두막 (노르드어)=town;fleur=inlet=물굽이=coast/water;bec=stream=시내=water;ay=estate=영지=town;bourg=market town=장터 마을=town;lande=heath=황야=field;tour=tower=탑=fort;chastel=castle=성=fort;mesnil=dwelling=집터=town'),
             placePre: F('Grand-=great=큰;Petit-=little=작은'),
-            placePost: F('-sur-Mer=on the sea=바닷가=coast;-le-Grand=the great=큰;-le-Petit=the little=작은;-la-Foret=by the forest=숲가=forest'),
+            placePost: F('-sur-Mer=on the sea=바닷가=coast;-le-Grand=the great=큰;-le-Petit=the little=작은;-la-Forêt=by the forest=숲가=forest'),
             saint: { m: 'Saint-{}', f: 'Sainte-{}' },
             family: 'french', branches: { patron: 1, place: 3, dwell: 2, trade: 2, looks: 2 },
             dwellPre: F('Du=of the=~의;Dela=of the=~의'),
-            dwellWord: F('bois=wood=숲=du;pont=bridge=다리=du;mont=hill=언덕=du;val=valley=골짜기=du;pre=meadow=풀밭=du;chesne=oak=참나무=du;moulin=mill=방앗간=du;four=oven=화덕=du;puis=well=우물=du;bourg=market town=장터 마을=du;champ=field=들판=du;mesnil=dwelling=집터=du;'
+            dwellWord: F('bois=wood=숲=du;pont=bridge=다리=du;mont=hill=언덕=du;val=valley=골짜기=du;pré=meadow=풀밭=du;chesne=oak=참나무=du;moulin=mill=방앗간=du;four=oven=화덕=du;puis=well=우물=du;bourg=market town=장터 마을=du;champ=field=들판=du;mesnil=dwelling=집터=du;'
                 + 'croix=cross=십자가=dela;fontaine=spring=샘=dela;rue=street=길=dela;porte=gate=문=dela;haye=hedge=산울타리=dela;motte=mound=둔덕=dela;roche=rock=바위=dela;mare=pond=연못=dela;cour=courtyard=안뜰=dela;fosse=ditch=도랑=dela'),
             trade: F('Lefebvre=smith=대장장이;Boulanger=baker=빵 굽는 사람;Meunier=miller=방앗간 주인;Charpentier=carpenter=목수;Berger=shepherd=양치기;Tisserand=weaver=베 짜는 사람;Mercier=haberdasher=잡화상;Barbier=barber=이발사;Marchand=merchant=상인;Fournier=oven keeper=화덕지기;Chevalier=horseman, knight=기사;Page=page boy=시동;Granger=granary keeper=곳간지기'),
             looksPre: { t: 'Le', en: 'the', ko: '그' },
@@ -1014,7 +1016,7 @@
             masc: F('bert=bright=빛나는;hard=hardy=굳센;mund=protection=보호;wald=rule=다스림;rich=ruler=통치자;win=friend=벗;fried=peace=평화;helm=helmet=투구;bald=bold=대담한;wig=battle=싸움;olf=wolf=늑대;brand=sword, fire=칼·불길;mar=famous=이름난;'
                 + 'ger=spear=창;gast=guest=손님;land=land=땅;man=man=사람;rad=counsel=조언;ram=raven=큰까마귀;grim=mask=가면;gang=path=길;mut=mind, spirit=마음;wart=guardian=지킴이'),
             fem: F('hild=battle=전투;gard=enclosure=울타리;trud=strength=힘;lind=gentle=부드러운;burg=fortress=요새;run=secret=비밀;heid=kind, rank=됨됨이·지위;gund=battle=전투;swind=strength=힘'),
-            placeHead: F('Stein=stone=돌=hill/fort;Ross=horse=말=field;Eich=oak=참나무=forest;Lind=linden=보리수=forest/town;Wolf=wolf=늑대=forest;Hoh=high=높은=hill/fort;Neu=new=새로운=town;Alt=old=오래된;Schwarz=black=검은=forest;Weiss=white=흰;Rot=red=붉은;Grun=green=푸른=field/forest;Tann=fir=전나무=forest;Birk=birch=자작나무=forest;Fels=rock=바위=hill;Muhl=mill=방앗간=water/town;Kirch=church=교회=town;Hirsch=stag=수사슴=forest;Falk=falcon=매=hill;Sonn=sun=해;Eis=ice=얼음=hill/water;Wald=forest=숲=forest;'
+            placeHead: F('Stein=stone=돌=hill/fort;Ross=horse=말=field;Eich=oak=참나무=forest;Lind=linden=보리수=forest/town;Wolf=wolf=늑대=forest;Hoh=high=높은=hill/fort;Neu=new=새로운=town;Alt=old=오래된;Schwarz=black=검은=forest;Weiß=white=흰;Rot=red=붉은;Grün=green=푸른=field/forest;Tann=fir=전나무=forest;Birk=birch=자작나무=forest;Fels=rock=바위=hill;Mühl=mill=방앗간=water/town;Kirch=church=교회=town;Hirsch=stag=수사슴=forest;Falk=falcon=매=hill;Sonn=sun=해;Eis=ice=얼음=hill/water;Wald=forest=숲=forest;'
                 + 'Esch=ash tree=물푸레나무=forest;Buch=beech=너도밤나무=forest;Salz=salt=소금=water;Kalt=cold=차가운;Lang=long=긴;Breit=broad=넓은;Hasel=hazel=개암나무=forest;Erl=alder=오리나무=forest/water;Kreuz=cross=십자가=town;Gold=gold=금;Adler=eagle=독수리=hill;Raben=raven=큰까마귀=forest;Bären=bear=곰=forest;Mittel=middle=가운데;Brunn=spring=샘=water;Wies=meadow=풀밭=field;Hasen=hare=토끼=field'),
             placeTail: F('burg=fortress=성채=fort/town;berg=mountain=산=hill;heim=home=집·마을=town;dorf=village=마을=town/field;feld=field=들판=field;wald=forest=숲=forest;bach=stream=시내=water;stein=stone, rock=돌·바위=hill/fort;furt=ford=여울=water;hof=farmstead=농장=field/town;au=water meadow=물가 풀밭=water/field;hausen=houses=집들=town;see=lake=호수=water;bruck=bridge=다리=water/town;tal=valley=골짜기=hill/field;hafen=harbor=항구=coast;hain=grove=작은 숲=forest;horn=peak=봉우리=hill;'
                 + 'ingen=descendants of=~의 후손 (마을)=town;stadt=town, place=도시·터=town;rode=clearing=개간지=forest/field;weiler=hamlet=작은 마을=town/field;wang=meadow=풀밭=field;ach=river=강=water;beck=stream=시내=water;zell=monk\'s cell=수도원 방=town;loh=grove=작은 숲=forest;winkel=corner=구석=town/field;werder=river island=강섬=water;schlag=felled clearing=벌목지=forest'),
@@ -1050,6 +1052,8 @@
                 X: 'rix mar',
             }),
             mascOnly: new Set(['Fer']),
+            // v0.2.36: endings that read as English words after another root's head (Chesneboy, Shipmore).
+            englishLook: new Set('boy more bane lea roe coole'.split(' ')),
             // Celtic places put the place word first: Aber + glas, Dun + more.
             placeHead: F('Aber=river mouth=하구=coast/water;Inver=river mouth=하구=coast/water;Llan=church enclosure=교회 마을=town;Kil=church=교회=town;Dun=fort=요새=fort/hill;Caer=fort=성=fort/town;Pen=head, top=꼭대기=hill;Tre=homestead=마을=town/field;Bally=town=마을=town;Glen=valley=골짜기=hill/field;Ard=height=높은 곳=hill;Strath=wide valley=넓은 골짜기=field/hill;Loch=lake=호수=water;Ros=headland, wood=곶·숲=coast/forest;Bryn=hill=언덕=hill;Coed=wood=숲=forest;Nant=stream, valley=시냇골=water/hill;Porth=harbor=항구=coast;'
                 + 'Ben=mountain=산=hill;Knock=hill=언덕=hill;Drum=ridge=산등성이=hill;Inch=island=섬=water/coast;Ennis=island=섬=water/coast;Clon=meadow=풀밭=field;Kin=head=머리=hill;Lis=small ringfort=작은 원형 요새=fort;Rath=ringfort=원형 요새=fort;Carrick=rock=바위=hill/coast;Tully=hillock=작은 언덕=hill;Cwm=valley=골짜기=hill;Blaen=upland=고지대=hill;Pant=hollow=우묵한 곳=field;Pol=pool=웅덩이=water;Ynys=island=섬=coast;Kyle=narrows=좁은 해협=coast;Slieve=mountain=산=hill;Cashel=stone ringfort=돌 원형 요새=fort;Tober=well=우물=water;Derry=oak grove=참나무 숲=forest;Auch=field=들판=field;Moy=plain=평원=field;Shan=old=오래된;'
@@ -1097,6 +1101,8 @@
             warF: F('Leaina=the lioness=암사자;Keraunos=thunderbolt=벼락;Nikephoros=victory-bearing=승리를 가져오는 이;Kallinike=gloriously victorious=빛나는 승리자;Thraseia=the bold=대담한 이'),
         },
         slavic: {
+            // v0.2.36: a head + -a that is just an adjective (sharp, pain, fierce, good).
+            notNames: new Set('ostra bola luta dobra'.split(' ')),
             head: F('Vladi=rule=다스림;Slavo=glory=영광;Miro=peace=평화;Bogo=god=신;Bori=battle=싸움;Dobro=good=좋은;Rado=joy, counsel=기쁨·조언;Jaro=fierce, strong=굳센;Lyubo=love=사랑;Milo=dear=다정한;Bole=great=큰;Voji=warrior=전사;Brani=defend=지킴;Sveto=holy, light=거룩한·빛;Zlato=gold=금;Drago=precious=소중한;Ostro=sharp=날카로운;Luto=fierce=사나운;Stani=to become=되다;Dali=far=먼;Tiho=quiet=고요한;Veli=great=큰;Rati=war=전쟁;Vse=all=모든'),
             masc: F('mir=peace, world=평화·세상;slav=glory=영광;bor=battle=싸움;gost=guest=손님;vit=lord=주인;polk=regiment=군대;volod=ruler=다스림;drag=dear=소중한;dan=given=주어진;gnev=anger=분노;mil=dear=다정한'),
             fem: F('slava=glory=영광;mira=peace=평화;mila=dear=다정한;dana=given=주어진;ka=little=작은;a=='),
@@ -1213,7 +1219,8 @@
     function capFirst(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
     // Hard to say: four consonants in a row, or the same letter three times.
     function sayable(s) {
-        const w = String(s).toLowerCase().replace(/[^a-zæœ]/g, '');
+        // v0.2.36: accents count as their plain letter (Grünfeld is not "grnfeld").
+        const w = String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/ß/g, 'ss').replace(/[^a-zæœ]/g, '');
         // v0.2.33: qu always takes a, e, i or o after it (no Aqudunum, Aqus, Aquwulf).
         return !/[^aeiouyæœ]{4,}/.test(w) && !/[aeiouy]{4,}/.test(w) && !/(.)\1\1/.test(w) && !/qu(?![aeio])/.test(String(s).toLowerCase());
     }
@@ -1370,7 +1377,12 @@
         }
         // v0.2.35: with a wanted Celtic language, only its words (and shared ones) to begin with.
         const heads = celtOnly(fitCats(R.placeHead, cats), R, want);
-        const tails = celtOnly(fitCats(E.placeTail, cats), E, want, true);
+        let tails = celtOnly(fitCats(E.placeTail, cats), E, want, true);
+        // v0.2.36: in a Merge, a Celtic ending that reads as English (boy, more) only after a Celtic head.
+        if (mix && E.englishLook) {
+            const kept = tails.filter(f => !E.englishLook.has(f.t));
+            if (kept.length) tails = kept;
+        }
         // v0.2.25: a picked place kind wants one fragment of that kind (no "forest" called Magnana),
         // unless the root has too few to find one in time.
         const ofKind = f => !!(f.cats && cats && f.cats.some(c => cats.includes(c)));
@@ -1394,8 +1406,10 @@
             if ((R.branchOf || E.branchOf) && !celtFits((R.branchOf || {})[h.t] || '', (E.branchOf || {})[t.t] || '', want)) continue;
             // v0.2.29: -arium too (Whitarium, Midarium).
             if (shortLatin && (t.t.length <= 4 || t.t === 'arium')) continue;
-            const text = capFirst(glue(h.t, t.t, elide, link));
-            if (!sayable(text) || newDoubleVowel(text, h.t, t.t)) continue;
+            // v0.2.36: a Norman head drops its last e before a vowel (Chesne + ay → Chesnay, not Chesneay).
+            const hh = (R.noHiatus || E.noHiatus) && !elide && /e$/.test(h.t) && VOWEL.test(t.t[0]) ? h.t.slice(0, -1) : h.t;
+            const text = capFirst(glue(hh, t.t, elide, link));
+            if (!sayable(text) || newDoubleVowel(text, hh, t.t)) continue;
             // r + vowel + r at the join (Akro + oros → Akroros).
             if (/ror/i.test(text) && !/ror/i.test(h.t) && !/ror/i.test(t.t)) continue;
             base = { text, frags: [tagRoot(h, root, mix), tagRoot(t, root2, mix)], root };

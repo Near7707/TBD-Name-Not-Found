@@ -2463,3 +2463,33 @@ test('v0.2.35 Celtic names keep to one language: Welsh, Gaelic or Gaulish', () =
         }
     }
 });
+
+test('v0.2.36: spellings, plain words and English-looking Merge endings', () => {
+    const { api } = load();
+    // accents count as plain letters when checking a name can be said
+    assert.ok(api.sayable('Grünfeld') && api.sayable('Mühlbach') && api.sayable('Chesnepré'));
+    const people = (root, g, n) => {
+        const out = [];
+        for (let b = 0; b < n; b++) out.push(...api.cacheNames({ target: 'person', method: 'cache', roots: [root], ckinds: ['common'], gender: g, parts: ['given'] }, 20, [], seeded(2030 + b)));
+        return out;
+    };
+    const places = (roots, mix, n) => {
+        const out = [];
+        for (let b = 0; b < n; b++) out.push(...api.cacheNames({ target: 'place', method: 'cache', roots, rootMix: mix }, 20, [], seeded(2030 + b)));
+        return out;
+    };
+    const latin = [...people('latin', 'masculine', 15), ...people('latin', 'feminine', 15)];
+    assert.ok(!latin.some(n => /^(Dominus|Domina|Sanctus|Sancta|Solus|Sola|Vitulus|Vitula|Aqua|Terra|Lupa)$/.test(n.name)));
+    const slavic = [...people('slavic', 'feminine', 15)];
+    assert.ok(!slavic.some(n => /^(Ostra|Bola|Luta|Dobra)$/.test(n.name)));
+    assert.ok(!people('oldenglish', 'masculine', 10).some(n => /^Bert/.test(n.name)));
+    const norman = places(['norman'], 'split', 15);
+    assert.ok(!norman.some(n => /Riv(?!e|a)|Foret|eay|pre\b/.test(n.name)));
+    for (const other of ['norman', 'oldenglish']) {
+        const merged = places([other, 'celtic'], 'merge', 15);
+        for (const n of merged) {
+            const [h, t] = n.frags.filter(f => f.r);
+            if (h && t && h.r !== 'celtic' && t.r === 'celtic') assert.ok(!/^(boy|more|bane|lea|roe|coole)$/.test(t.t), n.name);
+        }
+    }
+});
