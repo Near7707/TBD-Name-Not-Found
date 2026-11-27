@@ -943,7 +943,18 @@
             placeHead: F('Silv=forest=숲=forest;Aqu=water=물=water;Mar=sea=바다=coast;Terr=earth=땅;Alb=white=흰;Rub=red=붉은;Nov=new=새로운;Sol=sun=해;Luc=light=빛;Aur=gold=금;Fort=strong=강한=fort;Flor=flower=꽃=field;Vent=wind=바람=hill/coast;Petr=rock=바위=hill;Mont=mountain=산=hill;Lac=lake=호수=water;Port=harbor=항구=coast;Prat=meadow=풀밭=field;Castr=fort=요새=fort;Font=spring=샘=water;'
                 + 'Aquil=eagle=독수리=hill;Lup=wolf=늑대=forest;Urs=bear=곰=forest;Ferr=iron=쇠=hill;Vin=wine=포도주=field;Oliv=olive=올리브=field;Laur=laurel=월계수=forest;Magn=great=큰;Alt=high=높은=hill/fort;Flumin=river=강=water;Sax=rock=바위=hill;Pin=pine=소나무=forest;Querc=oak=참나무=forest;Fag=beech=너도밤나무=forest;Nemor=grove=작은 숲=forest;Pont=bridge=다리=water/town;Insul=island=섬=coast/water;Camp=field=들판=field;Vic=village=마을=town;Colon=settlement=정착지=town;Hort=garden=정원=field'),
             placeTail: F('ia=land of=~의 땅;ium=place of=~의 터=town/fort;um===town;ana=belonging to=~에 속한;etum=grove of=~나무 숲=forest;arium=place for=~ 두는 곳=town/fort;ona===town/coast;'
-                + 'acum=place of=~의 터=town;magus=field, market=들판·장터=town/field;briga=hill fort=언덕 요새=fort/hill;dunum=fort, hill=요새·언덕=fort/hill;castra=army camp=진지=fort'),
+                + 'acum=place of=~의 터=town;magus=field, market=들판·장터=town/field;briga=hill fort=언덕 요새=fort/hill;dunum=fort, hill=요새·언덕=fort/hill;castra=army camp=진지=fort;nemetum=sacred grove=성스러운 숲=forest;ritum=ford=여울=water;briva=bridge=다리=water/town;durum=walled town=성벽 마을=fort/town;bona=settlement=정착지=town'),
+            // v0.2.43: Latin places are often two words (Aquae Sextiae, Portus Magnus, Forum Iulii, Clara Vallis).
+            placeWords: F('Aquae=waters, hot springs=물·온천=water;Fons=spring=샘=water;Lacus=lake=호수=water;Pons=bridge=다리=water/town;Rivus=stream=시내=water;Vadum=ford=여울=water;'
+                + 'Silva=forest=숲=forest;Lucus=sacred grove=성스러운 숲=forest;Nemus=grove=작은 숲=forest;Saltus=wooded upland=숲 고원=forest/hill;'
+                + 'Mons=mountain=산=hill;Collis=hill=언덕=hill;Rupes=crag=바위산=hill/fort;Vallis=valley=골짜기=hill/field;'
+                + 'Portus=harbor=항구=coast;Insula=island=섬=coast/water;Litus=shore=바닷가=coast;Sinus=bay=만=coast;'
+                + 'Forum=market=장터=town;Vicus=village=마을=town;Villa=estate=영지=town/field;Colonia=settlement=정착지=town;'
+                + 'Castra=army camp=진지=fort;Castrum=fort=요새=fort;Turris=tower=탑=fort;Campus=field=들판=field;Pratum=meadow=풀밭=field'),
+            wordGender: { Aquae: 'fp', Fons: 'm', Lacus: 'm', Pons: 'm', Rivus: 'm', Vadum: 'n', Silva: 'f', Lucus: 'm', Nemus: 'n', Saltus: 'm', Mons: 'm', Collis: 'm', Rupes: 'f', Vallis: 'f',
+                Portus: 'm', Insula: 'f', Litus: 'n', Sinus: 'm', Forum: 'n', Vicus: 'm', Villa: 'f', Colonia: 'f', Castra: 'np', Castrum: 'n', Turris: 'f', Campus: 'm', Pratum: 'n' },
+            placeAdj: F('Alb=white=흰;Nov=new=새로운;Magn=great=큰;Alt=high=높은;Aure=golden=금빛;Long=long=긴;Clar=bright=맑은;Bon=good=좋은;Regi=royal=왕의;Parv=little=작은;Lat=broad=넓은;Quiet=quiet=고요한;Argente=silver=은빛;'
+                + 'Calid=hot=뜨거운=water;Frigid=cold=차가운=water/hill;Opac=shady=그늘진=forest;Umbros=shady=그늘진=forest/hill;Ventos=windy=바람 부는=hill/coast;Nivos=snowy=눈 덮인=hill;Saxos=rocky=바위투성이=hill/coast/fort;Tut=safe=안전한=coast/fort;Florid=flowery=꽃 핀=field'),
             placePost: F('Magna=great=큰;Parva=little=작은;Superior=upper=위쪽;Inferior=lower=아래쪽'),
             family: 'nomen', branches: { patron: 4, trade: 2, looks: 3 },
             trade: F('Faber=smith=대장장이;Pictor=painter=화가;Agricola=farmer=농부;Pastor=shepherd=목동;Sutor=shoemaker=구두장이;Nauta=sailor=뱃사람;Scriba=scribe=서기;Medicus=physician=의사;Piscator=fisherman=어부;Molitor=miller=방앗간 주인'),
@@ -1131,7 +1142,7 @@
     const CACHE_ROOTS = Object.keys(CACHE);
     // First parts of names and places (Chryso-, Zlato-), to spread them out in one list.
     const TAIL_TEXTS = new Set(CACHE_ROOTS.flatMap(k => CACHE[k].placeTail.map(f => f.t)));
-    const HEAD_TEXTS = new Set(CACHE_ROOTS.flatMap(k => [...CACHE[k].head, ...CACHE[k].placeHead].map(f => f.t)));
+    const HEAD_TEXTS = new Set(CACHE_ROOTS.flatMap(k => [...CACHE[k].head, ...CACHE[k].placeHead, ...(CACHE[k].placeWords || [])].map(f => f.t)));
     const CACHE_KINDS = ['common', 'noble', 'religious', 'royal', 'warrior', 'scholar'];
     const FAMILY_BRANCHES = ['patron', 'place', 'dwell', 'trade', 'looks'];
     // Place kinds → which place fragments fit (none listed = any fragment).
@@ -1368,6 +1379,27 @@
         const want = /(j|c|č|ć|š|ž|đ|ch|sh|zh|ts)$/i.test(stem) ? 'evo' : 'ovo';
         return t.t === want ? t : (E.placeTail.find(f => f.t === want) || t);
     }
+    // v0.2.43: a two-word Latin place: a place word + an adjective that agrees with it (Aquae Albae,
+    // Portus Magnus, Clara Vallis), or + a man's name (Forum Aureliani, like Forum Iulii).
+    const LATIN_AGREE = { m: 'us', f: 'a', n: 'um', fp: 'ae', np: 'a' };
+    function twoWordPlace(R, root, cats, rnd) {
+        const need = (cats && cats.must) || cats;
+        const nouns = need ? R.placeWords.filter(f => f.cats.some(c => need.includes(c))) : R.placeWords;
+        if (!nouns.length) return null;
+        const noun = pick(nouns, rnd);
+        if (rnd() < 0.25) {
+            const who = cacheGiven(root, 'm', rnd);
+            const gen = /ius$/.test(who.text) ? who.text.replace(/us$/, 'i') : /us$/.test(who.text) ? who.text.replace(/us$/, 'i') : /ian$/.test(who.text) ? `${who.text}i` : '';
+            // Not the same sound twice (Collis Columbici, Vicus Victini).
+            if (gen && !sameSound(noun.t, gen)) return { text: `${noun.t} ${gen}`, frags: [noun, { t: gen, en: `of ${who.text} (a man's name)`, ko: `${who.text}의 (사람 이름)` }], root };
+        }
+        const adjs = R.placeAdj.filter(a => (!a.cats || a.cats.some(c => noun.cats.includes(c))) && !meaningClash(noun, a) && !sameSound(noun.t, a.t));
+        const a = pick(adjs, rnd);
+        const word = { ...a, t: a.t + LATIN_AGREE[R.wordGender[noun.t]], use: a.t.toLowerCase() };
+        delete word.cats;
+        const first = rnd() < 0.25;
+        return { text: first ? `${word.t} ${noun.t}` : `${noun.t} ${word.t}`, frags: first ? [word, noun] : [noun, word], root };
+    }
     // A place: head + tail, now and then with "Great …" / "…-on-Sea", or named for a saint (St. Edwin's, Kilbran).
     // Merge: the head from one root and the tail from another (root2); no saint's name then.
     function cachePlace(root, cats, rnd, plain = false, root2 = '', want = '') {
@@ -1386,6 +1418,10 @@
             const lead = pattern.split('{}')[0].trim().replace(/-$/, '');
             const frag = lead === 'Kil' || lead === 'Llan' ? { t: lead, en: 'church of', ko: '~의 교회' } : { t: lead, en: 'saint', ko: '성인' };
             if (sayable(text)) return { text, frags: [frag, ...who.frags], root, saint: true };
+        }
+        if (!mix && !plain && R.placeWords && rnd() < (cats ? 0.5 : 0.3)) {
+            const two = twoWordPlace(R, root, cats, rnd);
+            if (two) return two;
         }
         // v0.2.35: with a wanted Celtic language, only its words (and shared ones) to begin with.
         const heads = celtOnly(fitCats(R.placeHead, cats), R, want);
@@ -1808,7 +1844,7 @@
         const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
         // v0.2.29: places spread out their endings the same way (-magus six times in 20).
-        const tailsOf = n => (n.pieces || form.target === 'person' ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t)).map(f => f.t.toLowerCase())
+        const tailsOf = n => (n.pieces || form.target === 'person' ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t) || f.use).map(f => (f.use || f.t).toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
         // v0.2.30: people spread out their given-name endings too (-mila six times, -ianus five times),
         // and one list doesn't give the same family twice (Chernov and Chernova).
@@ -3951,7 +3987,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.42';
+    const TBD_VERSION = '0.2.43';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

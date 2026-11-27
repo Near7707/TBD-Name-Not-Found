@@ -2589,3 +2589,33 @@ test('v0.2.42: a sea place always has a sea part, and never ends in a lake or st
     }
     assert.ok(api.CACHE.germanic.notPlaces.has('goldfisch'));
 });
+
+test('v0.2.43: Latin places come as two words too, with the adjective agreeing', () => {
+    const { api } = load();
+    const R = api.CACHE.latin;
+    const ends = { m: 'us', f: 'a', n: 'um', fp: 'ae', np: 'a' };
+    let two = 0, total = 0;
+    for (const kind of ['', 'water', 'forest', 'mountain', 'sea', 'town', 'fort']) {
+        for (let b = 0; b < 4; b++) {
+            for (const n of api.cacheNames({ target: 'place', method: 'cache', roots: ['latin'], kind }, 20, [], seeded(2030 + b))) {
+                total++;
+                const noun = n.frags.find(f => R.placeWords.some(w => w.t === f.t));
+                if (!noun || !/ /.test(n.name)) continue;
+                two++;
+                const other = n.frags.find(f => f !== noun);
+                if (other.use) assert.ok(other.t.endsWith(ends[R.wordGender[noun.t]]), `agreement: ${n.name}`);
+                else assert.match(other.t, /i$/, `a man's name in the genitive: ${n.name}`);
+                assert.ok(!api.sameSound(noun.t, other.t), `same sound: ${n.name}`);
+            }
+        }
+    }
+    assert.ok(two > total * 0.3 && two < total * 0.8, `two-word share ${two}/${total}`);
+    for (const w of R.placeWords) assert.ok(R.wordGender[w.t], `gender for ${w.t}`);
+    // Not in family names or Merge places.
+    for (const n of api.cacheNames({ target: 'person', method: 'cache', roots: ['latin'], ckinds: ['scholar', 'noble'], parts: ['given', 'family'] }, 40, [], seeded(2030))) {
+        for (const p of n.pieces.filter(p => p.role === 'family')) assert.ok(!R.placeWords.some(w => p.text.startsWith(w.t + ' ')), `family: ${p.text}`);
+    }
+    for (const n of api.cacheNames({ target: 'place', method: 'cache', roots: ['latin', 'greek'], rootMix: 'merge' }, 40, [], seeded(2030))) {
+        assert.ok(!n.frags.some(f => R.placeWords.some(w => w.t === f.t) && / /.test(n.name) && !/ (Magna|Parva|Superior|Inferior)$/.test(n.name)), `merge: ${n.name}`);
+    }
+});
