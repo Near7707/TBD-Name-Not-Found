@@ -116,6 +116,7 @@
             foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from the archive`,
             cacheEmpty: 'No new names left in the archive for these choices. Try other roots or conditions.',
             needPick: { roots: 'Pick at least one root.', kinds: 'Pick at least one kind of name.', koreanPlace: 'Korean has no place names yet. Pick another root too.' },
+            koRare: 'rare family name', koRareTip: 'Fewer than 10,000 people have this family name (2015 Korean census).',
             koNote: { mix: 'Using Split for now: Korean names can\'t be blended with another root.', place: 'Korean has no place names yet; the other roots make the places.', kind: 'Korean names are common names (family + given) for now; middle names and special names aren\'t added.' }, needErr: m => `400 — ${m}`,
             polishTag: 'AI polished', polishTip: 'Built from name fragments, then the AI smoothed the sound a little. The meanings are from the archive, not the AI.',
             keptTip: 'Built from name fragments. The AI read it and left the spelling as it was; the reading and note are from the AI.',
@@ -254,6 +255,7 @@
             foundCache: n => `200 OK — 아카이브에서 이름 ${n}개 찾음`,
             cacheEmpty: '이 조건으론 아카이브에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
             needPick: { roots: '뿌리를 하나 이상 골라 주세요.', kinds: '이름 종류를 하나 이상 골라 주세요.', koreanPlace: '한국 지명은 아직 없어요. 다른 뿌리도 골라 주세요.' },
+            koRare: '희귀 성', koRareTip: '이 성을 가진 사람이 1만 명이 안 돼요(2015년 인구주택총조사).',
             koNote: { mix: '지금은 Split로 뽑아요: 한국 이름은 다른 뿌리와 섞을 수 없어요.', place: '한국 지명은 아직 없어요. 장소는 다른 뿌리로 만들어요.', kind: '한국 이름은 지금은 일반 인명(성 + 이름)으로만 만들어요. 미들네임·특수한 이름은 안 붙어요.' }, needErr: m => `400 — ${m}`,
             polishTag: 'AI 다듬음', polishTip: '이름 조각으로 만든 뒤 AI가 소리를 살짝 다듬었어요. 뜻은 AI가 아니라 아카이브 자료예요.',
             keptTip: '이름 조각으로 만든 이름이에요. AI가 보고 철자는 그대로 뒀어요. 읽는 법과 설명은 AI가 썼어요.',
@@ -1236,13 +1238,10 @@
     // A Korean name is a family name of one hanja and a given name of two, each hanja with its sound.
     // It is not built like the other roots (no joining of letters), so it lives apart from CACHE:
     // the AI roots and everything that walks CACHE stay as they were.
-    // Family: "hanja=hangul=usual romanization=share of people (%)". Picked by the square root of the
-    // share, so Kim shows up often but not in half of every list.
-    const KO_FAMILY = ('金=김=Kim=21.5;李=이=Lee=14.7;朴=박=Park=8.4;崔=최=Choi=4.7;鄭=정=Jung=4.3;姜=강=Kang=2.4;趙=조=Cho=2.1;尹=윤=Yoon=2.1;張=장=Jang=2.0;林=임=Lim=1.7;'
-        + '韓=한=Han=1.5;吳=오=Oh=1.5;徐=서=Seo=1.4;申=신=Shin=1.4;權=권=Kwon=1.4;黃=황=Hwang=1.4;安=안=Ahn=1.3;宋=송=Song=1.3;全=전=Jeon=1.1;洪=홍=Hong=1.1;'
-        + '柳=유=Yoo=1.0;高=고=Ko=0.9;文=문=Moon=0.9;梁=양=Yang=0.9;孫=손=Son=0.9;裵=배=Bae=0.8;白=백=Baek=0.7;許=허=Heo=0.6;南=남=Nam=0.5;沈=심=Shim=0.5;'
-        + '盧=노=Noh=0.4;河=하=Ha=0.4;郭=곽=Kwak=0.4;成=성=Sung=0.4;車=차=Cha=0.4;閔=민=Min=0.3')
-        .split(';').map(x => { const [z, h, r, w] = x.split('='); return { z, h, r, w: Math.sqrt(Number(w)) }; });
+    // Family: "hanja=hangul=usual romanization=people in the 2015 census". All picked equally (v0.2.59);
+    // fewer than 10,000 people is marked as a rare family name.
+    const KO_FAMILY = '金=김=Kim=9959154;李=이=Lee=7306828;朴=박=Park=4192074;崔=최=Choi=2333927;鄭=정=Jung=2151879;姜=강=Kang=1176847;趙=조=Cho=1055567;尹=윤=Yoon=1020547;張=장=Jang=992721;林=임=Lim=823921;韓=한=Han=773404;吳=오=Oh=763281;徐=서=Seo=751704;申=신=Shin=741081;權=권=Kwon=705941;黃=황=Hwang=697171;安=안=Ahn=685639;宋=송=Song=683494;全=전=Jeon=559110;洪=홍=Hong=558853;柳=유=Yoo=478990;高=고=Ko=471396;文=문=Moon=464040;梁=양=Yang=460600;孫=손=Son=457303;裵=배=Bae=400641;白=백=Baek=381986;許=허=Heo=326770;南=남=Nam=275648;沈=심=Shim=271749;盧=노=Noh=256229;河=하=Ha=230481;郭=곽=Kwak=203188;成=성=Sung=199124;車=차=Cha=194782;朱=주=Joo=194766;禹=우=Woo=194713;具=구=Koo=193080;閔=민=Min=171740;陳=진=Jin=157599;池=지=Ji=153491;嚴=엄=Eom=144425;蔡=채=Chae=131557;元=원=Won=129522;千=천=Chun=121780;方=방=Bang=94831;孔=공=Kong=91869;玄=현=Hyun=88824;咸=함=Ham=80659;卞=변=Byun=78156;廉=염=Yeom=69387;呂=여=Yeo=60522;秋=추=Choo=60483;都=도=Do=56850;蘇=소=So=52427;石=석=Seok=49203;宣=선=Sun=42733;薛=설=Seol=42646;馬=마=Ma=38949;吉=길=Gil=38173;延=연=Yeon=34766;魏=위=Wi=31342;表=표=Pyo=30743;明=명=Myung=29110;奇=기=Ki=28829;潘=반=Ban=28062;王=왕=Wang=25565;琴=금=Keum=25432;玉=옥=Ok=25107;陸=육=Yook=23455;印=인=In=22363;孟=맹=Maeng=22028;諸=제=Je=21976;牟=모=Mo=21534;南宮=남궁=Namgung=21308;卓=탁=Tak=21099;鞠=국=Kook=20547;魚=어=Eo=18849;殷=은=Eun=16894;片=편=Pyeon=16689;龍=용=Yong=15276;芮=예=Ye=13568;慶=경=Kyung=13012;奉=봉=Bong=12927;史=사=Sa=10730;夫=부=Bu=10536;皇甫=황보=Hwangbo=10383;賈=가=Ka=9936;卜=복=Bok=9538;太=태=Tae=9063;睦=목=Mok=8848;邢=형=Hyung=7239;桂=계=Kye=6636;皮=피=Pi=6578;杜=두=Doo=6428;甘=감=Kam=6024;諸葛=제갈=Jegal=5655;陰=음=Eum=5604;賓=빈=Bin=5593;董=동=Dong=5462;溫=온=On=5418;司空=사공=Sagong=4476;扈=호=Ho=4340;范=범=Bum=3826;鮮于=선우=Sunwoo=3588;左=좌=Jwa=3378;彭=팽=Paeng=2935;承=승=Seung=2619;簡=간=Kan=2520;尙=상=Sang=2376;葛=갈=Kal=2086;西門=서문=Seomun=2028;段=단=Dan=1612;獨孤=독고=Dokgo=502;東方=동방=Dongbang=180'
+        .split(';').map(x => { const [z, h, r, n] = x.split('='); return { z, h, r, n: Number(n), rare: Number(n) < 10000 }; });
     // Given-name hanja: "hanja=sound=place=gender=English meaning=Korean meaning".
     // place: 1 first syllable only, 2 second only, b either. gender: m, f, or c (either).
     const KO_GIVEN = [
@@ -1269,9 +1268,31 @@
         '柔=유=2=f=gentle=부드러운', '瑜=유=2=f=fine jade=고운 옥', '芝=지=2=f=fragrant herb=지초', '珠=주=2=f=pearl=구슬', '潾=린=2=f=clear water=맑은 물',
         '玲=령=2=f=jade chime=옥 소리', '苑=원=2=f=garden=동산', '華=화=2=f=splendid=화려한', '喜=희=1=f=joy=기쁨', '蓮=연=1=f=lotus=연꽃',
         '多=다=1=f=many=많은', '藝=예=1=f=art=재주', '嘉=가=1=f=fine=좋은',
+        // v0.2.59: more, either
+        '世=세=1=c=world=세상', '時=시=1=c=time=때', '詩=시=1=c=poem=시', '周=주=1=c=all around=두루', '淵=연=2=c=deep pool=못',
+        '然=연=2=c=natural=그러한', '延=연=1=c=to extend=늘이는', '聖=성=1=c=holy=거룩한', '輝=휘=2=c=brilliance=빛남', '希=희=1=c=hope=바람',
+        '玹=현=2=c=jade glow=옥빛', '修=수=1=c=to cultivate=닦는', '才=재=2=c=talent=재능', '容=용=2=c=to embrace=받아들이는', '孝=효=1=c=devoted=효성스러운',
+        '曉=효=2=c=dawn=새벽', '謙=겸=2=c=humble=겸손한', '均=균=2=c=even=고른', '彬=빈=2=c=refined=문채 나는', '松=송=1=c=pine=소나무',
+        '淳=순=2=c=simple-hearted=순박한', '安=안=1=c=peace=평안', '映=영=2=c=to reflect=비추는', '雲=운=2=c=cloud=구름', '泉=천=2=c=spring=샘',
+        '瑾=근=2=c=fine jade=아름다운 옥', '璟=경=2=c=jade gleam=옥 광채', '睿=예=1=c=far-seeing=깊이 아는', '辰=진=2=c=star sign=별자리', '晨=신=2=c=early morning=이른 아침',
+        '旼=민=2=c=gentle=온화한', '溫=온=1=c=warm=따뜻한', '靑=청=1=c=blue=푸른', '晴=청=2=c=clear sky=갠 하늘', '平=평=2=c=calm=평평한',
+        '文=문=1=c=letters=글월',
+        // v0.2.59: more for men
+        '胤=윤=2=m=heir=이을 자손', '晟=성=2=m=bright=환히 밝은', '光=광=b=m=light=빛', '昌=창=b=m=flourishing=번창하는', '洙=수=2=m=riverside=물가',
+        '晋=진=2=m=to advance=나아가는', '宰=재=2=m=to govern=다스리는', '鍾=종=1=m=bell=쇠북', '漢=한=1=m=great river=큰 강', '亨=형=2=m=prosperous=형통한',
+        '弘=홍=1=m=broad=드넓은', '薰=훈=2=m=fragrant herb=향풀', '康=강=2=m=at ease=편안한', '剛=강=2=m=firm=꿋꿋한', '圭=규=2=m=jade tablet=서옥',
+        '南=남=1=m=south=남녘', '達=달=2=m=to master=통달한', '德=덕=2=m=virtue=덕', '斗=두=1=m=the Dipper=북두', '茂=무=2=m=thriving=무성한',
+        '武=무=1=m=martial=무예', '秉=병=1=m=to hold=쥐는', '鳳=봉=2=m=phoenix=봉황', '尙=상=1=m=to esteem=높이는', '錫=석=2=m=to bestow=내리는',
+        '燮=섭=2=m=harmonious=조화로운', '陽=양=2=m=sunlight=햇볕', '彦=언=2=m=scholar=선비', '旭=욱=2=m=rising sun=아침 해', '義=의=2=m=righteous=옳은',
+        '炳=병=2=m=blazing=불꽃처럼 밝은', '虎=호=2=m=tiger=범', '豪=호=2=m=heroic=호걸', '燁=엽=2=m=blaze=빛나는 불', '翰=한=2=m=writing brush=붓',
+        // v0.2.59: more for women
+        '姬=희=2=f=lady=아가씨', '馨=형=2=f=fragrance=향기', '丹=단=1=f=red=붉은', '蘭=란=2=f=orchid=난초', '梅=매=2=f=plum blossom=매화',
+        '愛=애=2=f=love=사랑', '娥=아=2=f=pretty=예쁜', '佳=가=1=f=fine=빼어나게 고운', '鈴=령=2=f=bell=방울', '淑=숙=2=f=virtuous=맑은 마음',
+        '仙=선=2=f=immortal=신선', '雪=설=2=f=snow=눈', '香=향=2=f=scent=향', '純=순=2=f=pure=순수한', '瑤=요=2=f=jade bead=옥 구슬',
+        '娟=연=2=f=graceful=얌전한', '藍=람=2=f=indigo=쪽빛', '琴=금=2=f=zither=거문고', '燕=연=2=f=swallow=제비',
     ].map(x => { const [t, rd, pos, g, en, ko] = x.split('='); return { t, rd, pos, g, en, ko }; });
     // Given names that are everyday words (adult, case, the city of Suwon, victory, film…).
-    const KO_NOT_NAMES = new Set('성인 경우 수원 기우 해명 우승 영화 경기 정기 은혜 선수 수재 명성 원수 미수 성우 하지 우유 인연 성명 민원 우주 준수 서민 지기 해서 은화 서기 영원 우선 진정 선진 유기 유도 소유 동기 유지 다수 가령 소령 가정 미인'.split(' '));
+    const KO_NOT_NAMES = new Set('성인 경우 수원 기우 해명 우승 영화 경기 정기 은혜 선수 수재 명성 원수 미수 성우 하지 우유 인연 성명 민원 우주 준수 서민 지기 해서 은화 서기 영원 우선 진정 선진 유기 유도 소유 동기 유지 다수 가령 소령 가정 미인 영양 태양 수양 해양 안양 정의 수의 주의 동의 경의 성의 도덕 미덕 도달 소매 연애 성애 소란 정석 해석 주석 명언 수호 지휘 세균 기운 성운 수평 수용 미용 인재 영재 해설 수선 세금 연기 연인 성지 송진 안정 안경 안주 문화 청원 광주 한우 한강 건강 무용 시민 시인 세인 시선 세수 세기 주연 연주 시주 시정 성화 성경 문인 문명 효도 송편 안부 온정 평정 청정 세정 시운 인용 세무 주문 세무 고정 동경 동정 동해 남한 남해 남용 무예 무정 상호 상한 상주 상정 광고 광명 홍수 종이 종소 종주 한파 한복 한수 가신 가지 가수 가요 가재 가설 가성 건달 건성 경매 경범 경유 경호 광신 광기 기수 기병 기호 남은 남의 단신 단지 단서 단순 단원 도주 도청 도의 도용 동성 동서 동지 동양 동화 두유 두건 명기 명의 명수 명주 명령 무식 무인 무지 무선 문란 문신 문의 문서 미아 미숙 민주 민의 병기 병석 상인 상병 상의 상기 상원 서양 석유 석기 성미 성향 성금 성형 소금 소요 소인 소지 소재 소화 송금 수건 수기 수유 수은 수준 수령 승인 승진 시기 시청 시설 시의 시한 시범 안달 연금 연설 연수 연유 연령 연민 영웅 영향 예금 예수 예식 예언 예의 예정 예민 온수 온천 용기 용병 용서 용의 용인 용지 우환 원주 원한 원인 유령 유린 유인 은신 은근 인기 인수 인식 인원 인정 인천 정신 종기 종신 종양 주기 주민 주식 주인 주한 주유 지식 지병 찬성 찬양 채식 철강 철근 청주 하수 하인 하천 하숙 하청 하의 한식 한의 해병 해수 해운 현금 현기 현재 호수 호주 희석 안건 연봉 주화 남근 성기 남창 성병 성범 시신 단수 소주 주정 성교 남성 여성 중성 성별 시체 병신 창녀 남녀 성병 창설 창원 창주 창의 창용 병원 병사 봉사 선봉 주봉 미선 정선 유선 수선 도선 해선 사선 은사 신용 시용 지선 진선 성선 지연 지원서 무한 무수 무기 덕수 지달 달관'.split(' ').filter(w => w.length === 2));
     // Revised Romanization of one syllable. Names keep each syllable as written (no sound changes).
     const KO_INI = ['g', 'kk', 'n', 'd', 'tt', 'r', 'm', 'b', 'pp', 's', 'ss', '', 'j', 'jj', 'ch', 'k', 't', 'p', 'h'];
     const KO_MED = ['a', 'ae', 'ya', 'yae', 'eo', 'e', 'yeo', 'ye', 'o', 'wa', 'wae', 'oe', 'yo', 'u', 'wo', 'we', 'wi', 'yu', 'eu', 'ui', 'i'];
@@ -1318,10 +1339,7 @@
             const f = KO_FAMILY.find(x => x.h === want || x.z === want || x.r.toLowerCase() === want);
             if (f) return { ...f, fixed: true };
         }
-        const total = KO_FAMILY.reduce((s, x) => s + x.w, 0);
-        let at = rnd() * total;
-        for (const x of KO_FAMILY) { at -= x.w; if (at < 0) return x; }
-        return KO_FAMILY[KO_FAMILY.length - 1];
+        return pick(KO_FAMILY, rnd);
     }
     function koGiven(g, rnd, famH = '') {
         const fits = c => c.g === 'c' || c.g === g;
@@ -1336,7 +1354,7 @@
             if (b.rd === '율' && !koEndsOpen(a.rd)) continue;
             if (KO_NOT_NAMES.has(a.rd + b.rd)) continue;
             // 유유화, 하하윤: the family syllable again at once.
-            if (famH && famH === a.rd) continue;
+            if (famH && famH.slice(-1) === a.rd) continue;
             // Two either-way hanja often read as the other gender (은지 for a man): only sometimes.
             if (a.g === 'c' && b.g === 'c' && rnd() < 0.6) continue;
             // Not the same first consonant twice (지진, 서식, 혜희), except a silent ㅇ (은우, 아윤).
@@ -1354,7 +1372,7 @@
         const kor = { givenH, givenZ, givenR, hangul: givenH, hanja: givenZ, roman: givenR };
         const pieces = [];
         if (fam) {
-            Object.assign(kor, { famH: fam.h, famZ: fam.z, famR: fam.r, hangul: fam.h + givenH, hanja: fam.z + givenZ, roman: `${fam.r} ${givenR}` });
+            Object.assign(kor, { famH: fam.h, famZ: fam.z, famR: fam.r, ...(fam.rare ? { rare: true } : {}), hangul: fam.h + givenH, hanja: fam.z + givenZ, roman: `${fam.r} ${givenR}` });
             pieces.push({ role: 'family', text: ko ? fam.h : fam.r, frags: [{ t: fam.z, rd: fam.h, en: 'family name', ko: '성씨' }], ...(fam.fixed ? { fixed: true } : {}) });
         }
         pieces.push({ role: 'given', text: ko ? givenH : givenR, frags: given.map(c => ({ t: c.t, rd: c.rd, en: c.en, ko: c.ko })) });
@@ -1384,7 +1402,7 @@
         for (let i = 0; i < 40; i++) {
             const fam = p.role === 'family' ? koFamily(rnd) : famNow;
             const given = p.role === 'given' ? koGiven(g, rnd, famNow ? famNow.h : '') : givenNow;
-            if (fam && given.length === 2 && fam.h === given[0].rd) continue;
+            if (fam && given.length === 2 && fam.h.slice(-1) === given[0].rd) continue;
             if (!fam || given.length !== 2) return null;
             const n = koFinish(fam, given, g, ko);
             const next = n.pieces.find(q => q.role === p.role);
@@ -2654,6 +2672,7 @@
         if (r.kor && typeof r.kor === 'object') {
             const k = {};
             for (const key of ['hangul', 'hanja', 'roman', 'givenH']) { const v = str(r.kor[key], 40); if (v) k[key] = v; }
+            if (r.kor.rare) k.rare = true;
             if (k.hangul && k.hanja && k.roman) e.kor = k;
         }
         if (Array.isArray(r.mix) && r.mix.length === 2 && r.mix[0] !== r.mix[1] && r.mix.every(x => CACHE_ROOTS.includes(x))) e.mix = [r.mix[0], r.mix[1]];
@@ -4102,7 +4121,7 @@
             : one(r.cache, r.polished ? L.keptTip : L.cacheTip, L.cacheTag);
         // A word name shows its own meaning and language; the plain English word mark would say the same thing twice.
         const wordName = r.word && (r.word.meaning || r.word.lang) ? one(true, L.wordMeanTip, L.wordMeanTag(r.word.meaning, r.word.lang)) : '';
-        return tag + cacheTag + one(r.real, r.form?.target === 'place' ? L.realPlaceTip : L.realTip, L.realTag) + (wordName || (words.length ? one(true, L.wordTip, L.wordTag(words)) : ''))
+        return tag + cacheTag + one(!!r.kor?.rare, L.koRareTip, L.koRare) + one(r.real, r.form?.target === 'place' ? L.realPlaceTip : L.realTip, L.realTag) + (wordName || (words.length ? one(true, L.wordTip, L.wordTag(words)) : ''))
             + one(clicheHit(r), L.clicheTip, L.clicheTag) + one(canonHit(r), L.canonTip, L.canonTag);
     }
     function nicksHtml(r, L = T()) {
@@ -4339,6 +4358,7 @@
             if (r.roster) marks.push(r.varied ? 'ROSTER, AI varied' : 'ROSTER');
             if (polishChanged(r)) marks.push('AI polished'); else if (r.polished) marks.push('ARCHIVE, AI read only'); else if (r.cache) marks.push('ARCHIVE');
             if (r.real) marks.push('real');
+            if (r.kor?.rare) marks.push('rare family name');
             if (r.word) marks.push(`word: ${[r.word.meaning, r.word.lang].filter(Boolean).join(', ')}`);
             else if (!own && wordHits(r, r.form).length) marks.push(`plain word: ${wordHits(r, r.form).map(w => w.word).join(', ')}`);
             if (!own && clicheHit(r)) marks.push('AI favorite');
@@ -5069,7 +5089,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.58';
+    const TBD_VERSION = '0.2.59';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

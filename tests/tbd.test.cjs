@@ -2974,7 +2974,7 @@ test('v0.2.58: Korean names in the Archive', () => {
         assert.ok(['1', '2', 'b'].includes(c.pos) && ['m', 'f', 'c'].includes(c.g), c.t);
         assert.match(c.rd, /^[가-힣]$/);
     }
-    assert.ok(api.KO_FAMILY.every(f => f.z && /^[가-힣]$/.test(f.h) && /^[A-Z][a-z]+$/.test(f.r) && f.w > 0));
+    assert.ok(api.KO_FAMILY.every(f => f.z && /^[가-힣]{1,2}$/.test(f.h) && f.z.length === f.h.length && /^[A-Z][a-z]+$/.test(f.r) && f.n > 0));
     // Romanization: syllables kept as written, joined by a hyphen.
     assert.equal(api.koRoman('서윤'), 'Seo-yun');
     assert.equal(api.koRoman('도현'), 'Do-hyeon');
@@ -2990,14 +2990,14 @@ test('v0.2.58: Korean names in the Archive', () => {
             for (const n of list) {
                 const k = n.kor;
                 assert.equal(n.name, k.hangul);
-                assert.equal(k.hangul.length, 3);
-                assert.equal(k.hanja.length, 3);
+                assert.ok([3, 4].includes(k.hangul.length), k.hangul);
+                assert.equal(k.hanja.length, k.hangul.length);
                 assert.equal(k.roman, `${k.famR} ${api.koRoman(k.givenH)}`);
                 const [a, b] = [...k.givenZ].map(t => byT.get(t));
                 assert.ok(a && b && a.pos !== '2' && b.pos !== '1', k.hanja);
                 const other = g === 'masculine' ? 'f' : 'm';
                 assert.ok(a.g !== other && b.g !== other, `${k.hangul} ${g}`);
-                assert.ok(a.rd !== b.rd && a.ko !== b.ko && k.famH !== a.rd);
+                assert.ok(a.rd !== b.rd && a.ko !== b.ko && k.famH.slice(-1) !== a.rd);
                 assert.ok(!api.KO_NOT_NAMES.has(k.givenH), k.givenH);
                 assert.equal(n.pieces[0].role, 'family');
                 assert.equal(n.pieces[1].text, k.givenH);
@@ -3033,4 +3033,35 @@ test('v0.2.58: Korean names in the Archive', () => {
     assert.match(api.reviewText([{ ...src, form: { target: 'person', method: 'cache', roots: ['korean'] } }]), new RegExp(`${src.kor.hangul} · ${src.kor.hanja} · ${src.kor.roman}`));
     // Found keeps the three spellings.
     assert.equal(api.foundEntry({ ...src, target: 'person' }).kor.hanja, src.kor.hanja);
+});
+
+test('v0.2.59: more Korean family names and hanja; rare family names are marked', () => {
+    const { api } = load({ lang: 'ko' });
+    assert.ok(api.KO_FAMILY.length >= 100 && api.KO_GIVEN.length >= 180);
+    assert.equal(new Set(api.KO_GIVEN.map(c => c.t)).size, api.KO_GIVEN.length);
+    assert.equal(new Set(api.KO_FAMILY.map(f => f.z)).size, api.KO_FAMILY.length);
+    const rare = api.KO_FAMILY.filter(f => f.rare);
+    assert.ok(rare.length > 10 && rare.every(f => f.n < 10000) && api.KO_FAMILY.filter(f => !f.rare).every(f => f.n >= 10000));
+    assert.ok(['남궁', '제갈', '선우', '황보', '독고'].every(h => api.KO_FAMILY.some(f => f.h === h)));
+    // Every family is picked about equally, and a rare one carries its mark through to the screen, review and Found.
+    const seen = new Map();
+    let marked = null;
+    for (let b = 0; b < 60; b++) {
+        for (const n of api.cacheNames({ target: 'person', method: 'cache', roots: ['korean'], parts: ['given', 'family'] }, 20, [], seeded(500 + b))) {
+            seen.set(n.kor.famH, (seen.get(n.kor.famH) || 0) + 1);
+            if (n.kor.rare && !marked) marked = n;
+            const f = api.KO_FAMILY.find(x => x.z === n.kor.famZ);
+            assert.equal(!!n.kor.rare, f.rare);
+            assert.ok(!api.KO_NOT_NAMES.has(n.kor.givenH), n.kor.givenH);
+        }
+    }
+    assert.ok(seen.size > 90);
+    assert.ok(marked);
+    assert.match(api.tagsHtml(marked), /희귀 성/);
+    assert.match(api.reviewText([{ ...marked, form: { target: 'person', method: 'cache', roots: ['korean'] } }]), /rare family name/);
+    assert.equal(api.foundEntry({ ...marked, target: 'person' }).kor.rare, true);
+    // Two-syllable family names romanize as one word.
+    const dk = api.koreanOne({ target: 'person', parts: ['given', 'family'], fixedFamily: '제갈' }, seeded(3));
+    assert.match(dk.kor.roman, /^Jegal [A-Z][a-z]+-[a-z]+$/);
+    assert.equal(dk.kor.hangul.length, 4);
 });
