@@ -106,7 +106,7 @@
             clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
             method: 'Made with', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI', roster: 'Roster' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
-            roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse', greek: 'Ancient Greek', slavic: 'Slavic' },
+            roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse', greek: 'Ancient Greek', slavic: 'Slavic', korean: 'Korean' },
             rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: 'Each name from one root, taking turns.', merge: 'Each name mixes two roots: one part from each.' },
             mergeOff: { place: 'Split for now: "Real places only" can\'t give place names that blend two roots.', person: 'Split for now: "Real names only" can\'t give names that blend two roots.' },
             aiRootAny: 'Any', aiRootOff: { like: 'Not used now: the "Like this" words lead.', cosmic: 'Not used now: Lovecraftian invented names stay eldritch.' },
@@ -115,7 +115,8 @@
             fragments: 'fragments', cacheTag: 'ARCHIVE', cacheTip: 'Built from name fragments. No AI was used.',
             foundCache: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from the archive`,
             cacheEmpty: 'No new names left in the archive for these choices. Try other roots or conditions.',
-            needPick: { roots: 'Pick at least one root.', kinds: 'Pick at least one kind of name.' }, needErr: m => `400 — ${m}`,
+            needPick: { roots: 'Pick at least one root.', kinds: 'Pick at least one kind of name.', koreanPlace: 'Korean has no place names yet. Pick another root too.' },
+            koNote: { mix: 'Using Split for now: Korean names can\'t be blended with another root.', place: 'Korean has no place names yet; the other roots make the places.', kind: 'Korean names are common names (family + given) for now; middle names and special names aren\'t added.' }, needErr: m => `400 — ${m}`,
             polishTag: 'AI polished', polishTip: 'Built from name fragments, then the AI smoothed the sound a little. The meanings are from the archive, not the AI.',
             keptTip: 'Built from name fragments. The AI read it and left the spelling as it was; the reading and note are from the AI.',
             polishWas: 'was', polishing: 'Polishing…',
@@ -243,7 +244,7 @@
             clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
             method: '만드는 방식', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI', roster: 'Roster' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
-            roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽', greek: '고대 그리스', slavic: '슬라브' },
+            roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽', greek: '고대 그리스', slavic: '슬라브', korean: '한국' },
             rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: '이름마다 뿌리 하나씩, 돌아가며.', merge: '이름마다 뿌리 두 개를 섞어요: 조각 하나씩.' },
             mergeOff: { place: '지금은 Split로 뽑아요: "실제 지명만"은 두 뿌리를 섞은 지명을 줄 수 없어요.', person: '지금은 Split로 뽑아요: "실제 이름만"은 두 뿌리를 섞은 이름을 줄 수 없어요.' },
             aiRootAny: '상관없음', aiRootOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', cosmic: '지금은 안 써요: 러브크래프트풍 지어낸 이름은 이질적인 이름이라서요.' },
@@ -252,7 +253,8 @@
             fragments: 'fragments', cacheTag: 'ARCHIVE', cacheTip: '이름 조각으로 만든 이름이에요. AI는 안 썼어요.',
             foundCache: n => `200 OK — 아카이브에서 이름 ${n}개 찾음`,
             cacheEmpty: '이 조건으론 아카이브에서 새 이름을 더 못 찾았어요. 뿌리나 조건을 바꿔 보세요.',
-            needPick: { roots: '뿌리를 하나 이상 골라 주세요.', kinds: '이름 종류를 하나 이상 골라 주세요.' }, needErr: m => `400 — ${m}`,
+            needPick: { roots: '뿌리를 하나 이상 골라 주세요.', kinds: '이름 종류를 하나 이상 골라 주세요.', koreanPlace: '한국 지명은 아직 없어요. 다른 뿌리도 골라 주세요.' },
+            koNote: { mix: '지금은 Split로 뽑아요: 한국 이름은 다른 뿌리와 섞을 수 없어요.', place: '한국 지명은 아직 없어요. 장소는 다른 뿌리로 만들어요.', kind: '한국 이름은 지금은 일반 인명(성 + 이름)으로만 만들어요. 미들네임·특수한 이름은 안 붙어요.' }, needErr: m => `400 — ${m}`,
             polishTag: 'AI 다듬음', polishTip: '이름 조각으로 만든 뒤 AI가 소리를 살짝 다듬었어요. 뜻은 AI가 아니라 아카이브 자료예요.',
             keptTip: '이름 조각으로 만든 이름이에요. AI가 보고 철자는 그대로 뒀어요. 읽는 법과 설명은 AI가 썼어요.',
             polishWas: '원래', polishing: '다듬는 중…',
@@ -441,6 +443,8 @@
     // one by one (a kept family name and extras like codenames are left out).
     const CHECK_ROLES = ['given', 'middle', 'family'];
     function checkTargets(r, lang = 'en') {
+        // v0.2.58: a Korean name is looked up in Hangul on the Korean Wikipedia.
+        if (r.kor && r.kor.hangul) return [{ role: 'full', text: r.kor.hangul, wiki: 'ko' }];
         const out = [];
         if (r.pieces) {
             const parts = r.pieces.filter(p => CHECK_ROLES.includes(p.role));
@@ -959,6 +963,7 @@
     }
     // The parts worth remembering and avoiding next time (not "Sir", not a kept family name).
     function memoryNames(r) {
+        if (r.kor && r.kor.givenH) return r.kor.givenH === r.name ? [r.name] : [r.name, r.kor.givenH];
         if (!r.pieces) return [r.name];
         return r.pieces.filter(p => NAME_ROLES.includes(p.role) && !p.fixed).map(p => p.text);
     }
@@ -1225,6 +1230,169 @@
     const HEAD_TEXTS = new Set(CACHE_ROOTS.flatMap(k => [...CACHE[k].head, ...CACHE[k].placeHead, ...(CACHE[k].placeWords || []).filter(f => !streetOnly(f))].map(f => f.t)));
     const CACHE_KINDS = ['common', 'noble', 'religious', 'royal', 'warrior', 'scholar'];
     const FAMILY_BRANCHES = ['patron', 'place', 'dwell', 'trade', 'looks'];
+    // v0.2.58: Archive roots = the built-in ones + Korean (Archive only; the AI roots stay CACHE_ROOTS).
+    const ARCHIVE_ROOTS = [...CACHE_ROOTS, 'korean'];
+    // ---------- v0.2.58: Korean (Archive only) ----------
+    // A Korean name is a family name of one hanja and a given name of two, each hanja with its sound.
+    // It is not built like the other roots (no joining of letters), so it lives apart from CACHE:
+    // the AI roots and everything that walks CACHE stay as they were.
+    // Family: "hanja=hangul=usual romanization=share of people (%)". Picked by the square root of the
+    // share, so Kim shows up often but not in half of every list.
+    const KO_FAMILY = ('金=김=Kim=21.5;李=이=Lee=14.7;朴=박=Park=8.4;崔=최=Choi=4.7;鄭=정=Jung=4.3;姜=강=Kang=2.4;趙=조=Cho=2.1;尹=윤=Yoon=2.1;張=장=Jang=2.0;林=임=Lim=1.7;'
+        + '韓=한=Han=1.5;吳=오=Oh=1.5;徐=서=Seo=1.4;申=신=Shin=1.4;權=권=Kwon=1.4;黃=황=Hwang=1.4;安=안=Ahn=1.3;宋=송=Song=1.3;全=전=Jeon=1.1;洪=홍=Hong=1.1;'
+        + '柳=유=Yoo=1.0;高=고=Ko=0.9;文=문=Moon=0.9;梁=양=Yang=0.9;孫=손=Son=0.9;裵=배=Bae=0.8;白=백=Baek=0.7;許=허=Heo=0.6;南=남=Nam=0.5;沈=심=Shim=0.5;'
+        + '盧=노=Noh=0.4;河=하=Ha=0.4;郭=곽=Kwak=0.4;成=성=Sung=0.4;車=차=Cha=0.4;閔=민=Min=0.3')
+        .split(';').map(x => { const [z, h, r, w] = x.split('='); return { z, h, r, w: Math.sqrt(Number(w)) }; });
+    // Given-name hanja: "hanja=sound=place=gender=English meaning=Korean meaning".
+    // place: 1 first syllable only, 2 second only, b either. gender: m, f, or c (either).
+    const KO_GIVEN = [
+        // either
+        '瑞=서=b=c=auspicious=상서로운', '書=서=b=c=writing=글', '允=윤=2=c=sincere=진실한', '潤=윤=2=c=lustrous=윤택한', '夏=하=1=c=summer=여름',
+        '河=하=1=c=river=강', '恩=은=b=c=grace=은혜', '旻=민=1=c=autumn sky=가을 하늘', '敏=민=b=c=quick-witted=민첩한', '珉=민=b=c=jade stone=옥돌',
+        '秀=수=b=c=outstanding=빼어난', '智=지=b=c=wisdom=슬기', '志=지=1=c=will=뜻', '眞=진=b=c=true=참', '英=영=b=c=blossom, hero=꽃부리',
+        '永=영=1=c=everlasting=영원한', '榮=영=2=c=glory=영예', '炫=현=b=c=dazzling=눈부신', '賢=현=2=c=wise=어진', '仁=인=b=c=benevolent=너그러운',
+        '和=화=2=c=harmony=화목', '海=해=1=c=sea=바다', '裕=유=b=c=abundant=넉넉한', '慶=경=b=c=celebration=경사', '景=경=2=c=scenery=경치',
+        '敬=경=1=c=respect=공경', '雨=우=2=c=rain=비', '優=우=1=c=excellent=뛰어난', '明=명=1=c=bright=밝은', '星=성=2=c=star=별',
+        '誠=성=2=c=sincerity=정성', '律=율=2=c=rhythm=가락', '源=원=2=c=source=근원', '善=선=b=c=good=착한', '熙=희=2=c=glorious=빛나는',
+        // more for men
+        '道=도=1=m=way=길', '載=재=2=m=to carry=싣는', '泰=태=1=m=great=큰', '宇=우=2=m=universe=우주', '俊=준=b=m=talented=준수한',
+        '峻=준=2=m=lofty=높은', '浩=호=b=m=vast=넓은', '昊=호=2=m=sky=하늘', '成=성=1=m=to achieve=이루는', '東=동=1=m=east=동녘',
+        '勳=훈=2=m=merit=공적', '碩=석=b=m=eminent=훌륭한', '哲=철=b=m=sagacious=사리에 밝은', '鎭=진=2=m=to guard=지키는', '赫=혁=2=m=radiant=붉게 빛나는',
+        '憲=헌=2=m=law=법', '勇=용=b=m=brave=날랜', '雄=웅=2=m=mighty=굳센', '基=기=b=m=foundation=터', '傑=걸=2=m=hero=뛰어난 사람',
+        '建=건=1=m=to build=세우는', '健=건=2=m=healthy=굳건한', '範=범=2=m=model=본보기', '植=식=2=m=to plant=심는', '煥=환=2=m=shining=환한',
+        '燦=찬=b=m=brilliant=찬란한', '承=승=1=m=to inherit=잇는', '昇=승=2=m=to rise=오르는', '正=정=b=m=upright=바른', '柱=주=2=m=pillar=기둥',
+        '佑=우=2=m=to help=돕는', '元=원=1=m=first=으뜸', '樹=수=2=m=tree=나무', '壽=수=2=m=long life=오래 사는',
+        // more for women
+        '雅=아=2=f=graceful=우아한', '彩=채=1=f=hue=빛깔', '媛=원=2=f=fair lady=아름다운 여인', '珍=진=2=f=treasure=보배', '妍=연=2=f=lovely=고운',
+        '惠=혜=b=f=kindness=베풂', '慧=혜=1=f=bright-minded=슬기로운', '美=미=b=f=beautiful=아름다운', '娜=나=2=f=lithe=아리따운', '銀=은=1=f=silver=은빛',
+        '貞=정=2=f=faithful=곧은', '晶=정=2=f=crystal=맑은', '靜=정=2=f=calm=고요한', '素=소=1=f=pure, plain=꾸밈없는', '昭=소=1=f=luminous=또렷한',
+        '柔=유=2=f=gentle=부드러운', '瑜=유=2=f=fine jade=고운 옥', '芝=지=2=f=fragrant herb=지초', '珠=주=2=f=pearl=구슬', '潾=린=2=f=clear water=맑은 물',
+        '玲=령=2=f=jade chime=옥 소리', '苑=원=2=f=garden=동산', '華=화=2=f=splendid=화려한', '喜=희=1=f=joy=기쁨', '蓮=연=1=f=lotus=연꽃',
+        '多=다=1=f=many=많은', '藝=예=1=f=art=재주', '嘉=가=1=f=fine=좋은',
+    ].map(x => { const [t, rd, pos, g, en, ko] = x.split('='); return { t, rd, pos, g, en, ko }; });
+    // Given names that are everyday words (adult, case, the city of Suwon, victory, film…).
+    const KO_NOT_NAMES = new Set('성인 경우 수원 기우 해명 우승 영화 경기 정기 은혜 선수 수재 명성 원수 미수 성우 하지 우유 인연 성명 민원 우주 준수 서민 지기 해서 은화 서기 영원 우선 진정 선진 유기 유도 소유 동기 유지 다수 가령 소령 가정 미인'.split(' '));
+    // Revised Romanization of one syllable. Names keep each syllable as written (no sound changes).
+    const KO_INI = ['g', 'kk', 'n', 'd', 'tt', 'r', 'm', 'b', 'pp', 's', 'ss', '', 'j', 'jj', 'ch', 'k', 't', 'p', 'h'];
+    const KO_MED = ['a', 'ae', 'ya', 'yae', 'eo', 'e', 'yeo', 'ye', 'o', 'wa', 'wae', 'oe', 'yo', 'u', 'wo', 'we', 'wi', 'yu', 'eu', 'ui', 'i'];
+    const KO_FIN = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm', 'l', 'l', 'l', 'p', 'l', 'm', 'p', 'p', 't', 't', 'ng', 't', 't', 'k', 't', 'p', 't'];
+    function koParts(ch) {
+        const c = ch.charCodeAt(0) - 0xAC00;
+        if (c < 0 || c > 11171) return null;
+        return { i: Math.floor(c / 588), m: Math.floor((c % 588) / 28), f: c % 28 };
+    }
+    function koRoman(word) {
+        const syl = [...String(word)].map(ch => { const p = koParts(ch); return p ? KO_INI[p.i] + KO_MED[p.m] + KO_FIN[p.f] : ch; });
+        const s = syl.join('-');
+        return s ? s[0].toUpperCase() + s.slice(1) : s;
+    }
+    // Sound feel for Hangul, by the letters of each syllable (the Latin letter counts don't work here).
+    const KO_SOUND = {
+        soft: { i: [2, 5, 6, 11], f: [4, 8, 16, 21] },
+        hard: { i: [0, 1, 3, 4, 7, 8, 15, 16, 17], f: [1, 7, 17] },
+        sharp: { i: [9, 10, 12, 13, 14] },
+        bright: { m: [1, 3, 5, 7, 16, 20] },
+        dark: { m: [4, 8, 9, 13, 14, 18] },
+    };
+    function koSoundScore(text, sound) {
+        const set = KO_SOUND[sound];
+        if (!set) return 0;
+        let hit = 0, all = 0;
+        for (const ch of String(text)) {
+            const p = koParts(ch);
+            if (!p) continue;
+            all += p.f ? 3 : 2;
+            if (set.i && set.i.includes(p.i)) hit++;
+            if (set.m && set.m.includes(p.m)) hit += 2;
+            if (set.f && p.f && set.f.includes(p.f)) hit++;
+        }
+        return all ? hit / all : 0;
+    }
+    function koEndsOpen(rd) {
+        const p = koParts(rd.slice(-1));
+        return !!p && (p.f === 0 || p.f === 4);
+    }
+    function koFamily(rnd, fixed = '') {
+        const want = String(fixed || '').trim().toLowerCase();
+        if (want) {
+            const f = KO_FAMILY.find(x => x.h === want || x.z === want || x.r.toLowerCase() === want);
+            if (f) return { ...f, fixed: true };
+        }
+        const total = KO_FAMILY.reduce((s, x) => s + x.w, 0);
+        let at = rnd() * total;
+        for (const x of KO_FAMILY) { at -= x.w; if (at < 0) return x; }
+        return KO_FAMILY[KO_FAMILY.length - 1];
+    }
+    function koGiven(g, rnd, famH = '') {
+        const fits = c => c.g === 'c' || c.g === g;
+        const firsts = KO_GIVEN.filter(c => c.pos !== '2' && fits(c));
+        const seconds = KO_GIVEN.filter(c => c.pos !== '1' && fits(c));
+        let a, b;
+        for (let i = 0; i < 40; i++) {
+            a = pick(firsts, rnd);
+            b = pick(seconds, rnd);
+            if (a.t === b.t || a.rd === b.rd || a.ko === b.ko) continue;
+            // 율 stays 율 only after a vowel or ㄴ (하율, 민율); after other endings it would be 률.
+            if (b.rd === '율' && !koEndsOpen(a.rd)) continue;
+            if (KO_NOT_NAMES.has(a.rd + b.rd)) continue;
+            // 유유화, 하하윤: the family syllable again at once.
+            if (famH && famH === a.rd) continue;
+            // Two either-way hanja often read as the other gender (은지 for a man): only sometimes.
+            if (a.g === 'c' && b.g === 'c' && rnd() < 0.6) continue;
+            // Not the same first consonant twice (지진, 서식, 혜희), except a silent ㅇ (은우, 아윤).
+            const pa = koParts(a.rd), pb = koParts(b.rd);
+            if (pa && pb && pa.i === pb.i && pa.i !== 11) continue;
+            return [a, b];
+        }
+        return [a, b];
+    }
+    // The three ways of writing it, and the parts, from the chosen hanja.
+    function koFinish(fam, given, g, ko) {
+        const givenH = given.map(c => c.rd).join('');
+        const givenZ = given.map(c => c.t).join('');
+        const givenR = koRoman(givenH);
+        const kor = { givenH, givenZ, givenR, hangul: givenH, hanja: givenZ, roman: givenR };
+        const pieces = [];
+        if (fam) {
+            Object.assign(kor, { famH: fam.h, famZ: fam.z, famR: fam.r, hangul: fam.h + givenH, hanja: fam.z + givenZ, roman: `${fam.r} ${givenR}` });
+            pieces.push({ role: 'family', text: ko ? fam.h : fam.r, frags: [{ t: fam.z, rd: fam.h, en: 'family name', ko: '성씨' }], ...(fam.fixed ? { fixed: true } : {}) });
+        }
+        pieces.push({ role: 'given', text: ko ? givenH : givenR, frags: given.map(c => ({ t: c.t, rd: c.rd, en: c.en, ko: c.ko })) });
+        const name = ko ? kor.hangul : kor.roman;
+        // Kept for 🔄 on one part.
+        kor.chars = given.map(c => c.t);
+        return { name, kor, pieces, root: 'korean', cache: true, kind: 'common', gender: g };
+    }
+    function koreanOne(form, rnd = Math.random) {
+        const g = genderOf(form, rnd);
+        const parts = Array.isArray(form.parts) ? form.parts : ['given'];
+        const fam = parts.includes('family') ? koFamily(rnd, form.fixedFamily) : null;
+        const ko = detectLang() === 'ko';
+        const n = koFinish(fam, koGiven(g, rnd, fam ? fam.h : ''), g, ko);
+        if (n.pieces.length === 1) { n.frags = n.pieces[0].frags; delete n.pieces; }
+        return n;
+    }
+    // 🔄 on one part of a Korean name: a new family name, or a new given name of the same gender.
+    function koreanPiece(src, k, form, avoid = [], rnd = Math.random) {
+        const p = src.pieces?.[k];
+        if (!p || p.fixed || !src.kor) return null;
+        const ko = !/^[A-Za-z]/.test(src.name);
+        const g = src.gender === 'm' || src.gender === 'f' ? src.gender : genderOf(form, rnd);
+        const banned = new Set([p.text, ...avoid].map(a => String(a).toLowerCase()));
+        const famNow = KO_FAMILY.find(x => x.z === src.kor.famZ);
+        const givenNow = (src.kor.chars || []).map(t => KO_GIVEN.find(c => c.t === t)).filter(Boolean);
+        for (let i = 0; i < 40; i++) {
+            const fam = p.role === 'family' ? koFamily(rnd) : famNow;
+            const given = p.role === 'given' ? koGiven(g, rnd, famNow ? famNow.h : '') : givenNow;
+            if (fam && given.length === 2 && fam.h === given[0].rd) continue;
+            if (!fam || given.length !== 2) return null;
+            const n = koFinish(fam, given, g, ko);
+            const next = n.pieces.find(q => q.role === p.role);
+            if (banned.has(next.text.toLowerCase())) continue;
+            return { piece: next, kor: n.kor, name: n.name };
+        }
+        return null;
+    }
     // Place kinds → which place fragments fit (none listed = any fragment).
     const PLACE_CATS = {
         city: ['town', 'fort'], town: ['town', 'field'], street: ['town'], building: ['town', 'fort'], transit: ['water', 'coast', 'town'],
@@ -1249,7 +1417,7 @@
     // v0.2.10: the chips can all be off (to switch from one to another in any order). The raw picks are
     // what the chips show; cacheRoots / cacheKinds still fall back to a default wherever a name is made.
     function pickedRoots(form = {}) {
-        return Array.isArray(form.roots) ? form.roots.filter(x => CACHE_ROOTS.includes(x)) : ['oldenglish'];
+        return Array.isArray(form.roots) ? form.roots.filter(x => ARCHIVE_ROOTS.includes(x)) : ['oldenglish'];
     }
     function pickedKinds(form = {}) {
         return Array.isArray(form.ckinds) ? form.ckinds.filter(x => CACHE_KINDS.includes(x)) : ['common'];
@@ -1258,11 +1426,13 @@
     function cacheNeed(form = {}) {
         if (!isCache(form)) return '';
         if (!pickedRoots(form).length) return 'roots';
+        // v0.2.58: no Korean places yet.
+        if (form.target === 'place' && pickedRoots(form).every(x => x === 'korean')) return 'koreanPlace';
         if (form.target === 'person' && !pickedKinds(form).length) return 'kinds';
         return '';
     }
     function cacheRoots(form = {}) {
-        const r = (Array.isArray(form.roots) ? form.roots : []).filter(x => CACHE_ROOTS.includes(x));
+        const r = (Array.isArray(form.roots) ? form.roots : []).filter(x => ARCHIVE_ROOTS.includes(x) && !(x === 'korean' && form.target === 'place'));
         return r.length ? r : ['oldenglish'];
     }
     function cacheKinds(form = {}) {
@@ -1273,7 +1443,11 @@
     // Cache and AI keep their own choice. Only matters with two or more roots.
     const ROOT_MIXES = ['split', 'merge'];
     function cacheMerge(form = {}) {
-        return isCache(form) && form.rootMix === 'merge' && cacheRoots(form).length > 1;
+        return isCache(form) && form.rootMix === 'merge' && cacheRoots(form).length > 1 && !koMergeOff(form);
+    }
+    // v0.2.58: a Korean name can't blend with another root, so Merge runs as Split while Korean is on.
+    function koMergeOff(form = {}) {
+        return isCache(form) && form.rootMix === 'merge' && cacheRoots(form).length > 1 && cacheRoots(form).includes('korean');
     }
     // Every ordered pair of two different roots, shuffled: names take them in turn.
     function rootPairs(roots, rnd = Math.random) {
@@ -2013,6 +2187,7 @@
     }
     function cacheOneRaw(form, root, kind, rnd = Math.random, mix = null) {
         const pair = Array.isArray(mix) && mix.length === 2 && mix[0] !== mix[1] ? mix : null;
+        if (root === 'korean' && !pair && form.target !== 'place') return koreanOne(form, rnd);
         if (form.target === 'place') {
             const p = pair ? cachePlace(pair[0], PLACE_CATS[normalizeKind('place', form.kind)] || null, rnd, false, pair[1])
                 : cachePlace(root, PLACE_CATS[normalizeKind('place', form.kind)] || null, rnd);
@@ -2077,6 +2252,7 @@
     // Sound feel, by letters (no AI here to judge by ear).
     const SOUND_LETTERS = { soft: /[lrmnwy]|[aeiou]/g, hard: /[ktpdgb]|c(?![eiy])|ck/g, sharp: /sh|th|[szxfv]|c(?=[eiy])/g, bright: /[ie]/g, dark: /[oua]/g };
     function soundScore(text, sound) {
+        if (/[가-힣]/.test(String(text))) return koSoundScore(text, sound);
         const re = SOUND_LETTERS[sound];
         if (!re) return 0;
         const w = String(text).toLowerCase();
@@ -2084,6 +2260,7 @@
     }
     // The part that carries length and sound: the given name, or the place name.
     function cacheCore(n) {
+        if (n.kor) return n.kor.givenH;
         return n.pieces ? (n.pieces.find(p => p.role === 'given')?.text || n.name) : n.name;
     }
     // Make `count` names: many tries each, keep the ones that fit length, sound and letters, skip the avoid list.
@@ -2131,7 +2308,9 @@
         // "used", win every turn once the place heads run out (Sveti … 10 times in 20).
         const isSaintPlace = n => !!n.saint || (n.frags || []).some(f => f.en === 'saint' || f.en === 'church of');
         const headsOf = n => [...(n.frags || []), ...(n.pieces || []).flatMap(p => p.frags || [])].filter(f => HEAD_TEXTS.has(f.t) && !f.street).map(f => f.t.toLowerCase())
-            .concat(isSaintPlace(n) ? ['#saint'] : []);
+            .concat(isSaintPlace(n) ? ['#saint'] : [])
+            // v0.2.58: a Korean given name counts each syllable (서 in three names out of 20 is too many).
+            .concat(n.kor ? [...n.kor.givenH].map(c => 'k:' + c) : []);
         // v0.2.29: places spread out their endings the same way (-magus six times in 20).
         const tailsOf = n => (n.pieces || form.target === 'person' ? [] : n.frags || []).filter(f => TAIL_TEXTS.has(f.t) || f.use).map(f => (f.use || f.t).toLowerCase())
             .concat(isSaintPlace(n) ? ['#saint'] : []);
@@ -2159,7 +2338,8 @@
         const familyKey = p => (p.frags && p.frags.length === 1 ? p.frags[0].t : p.text).toLowerCase()
             .replace(/^(ap|ab|ferch) /, '').replace(/(son|dottir)$/, '')
             .replace(/(sk|ck)a$/, '$1i').replace(/(ov|ev|in)a$/, '$1').replace(/(ius|ia)$/, 'i');
-        const familiesOf = n => (n.pieces || []).filter(p => (p.role === 'family' || p.role === 'patronymic') && !p.fixed)
+        // Korean family names repeat, as they do in life (Kim, Lee, Park).
+        const familiesOf = n => (n.kor ? [] : n.pieces || []).filter(p => (p.role === 'family' || p.role === 'patronymic') && !p.fixed)
             .map(familyKey);
         const epithets = n => (n.pieces || []).filter(p => p.role === 'epithet' && !ORDINAL_TEXTS.has(p.text)).map(p => p.text.toLowerCase());
         for (let i = 0; i < count; i++) {
@@ -2187,9 +2367,9 @@
             let best = pool;
             // v0.2.37: what the user asked for (letters, length) comes before spreading parts out,
             // or "must contain win" loses to "-win was used already".
-            if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must)); if (m.length) best = m; }
+            if (must) { const m = best.filter(n => n.name.toLowerCase().includes(must) || (n.kor && (n.kor.roman.toLowerCase().includes(must) || n.kor.hangul.includes(must)))); if (m.length) best = m; }
             if (form.length && form.length !== 'any') {
-                const m = best.filter(n => { const s = syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
+                const m = best.filter(n => { const s = n.kor ? n.kor.givenH.length : syllableCount(cacheCore(n)); return s >= lo && s <= hi; });
                 if (m.length) best = m;
             }
             const freshEpi = best.filter(n => !epithets(n).some(e => usedEpi.has(e)));
@@ -2221,6 +2401,7 @@
     }
     // Swap one part of a Cache name, the Cache way.
     function cachePiece(src, k, form, avoid = [], rnd = Math.random) {
+        if (src.kor) { const kr = koreanPiece(src, k, form, avoid, rnd); return kr ? { ...kr.piece, _kor: kr.kor, _name: kr.name } : null; }
         const p = src.pieces?.[k];
         if (!p || p.fixed) return null;
         const root = src.root || cacheRoots(form)[0];
@@ -2269,7 +2450,7 @@
         const one = f => {
             const mean = lang === 'ko' ? f.ko : f.en;
             const from = mix && L.roots[f.r] ? ` <span class="tbd-frag-root">(${escapeHtml(L.roots[f.r])})</span>` : '';
-            return `<span class="tbd-frag"><b>${escapeHtml(f.t)}</b>${mean ? ` ${escapeHtml(mean)}` : ''}${from}</span>`;
+            return `<span class="tbd-frag"><b>${escapeHtml(f.t)}</b>${f.rd ? ` ${escapeHtml(f.rd)}` : ''}${mean ? ` ${escapeHtml(mean)}` : ''}${from}</span>`;
         };
         // A part made from one root only (the family name of a merged name) says that root once.
         const side = p => (mix && r.root && L.roots[r.root] && !p.frags.some(f => f.r) ? ` <span class="tbd-frag-root">· ${escapeHtml(L.roots[r.root])}</span>` : '');
@@ -2416,6 +2597,14 @@
     }
     // Ask once for all of them. Never loses names: anything the AI didn't give back stays a plain Cache name.
     async function polishNames(list, form, st, signal) {
+        // v0.2.58: Korean names are not sent (the polish checks are for Latin letters); they count as kept.
+        if (list.some(n => n.kor)) {
+            const rest = list.filter(n => !n.kor);
+            if (!rest.length) return { names: list, done: list.length, raw: '' };
+            const r = await polishNames(rest, form, st, signal);
+            let j = 0;
+            return { names: list.map(n => (n.kor ? n : r.names[j++])), done: r.done + (list.length - rest.length), raw: r.raw };
+        }
         const lang = detectLang();
         const messages = buildPolishMessages(list, form, { lang, reading: !!st.showReading });
         const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(list.length, st, list.some(n => n.pieces)), signal });
@@ -2440,7 +2629,7 @@
     const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
     function cleanFrags(list) {
         if (!Array.isArray(list)) return undefined;
-        const out = list.filter(f => f && typeof f.t === 'string').slice(0, 12).map(f => ({ t: str(f.t, 30), en: str(f.en, 60), ko: str(f.ko, 60), ...(CACHE_ROOTS.includes(f.r) ? { r: f.r } : {}) }));
+        const out = list.filter(f => f && typeof f.t === 'string').slice(0, 12).map(f => ({ t: str(f.t, 30), en: str(f.en, 60), ko: str(f.ko, 60), ...(str(f.rd, 10) ? { rd: str(f.rd, 10) } : {}), ...(CACHE_ROOTS.includes(f.r) ? { r: f.r } : {}) }));
         return out.length ? out : undefined;
     }
     // Only known fields, of the right kind and size (also what makes an imported file safe to keep).
@@ -2461,7 +2650,12 @@
         if (r.roster && Array.isArray(r.lists)) { const ls = r.lists.filter(x => typeof x === 'string').slice(0, 3).map(x => x.slice(0, ROSTER_TITLE_MAX)); if (ls.length) e.lists = ls; }
         if (r.polished) e.polished = true;
         const orig = str(r.orig, 120); if (orig && orig !== name) e.orig = orig;
-        if (CACHE_ROOTS.includes(r.root)) e.root = r.root;
+        if (ARCHIVE_ROOTS.includes(r.root)) e.root = r.root;
+        if (r.kor && typeof r.kor === 'object') {
+            const k = {};
+            for (const key of ['hangul', 'hanja', 'roman', 'givenH']) { const v = str(r.kor[key], 40); if (v) k[key] = v; }
+            if (k.hangul && k.hanja && k.roman) e.kor = k;
+        }
         if (Array.isArray(r.mix) && r.mix.length === 2 && r.mix[0] !== r.mix[1] && r.mix.every(x => CACHE_ROOTS.includes(x))) e.mix = [r.mix[0], r.mix[1]];
         const frags = cleanFrags(r.frags); if (frags) e.frags = frags;
         if (typeof r.tag === 'string' && REFINE_DESC[r.tag]) e.tag = r.tag;
@@ -3754,12 +3948,35 @@
         const kinds = pickedKinds(form);
         const need = (id, key, on) => `<div class="tbd-note" id="${id}"${on ? '' : ' hidden'}>${escapeHtml(L.needPick[key])}</div>`;
         return `<div class="tbd-wide tbd-chipset"><div class="tbd-chips-label">${escapeHtml(L.rootsLabel)}</div>
-            <div class="tbd-chips">${CACHE_ROOTS.map(v => chipHtml('root', v, L.roots[v], roots.includes(v))).join('')}</div>
+            <div class="tbd-chips">${ARCHIVE_ROOTS.map(v => chipHtml('root', v, L.roots[v], roots.includes(v))).join('')}</div>
             ${need('tbd_root_need', 'roots', !roots.length)}
-            ${rootMixHtml('rootmix', 'tbd_rootmix', form.rootMix, roots.length > 1)}
+            ${koMergeOff(form) ? rootMixHtml('rootmix', 'tbd_rootmix', form.rootMix, roots.length > 1).replace(/class="tbd-chip"( data-chip="rootmix" data-v="merge")/, 'class="tbd-chip tbd-mix-off"$1') : rootMixHtml('rootmix', 'tbd_rootmix', form.rootMix, roots.length > 1)}
+            ${koNoteHtml(form, 'mix')}${koNoteHtml(form, 'place')}
             ${form.target === 'person' ? `<div class="tbd-chips-label">${escapeHtml(L.ckLabel)}</div>
             <div class="tbd-chips">${CACHE_KINDS.map(v => chipHtml('ckind', v, L.ck[v], kinds.includes(v))).join('')}</div>
-            ${need('tbd_ckind_need', 'kinds', !kinds.length)}` : ''}</div>`;
+            ${need('tbd_ckind_need', 'kinds', !kinds.length)}${koNoteHtml(form, 'kind')}` : ''}</div>`;
+    }
+    // v0.2.58: what Korean doesn't do yet, said under the chips it touches.
+    function koNoteOn(form, which) {
+        const on = pickedRoots(form).includes('korean');
+        if (which === 'mix') return koMergeOff(form);
+        if (which === 'place') return on && form.target === 'place';
+        return on && form.target === 'person';
+    }
+    function koNoteHtml(form, which) {
+        const on = koNoteOn(form, which);
+        return `<div class="tbd-note" id="tbd_ko_${which}"${on ? '' : ' hidden'}>${escapeHtml(T().koNote[which])}</div>`;
+    }
+    function refreshKoNotes(form) {
+        for (const w of ['mix', 'place', 'kind']) $(`#tbd_ko_${w}`).prop('hidden', !koNoteOn(form, w));
+        $('#tbd_rootmix .tbd-chip[data-v=merge]').toggleClass('tbd-mix-off', koMergeOff(form));
+    }
+    // The other two ways of writing a Korean name, under it: 金瑞允 · Kim Seo-yun (tap to copy).
+    function koAltHtml(r, L = T()) {
+        const k = r.kor;
+        if (!k || !k.hangul || !k.hanja || !k.roman) return '';
+        const alts = (r.name === k.hangul ? [k.hanja, k.roman] : [k.hangul, k.hanja]).filter(Boolean);
+        return `<div class="tbd-nicks tbd-kalt">${alts.map((a, n) => `${n ? '<span class="tbd-nick-dot" aria-hidden="true"> · </span>' : ''}<button class="tbd-nick tbd-kalt-btn" data-v="${escapeHtml(a)}" title="${escapeHtml(L.copy)}">${escapeHtml(a)}</button>`).join('')}</div>`;
     }
 
     // Roots for the AI: "Any" (default) or one or more roots. Tells when another choice wins.
@@ -3910,7 +4127,7 @@
         const list = st.found.map((e, i) => ({ e, i })).filter(x => foundFilter === 'all' || x.e.target === foundFilter).reverse();
         const rows = list.map(({ e, i }) => `<div class="tbd-row tbd-frow" data-f="${i}">
                 <div class="tbd-row-main">
-                    <div class="tbd-row-text"><div class="tbd-name">${escapeHtml(e.name)}${reading && e.read ? `<span class="tbd-read">${escapeHtml(e.read)}</span>` : ''}${tagsHtml(e, L)}</div>${e.from ? `<div class="tbd-note">↳ ${escapeHtml(L.foundFrom)}: ${escapeHtml(e.from)}</div>` : ''}${st.nicknames && e.nicks?.length ? nicksHtml(e, L) : ''}${fragsHtml(e)}${e.note ? `<div class="tbd-note">${escapeHtml(e.note)}</div>` : ''}</div>
+                    <div class="tbd-row-text"><div class="tbd-name">${escapeHtml(e.name)}${reading && e.read ? `<span class="tbd-read">${escapeHtml(e.read)}</span>` : ''}${tagsHtml(e, L)}</div>${koAltHtml(e, L)}${e.from ? `<div class="tbd-note">↳ ${escapeHtml(L.foundFrom)}: ${escapeHtml(e.from)}</div>` : ''}${st.nicknames && e.nicks?.length ? nicksHtml(e, L) : ''}${fragsHtml(e)}${e.note ? `<div class="tbd-note">${escapeHtml(e.note)}</div>` : ''}</div>
                     <button class="tbd-icon-btn tbd-fcopy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
                     <button class="tbd-icon-btn tbd-fdel" title="${escapeHtml(L.foundRemove)}" aria-label="${escapeHtml(L.foundRemove)}"><i class="fa-solid fa-xmark"></i></button>
                 </div></div>`).join('');
@@ -4057,8 +4274,8 @@
                    <div class="tbd-refine-menu"><button class="tbd-small-btn tbd-refine-cancel">${escapeHtml(L.refineCancel)}</button></div>` : '';
             return `<div class="tbd-row${depth ? ' tbd-variant' : ''}" data-i="${i}" style="--tbd-depth:${depth}">
                 <div class="tbd-row-main">
-                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tags}</div>${nicks}${fragsHtml(r)}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
-                    <button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                    <div class="tbd-row-text"><div class="tbd-name">${depth ? '<span class="tbd-branch">↳</span>' : ''}${escapeHtml(r.name)}${reading && r.read ? `<span class="tbd-read">${escapeHtml(r.read)}</span>` : ''}${tags}</div>${koAltHtml(r, L)}${nicks}${fragsHtml(r)}${r.note ? `<div class="tbd-note">${escapeHtml(r.note)}</div>` : ''}</div>
+                    ${r.kor ? '' : `<button class="tbd-icon-btn tbd-refine${menuFor === r ? ' tbd-on' : ''}" title="${escapeHtml(L.refineBtn)}" aria-label="${escapeHtml(L.refineBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-wand-magic-sparkles"></i></button>`}
                     <button class="tbd-icon-btn tbd-reroll" title="${escapeHtml(L.rerollBtn)}" aria-label="${escapeHtml(L.rerollBtn)}"${refining ? ' disabled' : ''}><i class="fa-solid fa-rotate-right"></i></button>
                     <button class="tbd-icon-btn tbd-copy" title="${escapeHtml(L.copy)}" aria-label="${escapeHtml(L.copy)}"><i class="fa-regular fa-copy"></i></button>
                     <button class="tbd-icon-btn tbd-star${star ? ' tbd-on' : ''}" title="${escapeHtml(star ? L.starRemove : L.starAdd)}" aria-label="${escapeHtml(star ? L.starRemove : L.starAdd)}" aria-pressed="${star}"><i class="fa-solid fa-star"></i></button>
@@ -4107,7 +4324,7 @@
         return bits.join(' · ');
     }
     function reviewFrags(frags = []) {
-        return frags.map(f => `${f.t}${f.en ? ` (${f.en})` : ''}${f.r ? ` [${STRINGS.en.roots[f.r] || f.r}]` : ''}`).join(' + ');
+        return frags.map(f => `${f.t}${f.rd ? ` ${f.rd}` : ''}${f.en ? ` (${f.en})` : ''}${f.r ? ` [${STRINGS.en.roots[f.r] || f.r}]` : ''}`).join(' + ');
     }
     function reviewText(list = results) {
         const en = STRINGS.en;
@@ -4129,7 +4346,7 @@
             if (r.gender === 'm' || r.gender === 'f') marks.push(r.gender === 'm' ? 'male' : 'female');
             if (r.kind) marks.push(en.ck[r.kind] || r.kind);
             const indent = '  '.repeat(r.depth || 0);
-            lines.push(`${indent}${i + 1}. ${r.name}${marks.length ? `  {${marks.join(', ')}}` : ''}`);
+            lines.push(`${indent}${i + 1}. ${r.kor ? [r.kor.hangul, r.kor.hanja, r.kor.roman].join(' · ') : r.name}${marks.length ? `  {${marks.join(', ')}}` : ''}`);
             const sub = `${indent}   `;
             if (r.from) lines.push(`${sub}from: ${typeof r.from === 'object' ? r.from.name : r.from}`);
             if (r.read) lines.push(`${sub}reading: ${r.read}`);
@@ -4601,7 +4818,7 @@
         const isVariant = (src.depth || 0) > 0 && src.from && REFINE_DESC[src.tag];
         // A first-round Cache name is remade from the cache, right away and for free.
         if (!isVariant && src.roster) { rosterReroll(src, st); return; }
-        if (!isVariant && src.cache && isPolish(src.form || st.form)) { polishReroll(src, st); return; }
+        if (!isVariant && src.cache && !src.kor && isPolish(src.form || st.form)) { polishReroll(src, st); return; }
         if (!isVariant && src.cache) { cacheReroll(src, st); return; }
         const from = isVariant && src.from.cache ? { ...src.from, pieces: undefined } : src.from;
         const form = aiForm(src.form || st.form, isVariant ? src.from : src);
@@ -4679,8 +4896,10 @@
         const next = cachePiece(src, k, form, avoid);
         if (!next) status = { kind: 'error', text: T().err(T().cacheEmpty) };
         else {
+            const kor = next._kor, kname = next._name;
+            delete next._kor; delete next._name;
             src.pieces = src.pieces.map((p, j) => (j === k ? next : p));
-            src.name = src.pieces.map(p => p.text).join(' ');
+            if (kor) { src.kor = kor; src.name = kname; } else src.name = src.pieces.map(p => p.text).join(' ');
             if (src.polished) src.orig = src.pieces.map(p => p.orig || p.text).join(' ');
             delete src.check;
             if (NAME_ROLES.includes(next.role)) { rememberNames([next.text], st); refreshHistory(); }
@@ -4697,7 +4916,7 @@
         if (busy || refining || !results.includes(src)) return;
         const piece = src.pieces?.[k];
         if (!piece || piece.fixed) return;
-        if (src.cache && isPolish(src.form || settings().form) && POLISH_ROLES.includes(piece.role)) { polishRerollPiece(src, k, settings()); return; }
+        if (src.cache && !src.kor && isPolish(src.form || settings().form) && POLISH_ROLES.includes(piece.role)) { polishRerollPiece(src, k, settings()); return; }
         if (src.cache) { cacheRerollPiece(src, k, settings()); return; }
         const st = settings();
         const L = T();
@@ -4850,7 +5069,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.57';
+    const TBD_VERSION = '0.2.58';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
@@ -5073,18 +5292,18 @@
                     $(this).attr('aria-pressed', String($(this).data('v')) === form[key] ? 'true' : 'false');
                 });
                 save();
-                if (key === 'aiRootMix') refreshAiRoots(form);
+                if (key === 'aiRootMix') refreshAiRoots(form); else refreshKoNotes(form);
                 return;
             }
             if (group === 'root' || group === 'ckind') {
                 const key = group === 'root' ? 'roots' : 'ckinds';
-                const all = group === 'root' ? CACHE_ROOTS : CACHE_KINDS;
+                const all = group === 'root' ? ARCHIVE_ROOTS : CACHE_KINDS;
                 // The last one can go off too: switching roots is then "off, on" in any order.
                 const set = new Set(key === 'roots' ? pickedRoots(form) : pickedKinds(form));
                 if (set.has(v0)) set.delete(v0); else set.add(v0);
                 form[key] = all.filter(x => set.has(x));
                 $(this).attr('aria-pressed', set.has(v0) ? 'true' : 'false');
-                if (key === 'roots') { $('#tbd_rootmix').prop('hidden', form.roots.length < 2); $('#tbd_root_need').prop('hidden', form.roots.length > 0); }
+                if (key === 'roots') { $('#tbd_rootmix').prop('hidden', form.roots.length < 2); $('#tbd_root_need').prop('hidden', form.roots.length > 0); refreshKoNotes(form); }
                 else $('#tbd_ckind_need').prop('hidden', form.ckinds.length > 0);
                 save();
                 return;
@@ -5109,6 +5328,11 @@
             else toastr.warning(T().copyFail, 'TBD');
         });
         $doc.on('click', '#tbd_panel .tbd-nick', async function () {
+            if ($(this).hasClass('tbd-kalt-btn')) {
+                if (await copyText(String($(this).data('v')))) toastr.success(T().copied, 'TBD');
+                else toastr.warning(T().copyFail, 'TBD');
+                return;
+            }
             const $row = $(this).closest('.tbd-row');
             const r = $row.hasClass('tbd-frow') ? settings().found[Number($row.data('f'))] : results[Number($row.data('i'))];
             const n = r?.nicks?.[Number($(this).data('n'))];
@@ -5296,7 +5520,7 @@
             realMode, realRoles, realRule, mergeBlocked, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki, echoSyllable, slavicOvo, scholarFamily, oppositeClash,
             isRoster, notAi, parseRosterText, rosterText, cleanRoster, rosterPick, rosterLists, rosterNeed, rosterImport, rosterExportText, buildVaryMessages, applyVary, rosterVary, varyPlan, rosterHtml, rosterChipsHtml, ROSTER_MAX,
-            CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
+            CACHE, CACHE_ROOTS, CACHE_KINDS, ARCHIVE_ROOTS, KO_GIVEN, KO_FAMILY, KO_NOT_NAMES, koRoman, koSoundScore, koreanOne, koMergeOff, koAltHtml, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
         };

@@ -2965,3 +2965,72 @@ test('v0.2.57: real places with any length get no syllable seed', () => {
     assert.ok(api.rollSeeds(40, { ...base, placeReal: 'near', length: 'short' }, seeded(3)).some(s => s.syllables === 1));
     assert.ok(api.rollSeeds(40, base, seeded(3)).some(s => s.syllables === 1));
 });
+
+test('v0.2.58: Korean names in the Archive', () => {
+    const { api } = load({ lang: 'ko' });
+    // Data: every hanja has six fields, a known place and gender, and Hangul sound.
+    for (const c of api.KO_GIVEN) {
+        assert.ok(c.t && c.rd && c.en && c.ko, c.t);
+        assert.ok(['1', '2', 'b'].includes(c.pos) && ['m', 'f', 'c'].includes(c.g), c.t);
+        assert.match(c.rd, /^[가-힣]$/);
+    }
+    assert.ok(api.KO_FAMILY.every(f => f.z && /^[가-힣]$/.test(f.h) && /^[A-Z][a-z]+$/.test(f.r) && f.w > 0));
+    // Romanization: syllables kept as written, joined by a hyphen.
+    assert.equal(api.koRoman('서윤'), 'Seo-yun');
+    assert.equal(api.koRoman('도현'), 'Do-hyeon');
+    assert.equal(api.koRoman('하은'), 'Ha-eun');
+    assert.equal(api.koRoman('채율'), 'Chae-yul');
+    assert.ok(api.ARCHIVE_ROOTS.includes('korean') && !api.CACHE_ROOTS.includes('korean'));
+    const byT = new Map(api.KO_GIVEN.map(c => [c.t, c]));
+    for (const g of ['masculine', 'feminine']) {
+        for (const s of [1, 2, 3, 4]) {
+            const list = api.cacheNames({ target: 'person', method: 'cache', roots: ['korean'], ckinds: ['common'], parts: ['given', 'family'], gender: g }, 20, [], seeded(s));
+            assert.equal(list.length, 20);
+            const syl = new Map();
+            for (const n of list) {
+                const k = n.kor;
+                assert.equal(n.name, k.hangul);
+                assert.equal(k.hangul.length, 3);
+                assert.equal(k.hanja.length, 3);
+                assert.equal(k.roman, `${k.famR} ${api.koRoman(k.givenH)}`);
+                const [a, b] = [...k.givenZ].map(t => byT.get(t));
+                assert.ok(a && b && a.pos !== '2' && b.pos !== '1', k.hanja);
+                const other = g === 'masculine' ? 'f' : 'm';
+                assert.ok(a.g !== other && b.g !== other, `${k.hangul} ${g}`);
+                assert.ok(a.rd !== b.rd && a.ko !== b.ko && k.famH !== a.rd);
+                assert.ok(!api.KO_NOT_NAMES.has(k.givenH), k.givenH);
+                assert.equal(n.pieces[0].role, 'family');
+                assert.equal(n.pieces[1].text, k.givenH);
+                for (const c of k.givenH) syl.set(c, (syl.get(c) || 0) + 1);
+            }
+            assert.ok(Math.max(...syl.values()) <= 3, 'one syllable spread out');
+        }
+    }
+    // Given name alone; English screen shows the romanization first.
+    const only = api.koreanOne({ target: 'person', parts: ['given'], gender: 'feminine' }, seeded(5));
+    assert.ok(!only.pieces && only.frags.length === 2 && only.kor.givenH === only.name);
+    const en = load({ lang: 'en' }).api.koreanOne({ target: 'person', parts: ['given', 'family'], fixedFamily: 'park' }, seeded(5));
+    assert.match(en.name, /^Park [A-Z][a-z]+-[a-z]+$/);
+    assert.ok(en.pieces[0].fixed);
+    assert.match(api.koAltHtml(en), /朴/);
+    // Merge with Korean runs as Split; no Korean places (another root makes them, or a 400).
+    const mix = { target: 'person', method: 'cache', roots: ['latin', 'korean'], rootMix: 'merge', ckinds: ['common'], parts: ['given', 'family'] };
+    assert.equal(api.cacheMerge(mix), false);
+    assert.equal(api.koMergeOff(mix), true);
+    const both = api.cacheNames(mix, 10, [], seeded(2));
+    assert.ok(both.some(n => n.kor) && both.some(n => !n.kor && !n.mix));
+    assert.equal(api.cacheNeed({ target: 'place', method: 'cache', roots: ['korean'] }), 'koreanPlace');
+    assert.ok(api.cacheNames({ target: 'place', method: 'cache', roots: ['korean', 'norse'], kind: 'any' }, 10, [], seeded(2)).every(n => !n.kor && n.root === 'norse'));
+    // One part swapped: a new family name keeps the given name, and the three spellings follow.
+    const src = api.cacheNames({ target: 'person', method: 'cache', roots: ['korean'], parts: ['given', 'family'] }, 1, [], seeded(8))[0];
+    const next = api.cachePiece(src, 0, src.form || {}, [], seeded(9));
+    assert.ok(next && next._kor && next._kor.givenH === src.kor.givenH && next._kor.famH !== src.kor.famH);
+    // Sound feel works on Hangul.
+    assert.ok(api.koSoundScore('예린', 'bright') > api.koSoundScore('도훈', 'bright'));
+    assert.ok(api.soundScore('예린', 'soft') > 0);
+    // Wiki check looks up the Hangul on the Korean Wikipedia; review text shows all three.
+    assert.deepEqual([...api.checkTargets(src, 'en')].map(t => `${t.wiki}:${t.text}`), [`ko:${src.kor.hangul}`]);
+    assert.match(api.reviewText([{ ...src, form: { target: 'person', method: 'cache', roots: ['korean'] } }]), new RegExp(`${src.kor.hangul} · ${src.kor.hanja} · ${src.kor.roman}`));
+    // Found keeps the three spellings.
+    assert.equal(api.foundEntry({ ...src, target: 'person' }).kor.hanja, src.kor.hanja);
+});
