@@ -2651,9 +2651,9 @@
     // family name in 18 of 19). Given = first word, family = last word.
     const VARY_PARTS = ['given', 'family', 'both'];
     const VARY_TEXT = {
-        given: 'change the given name (the first word); the rest stays',
+        given: 'change the given name (the first word) a little, keeping its first sound or its ending; the rest stays',
         family: 'change the family name (the last word); the given name stays',
-        both: 'change both the given name and the family name',
+        both: 'change both the given name and the family name; the given name only a little, keeping its first sound or its ending',
     };
     function varyPlan(list, form, rnd = Math.random) {
         const start = Math.floor(rnd() * VARY_PARTS.length);
@@ -2666,7 +2666,7 @@
         const full = !place && list.some(n => /\s/.test(n.name));
         const lines = [];
         lines.push(`These ${place ? 'place names' : 'names for people'} come from the user's own list of real names.`);
-        lines.push('For each, make one new name that is clearly a different name but keeps its language, naming custom, feel and about the same length: change a syllable or two, swap the ending for another one that language uses, or blend in a sound. Do not hand back the original, a spelling-only change of it, or another real name you know.');
+        lines.push('For each, make one new name that is clearly a different name but keeps its language, naming custom, feel and about the same length: change a syllable or two, swap the ending for another one that language uses, or blend in a sound. It should still sound related to the original, not be swapped for an unrelated name. Do not hand back the original, a spelling-only change of it, or another real name you know.');
         if (full) lines.push('A full name keeps the same number of words; small words such as "de", "von", "of" or "ap" stay as they are. Each full name below says which part to change.');
         const must = String(form.mustContain || '').trim();
         if (must) lines.push(`Keep the letters "${must}" in each name.`);
@@ -4791,7 +4791,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.52';
+    const TBD_VERSION = '0.2.53';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

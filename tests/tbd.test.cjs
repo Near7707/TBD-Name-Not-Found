@@ -2849,6 +2849,11 @@ test('v0.2.51 Roster: pasted lists, picking as is, joining, varying, import', as
     const pm = R.buildVaryMessages(plan, form, {})[1].content;
     assert.match(pm, /1\. "A B" — change (the given name|the family name|both)/);
     assert.match(pm, /4\. "G"\n/);
+    // v0.2.53: a given name changes only a little (Foulques → Firmin was a swap, not a variant).
+    const pg = R.buildVaryMessages([{ name: 'A B', change: 'given' }, { name: 'C D', change: 'both' }], form, {})[1].content;
+    assert.match(pg, /1\. "A B" — change the given name \(the first word\) a little, keeping its first sound or its ending/);
+    assert.match(pg, /2\. "C D" — change both .*given name only a little/);
+    assert.match(pg, /sound related to the original/);
 
     // Kept in Found with where it came from; the review text says so too.
     const e = R.foundEntry(v);
