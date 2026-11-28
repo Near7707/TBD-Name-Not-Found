@@ -20,6 +20,35 @@
             copy: 'Copy', close: 'Close',
             copied: 'Copied', copyFail: "Couldn't copy. Select the text and copy it yourself.",
             tabFind: 'Find names', tabFound: 'Found', starAdd: 'Keep in Found', starRemove: 'Take out of Found',
+            tabRoster: 'Roster', rosterLists: 'Lists', rosterUse: 'Use as', rosterUses: { asis: 'As is', vary: 'Vary (AI)' },
+            rosterNone: 'No list for this target yet. Make one in the Roster tab: paste names you found, one per line.',
+            rosterNeed: { none: 'Make a list in the Roster tab first.', pick: 'Pick at least one list.' },
+            rosterJoinHint: 'Pick a given-only list and a family-only list together to join them into full names.',
+            rosterJoinOn: 'Given names and family names are joined into full names.',
+            rosterVaryNote: 'The AI changes each picked name into a new one. Only the picked names are sent.',
+            rosterTag: 'ROSTER', rosterTip: 'Taken as it is from your own list. No AI was used.',
+            rosterVariedTag: 'AI varied', rosterVariedTip: 'The AI made this from a name on your list (shown after "was").',
+            rosterFrom: 'list', rosterNew: 'New list', rosterEdit: 'Edit', rosterExportOne: 'Export this list (.txt)',
+            rosterEmpty: 'No lists yet. A list is names you found yourself (a register of nobles, old place names…), pasted one per line.',
+            rosterPrivacy: 'Lists are kept only in your SillyTavern settings. "As is" sends nothing anywhere; "Vary (AI)" sends just the names it picks to the AI.',
+            rosterTotal: (l, n, max) => `${l} list${l === 1 ? '' : 's'} · ${n} / ${max} names`,
+            rosterExport: 'Export all', rosterImport: 'Import', rosterUndo: t => `Bring back "${t}"`,
+            rosterImportTip: 'A Roster file (.json), or a plain text file with one name per line (.txt, .csv) as a new list.',
+            rosterTitle: 'List name', rosterUntitled: n => `List ${n}`, rosterKind: 'Kind of list',
+            rosterKinds: { full: 'Full names', given: 'Given names only', family: 'Family names only' },
+            rosterHelp: 'One name per line. To add a note: name | note (rows pasted from a sheet work too). Lines starting with # are skipped.',
+            rosterPh: 'Paste names here, one per line',
+            rosterCount: (n, d, b) => `${n} name${n === 1 ? '' : 's'}${d ? ` · ${d} repeated line${d === 1 ? '' : 's'} dropped on save` : ''}${b ? ` · ${b} line${b === 1 ? '' : 's'} skipped` : ''}`,
+            rosterSave: 'Save', rosterCancel: 'Cancel', rosterDelete: 'Delete', rosterDeleteSure: 'Delete for real?',
+            rosterSaved: 'List saved.', rosterNoNames: 'There are no names to save yet.',
+            rosterCut: (n, max) => `Only the first ${n} names were kept (up to ${max} names across all lists).`,
+            rosterFull: max => `All lists together are full (${max} names). Delete a list or some names first.`,
+            rosterListsFull: max => `You can keep up to ${max} lists.`,
+            rosterImported: (l, n) => `Added ${l} list${l === 1 ? '' : 's'} (${n} name${n === 1 ? '' : 's'}).`,
+            rosterEmptyErr: 'No new names left in these lists for these choices. Try other lists or conditions.',
+            foundRoster: n => `200 OK — ${n} name${n === 1 ? '' : 's'} from your lists`,
+            varyFail: '206 — the AI change failed; showing the names from your lists as they are.',
+            varySome: (n, all) => `206 — ${n} of ${all} changed by the AI; the rest are from your lists as they are.`,
             foundEmpty: 'Nothing here yet. Tap ☆ next to a name to keep it here.', foundAll: 'All', foundFrom: 'from',
             foundRemove: 'Remove from Found', foundExport: 'Export', foundImport: 'Import',
             foundExportTip: 'Save Found as a file, as a backup or to move it.', foundImportTip: 'Add names from a Found file. Names you already have are skipped.',
@@ -74,7 +103,7 @@
             checkGoogle: 'Search Google', checkAsk: 'Ask the AI too', checkAsking: 'Asking…', checkAiTag: 'AI guess', checkAiEmpty: '(no answer)',
             clicheTag: 'AI favorite', clicheTip: 'A name AI models hand out very often.',
             canonTag: 'Lovecraft', canonTip: "A name from Lovecraft's own stories.",
-            method: 'Made with', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
+            method: 'Made with', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI', roster: 'Roster' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
             roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse', greek: 'Ancient Greek', slavic: 'Slavic' },
             rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: 'Each name from one root, taking turns.', merge: 'Each name mixes two roots: one part from each.' },
             aiRootAny: 'Any', aiRootOff: { like: 'Not used now: the "Like this" words lead.', cosmic: 'Not used now: Lovecraftian invented names stay eldritch.' },
@@ -125,6 +154,35 @@
             copy: '복사', close: '닫기',
             copied: '복사했어요', copyFail: '복사가 안 됐어요. 글자를 직접 골라서 복사해 주세요.',
             tabFind: '이름 찾기', tabFound: 'Found', starAdd: 'Found에 넣기', starRemove: 'Found에서 빼기',
+            tabRoster: 'Roster', rosterLists: '명부', rosterUse: '쓰는 법', rosterUses: { asis: '그대로', vary: '변형 (AI)' },
+            rosterNone: '이 대상의 명부가 아직 없어요. Roster 탭에서 찾아 둔 이름을 한 줄에 하나씩 붙여넣어 만들어요.',
+            rosterNeed: { none: 'Roster 탭에서 명부를 먼저 만들어 주세요.', pick: '명부를 하나 이상 골라 주세요.' },
+            rosterJoinHint: '"이름만" 명부와 "성만" 명부를 같이 고르면 이름과 성을 붙여서 줘요.',
+            rosterJoinOn: '이름과 성을 붙여서 줘요.',
+            rosterVaryNote: '고른 이름을 AI가 새 이름으로 바꿔요. 뽑힌 이름만 AI에게 보내요.',
+            rosterTag: 'ROSTER', rosterTip: '내 명부에서 그대로 가져온 이름이에요. AI는 안 썼어요.',
+            rosterVariedTag: 'AI 변형', rosterVariedTip: '내 명부의 이름을 AI가 바꾼 거예요("원래" 뒤가 명부 이름).',
+            rosterFrom: '명부', rosterNew: '새 명부', rosterEdit: '편집', rosterExportOne: '이 명부 내보내기 (.txt)',
+            rosterEmpty: '아직 명부가 없어요. 명부는 직접 찾은 이름(귀족 명부, 옛 지명…)을 한 줄에 하나씩 붙여넣어 만들어요.',
+            rosterPrivacy: '명부는 실리태번 설정에만 저장돼요. "그대로"는 아무 데도 보내지 않고, "변형 (AI)"은 뽑힌 이름만 AI에게 보내요.',
+            rosterTotal: (l, n, max) => `명부 ${l}개 · 이름 ${n} / ${max}`,
+            rosterExport: '전부 내보내기', rosterImport: '불러오기', rosterUndo: t => `"${t}" 되살리기`,
+            rosterImportTip: 'Roster 파일(.json), 또는 한 줄에 이름 하나인 글 파일(.txt, .csv)을 새 명부로.',
+            rosterTitle: '명부 이름', rosterUntitled: n => `명부 ${n}`, rosterKind: '명부 종류',
+            rosterKinds: { full: '전체 이름', given: '이름만', family: '성만' },
+            rosterHelp: '한 줄에 이름 하나. 메모를 붙이려면 이름 | 메모 (표에서 복사해 붙여도 돼요). # 로 시작하는 줄은 건너뛰어요.',
+            rosterPh: '여기에 이름을 한 줄에 하나씩 붙여넣어요',
+            rosterCount: (n, d, b) => `${n}개${d ? ` · 겹친 줄 ${d}개는 저장할 때 빼요` : ''}${b ? ` · 읽지 못한 줄 ${b}개` : ''}`,
+            rosterSave: '저장', rosterCancel: '취소', rosterDelete: '지우기', rosterDeleteSure: '정말 지울까요?',
+            rosterSaved: '명부를 저장했어요.', rosterNoNames: '저장할 이름이 아직 없어요.',
+            rosterCut: (n, max) => `앞에서부터 ${n}개만 저장했어요(명부 전부 합쳐 ${max}개까지).`,
+            rosterFull: max => `명부가 꽉 찼어요(전부 합쳐 ${max}개). 명부나 이름을 먼저 지워 주세요.`,
+            rosterListsFull: max => `명부는 ${max}개까지 만들 수 있어요.`,
+            rosterImported: (l, n) => `명부 ${l}개(이름 ${n}개)를 더했어요.`,
+            rosterEmptyErr: '이 조건으론 고른 명부에서 새 이름을 더 못 찾았어요. 명부나 조건을 바꿔 보세요.',
+            foundRoster: n => `200 OK — 명부에서 이름 ${n}개 찾음`,
+            varyFail: '206 — AI 변형에 실패해서 명부 이름 그대로 보여요.',
+            varySome: (n, all) => `206 — ${all}개 중 ${n}개만 AI가 바꿨어요. 나머지는 명부 이름 그대로예요.`,
             foundEmpty: '아직 비어 있어요. 이름 옆 ☆를 누르면 여기 모여요.', foundAll: '전부', foundFrom: '원래 이름',
             foundRemove: 'Found에서 빼기', foundExport: '내보내기', foundImport: '불러오기',
             foundExportTip: 'Found를 파일로 저장해요. 백업하거나 옮길 때 써요.', foundImportTip: 'Found 파일에서 이름을 더해요. 이미 있는 이름은 건너뛰어요.',
@@ -179,7 +237,7 @@
             checkGoogle: '구글에서 보기', checkAsk: 'AI에게도 묻기', checkAsking: '묻는 중…', checkAiTag: 'AI 추정', checkAiEmpty: '(답 없음)',
             clicheTag: 'AI 단골', clicheTip: 'AI가 아주 자주 내는 이름이에요.',
             canonTag: '원작', canonTip: '러브크래프트 원작에 나오는 이름이에요.',
-            method: '만드는 방식', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
+            method: '만드는 방식', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI', roster: 'Roster' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
             roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽', greek: '고대 그리스', slavic: '슬라브' },
             rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: '이름마다 뿌리 하나씩, 돌아가며.', merge: '이름마다 뿌리 두 개를 섞어요: 조각 하나씩.' },
             aiRootAny: '상관없음', aiRootOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', cosmic: '지금은 안 써요: 러브크래프트풍 지어낸 이름은 이질적인 이름이라서요.' },
@@ -302,7 +360,7 @@
     // A pretty real word from any language, as it is or lightly changed; with roots on, from those roots' languages.
     const WORD_MODES = ['avoid', 'mix', 'main'];
     function wordMode(form = {}) {
-        return form.target === 'person' && !isCache(form) && WORD_MODES.includes(form.wordMode) ? form.wordMode : 'avoid';
+        return form.target === 'person' && !notAi(form) && WORD_MODES.includes(form.wordMode) ? form.wordMode : 'avoid';
     }
     // Choices that win over word names: the "like" words, and "real names only".
     function wordOff(form = {}) {
@@ -1162,7 +1220,7 @@
     function streetOnly(f) { return !!(f.cats && f.cats.every(c => c === 'street')); }
     function noStreet(list) { return list.filter(f => !streetOnly(f)); }
     // "Cache + AI" (polish) is a Cache name first, so it counts as Cache everywhere the form is concerned.
-    const METHODS = ['ai', 'cache', 'polish'];
+    const METHODS = ['ai', 'cache', 'polish', 'roster'];
     function isCache(form = {}) {
         return (form.method === 'cache' || form.method === 'polish') && (form.target === 'person' || form.target === 'place');
     }
@@ -1208,7 +1266,7 @@
     // v0.2.1: the AI can follow the same roots. Kept apart from the Cache roots (form.aiRoots),
     // and empty means "any", so nothing changes until a root is picked.
     function aiRoots(form = {}) {
-        if (isCache(form) || (form.target !== 'person' && form.target !== 'place')) return [];
+        if (notAi(form) || (form.target !== 'person' && form.target !== 'place')) return [];
         return (Array.isArray(form.aiRoots) ? form.aiRoots : []).filter(x => CACHE_ROOTS.includes(x));
     }
     // When another choice says the opposite, only one goes to the AI:
@@ -2172,6 +2230,7 @@
     }
     // "fragments: Ethel noble + win friend / at by + wood wood · where they lived / … · Old English"
     function fragsHtml(r) {
+        if (r.roster) return rosterLineHtml(r);
         if (!r.cache) return '';
         const L = T();
         const lang = detectLang();
@@ -2195,9 +2254,25 @@
         const was = r.polished && r.orig && r.orig !== r.name ? ` <span class="tbd-frag-root">· ${escapeHtml(L.polishWas)}: ${escapeHtml(r.orig)}</span>` : '';
         return `<div class="tbd-frags"><span class="tbd-nicks-label">${escapeHtml(L.fragments)}:</span> ${body}${root}${was}</div>`;
     }
+    // "list: Medieval given + Medieval family · was: Aubert Varenne"
+    function rosterLineHtml(r) {
+        const L = T();
+        const lists = Array.isArray(r.lists) ? r.lists.filter(x => typeof x === 'string') : [];
+        const was = r.varied && r.orig ? ` <span class="tbd-frag-root">· ${escapeHtml(L.polishWas)}: ${escapeHtml(r.orig)}</span>` : '';
+        if (!lists.length && !was) return '';
+        return `<div class="tbd-frags"><span class="tbd-nicks-label">${escapeHtml(L.rosterFrom)}:</span> ${lists.map(escapeHtml).join(' + ')}${was}</div>`;
+    }
     // ✨ and swapping a variant still use the AI. It gets the roots in place of the hidden vibe,
     // and a full name goes as one whole name.
     function aiForm(form, src) {
+        if (isRoster(form)) {
+            // A Roster name goes as one whole name; the AI keeps to its language instead of a vibe.
+            const full = form.target === 'person' && /\s/.test(String(src?.name || ''));
+            return {
+                ...form, method: 'ai', vibe: 'custom', customVibe: 'in the same language and naming custom as the name it comes from', realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'], wordMode: 'avoid',
+                ...(full ? { target: 'other', kind: 'any', kindText: 'a full name for a person; keep the same number of words and any "de", "von" or "of" part' } : {}),
+            };
+        }
         if (!isCache(form)) return form;
         const mix = Array.isArray(src?.mix) && src.mix.length === 2 ? src.mix : null;
         const roots = (mix || cacheRoots(form)).map(r => STRINGS.en.roots[r]).join(' and ');
@@ -2353,6 +2428,9 @@
         if (r.real) e.real = true;
         const word = wordFrom(r.word); if (word) e.word = word;
         if (r.cache) e.cache = true;
+        if (r.roster) e.roster = true;
+        if (r.roster && r.varied) e.varied = true;
+        if (r.roster && Array.isArray(r.lists)) { const ls = r.lists.filter(x => typeof x === 'string').slice(0, 3).map(x => x.slice(0, ROSTER_TITLE_MAX)); if (ls.length) e.lists = ls; }
         if (r.polished) e.polished = true;
         const orig = str(r.orig, 120); if (orig && orig !== name) e.orig = orig;
         if (CACHE_ROOTS.includes(r.root)) e.root = r.root;
@@ -2421,6 +2499,248 @@
         return added;
     }
 
+    // ---------- Roster (your own lists of names) ----------
+    // v0.2.51: names the user found (registers, old place lists) pasted one per line and kept in the
+    // SillyTavern settings only. "As is" picks from them with no AI; "Vary (AI)" has the AI change
+    // each picked name into a new one. Kept apart from the built-in Archive on purpose.
+    const ROSTER_MAX = 2000;
+    const ROSTER_LISTS_MAX = 50;
+    const ROSTER_NAME_MAX = 80;
+    const ROSTER_NOTE_MAX = 120;
+    const ROSTER_TITLE_MAX = 40;
+    const ROSTER_TARGETS = ['person', 'place'];
+    const ROSTER_KINDS = ['full', 'given', 'family'];
+    const ROSTER_USES = ['asis', 'vary'];
+    function isRoster(form = {}) {
+        return form.method === 'roster' && ROSTER_TARGETS.includes(form.target);
+    }
+    // Archive and Roster both leave the AI-only choices (vibe, roots for the AI, real names…) aside.
+    function notAi(form = {}) { return isCache(form) || isRoster(form); }
+    function newRosterId() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+    // One name per line; "name | note" or a tab (rows pasted from a sheet) adds a note; # lines are skipped.
+    function parseRosterText(text) {
+        const items = [];
+        const seen = new Set();
+        let dupes = 0, bad = 0;
+        for (const raw of String(text ?? '').split(/\r?\n/)) {
+            const line = raw.trim();
+            if (!line || line.startsWith('#')) continue;
+            const m = line.match(/^([^|\t]*)[|\t](.*)$/);
+            const name = String(m ? m[1] : line).replace(/\s+/g, ' ').trim();
+            const note = m ? m[2].replace(/[|\t]+/g, ' · ').replace(/\s+/g, ' ').replace(/^[\s·]+|[\s·]+$/g, '') : '';
+            if (!name || !looksLikeName(name) || name.length > ROSTER_NAME_MAX) { bad++; continue; }
+            const key = name.toLowerCase();
+            if (seen.has(key)) { dupes++; continue; }
+            seen.add(key);
+            items.push(note ? { n: name, note: note.slice(0, ROSTER_NOTE_MAX) } : { n: name });
+        }
+        return { items, dupes, bad };
+    }
+    function rosterText(list) {
+        return (list?.items || []).map(it => (it.note ? `${it.n} | ${it.note}` : it.n)).join('\n');
+    }
+    // Only known fields, of the right kind and size (also what makes an imported file safe to keep).
+    function cleanRoster(l) {
+        if (!l || typeof l !== 'object') return null;
+        const target = ROSTER_TARGETS.includes(l.target) ? l.target : 'person';
+        const lines = Array.isArray(l.items) ? l.items.map(it => {
+            if (typeof it === 'string') return it.replace(/[|\t\r\n]/g, ' ');
+            if (it && typeof it.n === 'string') return `${it.n.replace(/[|\t\r\n]/g, ' ')}${typeof it.note === 'string' && it.note.trim() ? ` | ${it.note.replace(/[\r\n]/g, ' ')}` : ''}`;
+            return '';
+        }).join('\n') : '';
+        return {
+            id: typeof l.id === 'string' && /^[\w-]{1,40}$/.test(l.id) ? l.id : newRosterId(),
+            title: str(l.title, ROSTER_TITLE_MAX).trim() || 'List',
+            target,
+            kind: target === 'person' && ROSTER_KINDS.includes(l.kind) ? l.kind : 'full',
+            items: parseRosterText(lines).items,
+        };
+    }
+    function rosterTotal(st = settings(), skipId = '') {
+        return st.rosters.reduce((n, l) => n + (l.id === skipId ? 0 : l.items.length), 0);
+    }
+    function pickedRosterIds(form = {}) {
+        return Array.isArray(form.rosterIds) ? form.rosterIds.filter(x => typeof x === 'string') : [];
+    }
+    // The chosen lists that fit the target (a list made for places never gives a person's name).
+    function rosterLists(form = {}, st = settings()) {
+        const ids = pickedRosterIds(form);
+        return st.rosters.filter(l => l.target === form.target && ids.includes(l.id));
+    }
+    // What's missing before a Roster name can be picked ('' when nothing is).
+    function rosterNeed(form = {}, st = settings()) {
+        if (!isRoster(form)) return '';
+        if (!st.rosters.some(l => l.target === form.target)) return 'none';
+        if (!rosterLists(form, st).length) return 'pick';
+        return '';
+    }
+    // Pick `count` names from the lists. A given-only and a family-only list together are joined
+    // into full names. Never the same name twice in one go; letters, length and sound as in the Archive.
+    function rosterPick(form, count, avoid = [], lists = [], rnd = Math.random) {
+        const banned = new Set(avoid.map(a => String(a).toLowerCase()));
+        const must = String(form.mustContain || '').trim().toLowerCase();
+        const [lo, hi] = SYLLABLES[form.length] || SYLLABLES.any;
+        const person = form.target === 'person';
+        const of = k => lists.filter(l => (person ? l.kind : 'full') === k && l.items.length);
+        const full = of('full'), given = of('given'), family = of('family');
+        const ways = [];
+        if (full.length) ways.push('full');
+        if (given.length && family.length) ways.push('join');
+        else if (given.length) ways.push('given');
+        else if (family.length) ways.push('family');
+        if (!ways.length) return [];
+        const from = ls => {
+            const total = ls.reduce((n, l) => n + l.items.length, 0);
+            let k = Math.floor(rnd() * total);
+            for (const l of ls) { if (k < l.items.length) return { it: l.items[k], l }; k -= l.items.length; }
+            return null;
+        };
+        const make = () => {
+            const way = ways[Math.floor(rnd() * ways.length)];
+            if (way === 'join') {
+                const a = from(given), b = from(family);
+                return { name: `${a.it.n} ${b.it.n}`, core: a.it.n, parts: [a.it.n, b.it.n], picks: [a, b] };
+            }
+            const a = from(way === 'full' ? full : way === 'given' ? given : family);
+            const core = person && way === 'full' ? a.it.n.split(' ')[0] : a.it.n;
+            return { name: a.it.n, core, parts: [a.it.n], picks: [a] };
+        };
+        const out = [];
+        const seen = new Set();
+        // A joined name spreads its parts too (not "Marchand" three times while other family names are left).
+        const usedParts = new Map();
+        const partUse = c => Math.max(0, ...c.parts.map(x => usedParts.get(x.toLowerCase()) || 0));
+        for (let i = 0; i < count; i++) {
+            const pool = [];
+            const inPool = new Set();
+            for (let t = 0; t < 60; t++) {
+                const c = make();
+                const key = c.name.toLowerCase();
+                if (seen.has(key) || inPool.has(key)) continue;
+                if (banned.has(key) || c.parts.some(p => banned.has(p.toLowerCase()))) continue;
+                pool.push(c);
+                inPool.add(key);
+            }
+            if (!pool.length) break;
+            let best = pool;
+            if (must) { const m = best.filter(c => c.name.toLowerCase().includes(must)); if (m.length) best = m; }
+            if (form.length && form.length !== 'any') {
+                const m = best.filter(c => { const s = syllableCount(c.core); return s >= lo && s <= hi; });
+                if (m.length) best = m;
+            }
+            const fewest = Math.min(...best.map(partUse));
+            best = best.filter(c => partUse(c) === fewest);
+            if (form.sound && form.sound !== 'any') {
+                best = [...best].sort((a, b) => soundScore(b.core, form.sound) - soundScore(a.core, form.sound)).slice(0, 5);
+            }
+            const c = best[Math.floor(rnd() * best.length)];
+            seen.add(c.name.toLowerCase());
+            for (const x of c.parts) usedParts.set(x.toLowerCase(), (usedParts.get(x.toLowerCase()) || 0) + 1);
+            const note = c.picks.map(p => p.it.note).filter(Boolean).join(' · ');
+            const n = { name: c.name, roster: true, lists: [...new Set(c.picks.map(p => p.l.title))] };
+            if (note) n.note = note;
+            out.push(n);
+        }
+        return out;
+    }
+    // Every name on every list, so a varied name never comes back as another listed (real) name.
+    function rosterAllNames(st = settings()) {
+        return st.rosters.flatMap(l => l.items.map(it => it.n));
+    }
+    function buildVaryMessages(list, form, opts = {}) {
+        const lang = opts.lang || 'en';
+        const place = form.target === 'place';
+        const full = !place && list.some(n => /\s/.test(n.name));
+        const lines = [];
+        lines.push(`These ${place ? 'place names' : 'names for people'} come from the user's own list of real names.`);
+        lines.push('For each, make one new name that is clearly a different name but keeps its language, naming custom, feel and about the same length: change a syllable or two, swap the ending for another one that language uses, or blend in a sound. Do not hand back the original, a spelling-only change of it, or another real name you know.');
+        if (full) lines.push('A full name keeps the same number of words; small words such as "de", "von", "of" or "ap" stay as they are.');
+        const must = String(form.mustContain || '').trim();
+        if (must) lines.push(`Keep the letters "${must}" in each name.`);
+        lines.push('');
+        list.forEach((n, i) => lines.push(`${i + 1}. "${n.name}"`));
+        lines.push('');
+        lines.push(`For each add a short note (under 12 words) in ${noteLang(lang)} about its feel.`);
+        if (opts.reading) lines.push(`Also add ${readingRule(lang, full)}.`);
+        lines.push('Reply with ONLY a JSON array, one item per name in the same order, nothing else:');
+        lines.push(`[{"n": 1, "name": "..."${opts.reading ? ', "read": "..."' : ''}, "note": "..."}]`);
+        return [
+            { role: 'system', content: 'You are a naming assistant for fiction writers who understands phonetics and naming customs.' },
+            { role: 'user', content: lines.join('\n') },
+        ];
+    }
+    // One picked name + one answer → the new name, or null to keep the listed name as it is.
+    function applyVary(n, ans, form = {}, banned = new Set()) {
+        if (!ans || typeof ans !== 'object') return null;
+        const t = String(ans.name ?? '').replace(/^["'“”‘’()\[\]\s]+|["'“”‘’()\[\]\s]+$/g, '').replace(/\s+/g, ' ').trim();
+        if (!t || t.length > ROSTER_NAME_MAX || !looksLikeName(t)) return null;
+        const low = t.toLowerCase();
+        if (low === n.name.toLowerCase() || banned.has(low)) return null;
+        if (t.split(' ').length !== n.name.split(' ').length) return null;
+        const must = String(form.mustContain || '').trim().toLowerCase();
+        if (must && n.name.toLowerCase().includes(must) && !low.includes(must)) return null;
+        const out = { ...n, name: t, orig: n.name, varied: true };
+        delete out.note;
+        delete out.read;
+        const read = String(ans.read ?? ans.reading ?? '').trim().slice(0, 80);
+        const note = String(ans.note ?? '').trim().slice(0, 120);
+        if (read) out.read = read;
+        if (note) out.note = note;
+        return out;
+    }
+    // Ask once for all of them. Never loses names: anything the AI didn't change stays as listed.
+    async function rosterVary(list, form, st, signal) {
+        const lang = detectLang();
+        const messages = buildVaryMessages(list, form, { lang, reading: !!st.showReading });
+        const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(list.length, st), signal });
+        const answers = polishAnswers(raw, list.length);
+        const banned = new Set([...avoidList(st, form), ...rosterAllNames(st), ...list.map(n => n.name)].map(a => String(a).toLowerCase()));
+        let done = 0;
+        const names = list.map((n, i) => {
+            const v = applyVary(n, answers[i], form, banned);
+            if (v) { done++; banned.add(v.name.toLowerCase()); return v; }
+            return n;
+        });
+        return { names, done, raw };
+    }
+    function rosterExportText(st = settings(), only = null) {
+        const lists = (only ? [only] : st.rosters).map(l => ({ title: l.title, target: l.target, kind: l.kind, items: l.items }));
+        return JSON.stringify({ app: 'TBD-Name-Not-Found', type: 'roster', version: 1, lists }, null, 2);
+    }
+    // A Roster file (.json) adds its lists; a plain text file becomes one new list named after the file.
+    // Returns { lists, names, cut, full } or null when the file can't be used.
+    function rosterImport(text, fileName = '', st = settings(), target = 'person') {
+        let incoming = null;
+        let data;
+        try { data = JSON.parse(String(text)); } catch { data = undefined; }
+        if (data !== undefined) {
+            const raw = Array.isArray(data?.lists) ? data.lists : data?.type === 'roster-list' ? [data] : null;
+            if (!raw) return null;
+            incoming = raw.map(cleanRoster).filter(l => l && l.items.length);
+        } else {
+            let body = String(text ?? '');
+            // A .csv row: the first comma splits the name from a note.
+            if (/\.csv$/i.test(fileName)) body = body.split(/\r?\n/).map(r => r.replace(',', ' | ')).join('\n');
+            const items = parseRosterText(body).items;
+            if (!items.length) return null;
+            const title = String(fileName).replace(/\.[^.]*$/, '').replace(/[_]+/g, ' ').trim().slice(0, ROSTER_TITLE_MAX) || 'List';
+            incoming = [{ id: newRosterId(), title, target: ROSTER_TARGETS.includes(target) ? target : 'person', kind: 'full', items }];
+        }
+        let lists = 0, names = 0, cut = false, full = false;
+        for (const l of incoming) {
+            if (st.rosters.length >= ROSTER_LISTS_MAX) { full = true; break; }
+            const room = ROSTER_MAX - rosterTotal(st);
+            if (room <= 0) { full = true; break; }
+            const items = l.items.slice(0, room);
+            if (items.length < l.items.length) cut = true;
+            st.rosters.push({ ...l, id: st.rosters.some(x => x.id === l.id) ? newRosterId() : l.id, items });
+            lists++;
+            names += items.length;
+        }
+        if (lists) save();
+        return { lists, names, cut, full };
+    }
+
     // ---------- settings ----------
     const DEFAULTS = {
         language: 'auto',
@@ -2435,6 +2755,7 @@
         historySize: 200,
         history: [],
         found: [],
+        rosters: [],
         banList: '',
         showReading: true,
         nicknames: false,
@@ -2442,7 +2763,7 @@
         extrasOpen: false,
         moreOpen: false,
         wordNames: 'mark',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [], rootMix: 'split', aiRootMix: 'split', wordMode: 'avoid' },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [], rootMix: 'split', aiRootMix: 'split', wordMode: 'avoid', rosterIds: [], rosterUse: 'asis' },
     };
 
     // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
@@ -2479,6 +2800,10 @@
         if (!ROOT_MIXES.includes(st.form.aiRootMix)) st.form.aiRootMix = 'split';
         st.count = clampInt(st.count, 1, 30, 5);
         if (!Array.isArray(st.found)) st.found = [];
+        if (!Array.isArray(st.rosters)) st.rosters = [];
+        if (st.rosters.some(l => !l || typeof l !== 'object' || !Array.isArray(l.items) || typeof l.id !== 'string')) st.rosters = st.rosters.map(cleanRoster).filter(Boolean);
+        st.form.rosterIds = pickedRosterIds(st.form);
+        if (!ROSTER_USES.includes(st.form.rosterUse)) st.form.rosterUse = 'asis';
         return st;
     }
     function save() { ctx().saveSettingsDebounced(); }
@@ -3307,17 +3632,19 @@
         const detailPh = isOther ? L.otherPh : (L.detailPh[form.target] || '');
         // Cache mode hides the AI-only fields (they stay in the page, so the form keeps their values).
         const cache = isCache(form);
+        const roster = isRoster(form);
         const canCache = form.target === 'person' || form.target === 'place';
-        return `<div class="tbd-form${cache ? ' tbd-cache' : ''}">
+        return `<div class="tbd-form${cache ? ' tbd-cache' : ''}${roster ? ' tbd-roster' : ''}">
             ${canCache ? methodHtml(form) : ''}
             <label>${escapeHtml(L.target)}${selectHtml('tbd_target', L.t, form.target)}</label>
             <label class="tbd-ai-only">${escapeHtml(L.vibe)}${selectHtml('tbd_vibe', L.v, form.vibe)}</label>
             <label class="tbd-wide tbd-ai-only" id="tbd_custom_wrap"${form.vibe === 'custom' ? '' : ' hidden'}><input id="tbd_custom" class="text_pole" type="text" maxlength="80" placeholder="${escapeHtml(L.customVibePh)}" value="${escapeHtml(form.customVibe)}"></label>
-            <label id="tbd_gender_wrap"${form.target === 'person' ? '' : ' hidden'}>${escapeHtml(L.gender)}${selectHtml('tbd_gender', L.g, form.gender)}</label>
-            ${kinds ? `<label id="tbd_kind_wrap">${escapeHtml(L.kind)}${selectHtml('tbd_kind', L.k[form.target], kind)}</label>` : ''}
+            <label id="tbd_gender_wrap" class="tbd-not-roster"${form.target === 'person' ? '' : ' hidden'}>${escapeHtml(L.gender)}${selectHtml('tbd_gender', L.g, form.gender)}</label>
+            ${kinds ? `<label id="tbd_kind_wrap" class="tbd-not-roster">${escapeHtml(L.kind)}${selectHtml('tbd_kind', L.k[form.target], kind)}</label>` : ''}
             <label>${escapeHtml(L.length)}${selectHtml('tbd_length', L.l, form.length)}</label>
             ${detailLabel ? `<label class="tbd-wide tbd-ai-only" id="tbd_kindtext_wrap">${escapeHtml(detailLabel)}<input id="tbd_kindtext" class="text_pole" type="text" maxlength="${DETAIL_MAX}" placeholder="${escapeHtml(detailPh)}" value="${escapeHtml(form.kindText || '')}"></label>` : ''}
             ${cache ? cacheChipsHtml(form) : ''}
+            ${roster ? rosterChipsHtml(form) : ''}
             ${form.target === 'person' ? personPartsHtml(form) : ''}
             ${moreFoldHtml(form)}
             <div class="tbd-more" id="tbd_more"${settings().moreOpen ? '' : ' hidden'}>
@@ -3339,7 +3666,7 @@
     // AI or Cache (people and places only).
     function methodHtml(form) {
         const L = T();
-        const m = isPolish(form) ? 'polish' : isCache(form) ? 'cache' : 'ai';
+        const m = isRoster(form) ? 'roster' : isPolish(form) ? 'polish' : isCache(form) ? 'cache' : 'ai';
         return `<div class="tbd-wide tbd-chipset"><div class="tbd-chips-label">${escapeHtml(L.method)}</div>
             <div class="tbd-chips">${METHODS.map(v => chipHtml('method', v, L.methods[v], m === v)).join('')}</div></div>`;
     }
@@ -3403,13 +3730,13 @@
         const extras = Array.isArray(form.extras) ? form.extras : [];
         const chip = (group, v, label, on) =>
             `<button type="button" class="tbd-chip" data-chip="${group}" data-v="${v}" aria-pressed="${on ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
-        return `<div class="tbd-wide tbd-chipset">
+        return `<div class="tbd-wide tbd-chipset tbd-not-roster">
                 <div class="tbd-chips-label">${escapeHtml(L.parts)}</div>
                 <div class="tbd-chips">${NAME_PARTS.map(v => chip('part', v, L.pc[v], parts.includes(v))).join('')}</div>
                 ${extrasFoldHtml(extras)}
                 <div class="tbd-chips tbd-ai-only" id="tbd_extras_chips"${settings().extrasOpen ? '' : ' hidden'}>${NAME_EXTRAS.map(v => chip('extra', v, L.ex[v], extras.includes(v))).join('')}</div>
             </div>
-            <label class="tbd-wide" id="tbd_fixed_wrap"${parts.includes('family') ? '' : ' hidden'}>${escapeHtml(L.fixedFamily)}<input id="tbd_fixed" class="text_pole" type="text" maxlength="40" placeholder="${escapeHtml(L.fixedFamilyPh)}" value="${escapeHtml(form.fixedFamily || '')}"></label>`;
+            <label class="tbd-wide tbd-not-roster" id="tbd_fixed_wrap"${parts.includes('family') ? '' : ' hidden'}>${escapeHtml(L.fixedFamily)}<input id="tbd_fixed" class="text_pole" type="text" maxlength="40" placeholder="${escapeHtml(L.fixedFamilyPh)}" value="${escapeHtml(form.fixedFamily || '')}"></label>`;
     }
 
     // Less-used conditions fold away to one line; when folded, the ones that were changed still show.
@@ -3419,9 +3746,9 @@
         const on = [];
         if (form.sound && form.sound !== 'any') on.push(`${L.sound}: ${L.s[form.sound]}`);
         if (String(form.mustContain || '').trim()) on.push(`${L.mustContain}: ${String(form.mustContain).trim()}`);
-        const like = isCache(form) ? [] : likeWords(form);
+        const like = notAi(form) ? [] : likeWords(form);
         if (like.length) on.push(`${L.like.replace(/\s*\(.*\)\s*$/, '')}: ${like.join(', ')}`);
-        if (!isCache(form) && form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
+        if (!notAi(form) && form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
         const wm = wordMode(form);
         const wordBit = wm !== 'avoid' ? `${L.wordMode}: ${L.wordModes[wm]}` : '';
         if (wordBit && !wordOff(form)) on.push(wordBit);
@@ -3461,6 +3788,14 @@
     function polishChanged(r) { return !!(r.polished && r.orig && r.orig !== r.name); }
     function tagsHtml(r, L = T()) {
         const tag = r.tag && L.r[r.tag] ? `<span class="tbd-tag">${escapeHtml(L.r[r.tag])}</span>` : '';
+        if (r.roster) {
+            // The user's own names get no word / AI-favorite marks; a varied one is the AI's and does.
+            const rt = `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(r.varied ? L.rosterVariedTip : L.rosterTip)}">${escapeHtml(r.varied ? L.rosterVariedTag : L.rosterTag)}</span>`;
+            if (!r.varied) return tag + rt;
+            const w = wordHits(r, r.form);
+            const one = (on, tip, text) => (on ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(tip)}">${escapeHtml(text)}</span>` : '');
+            return tag + rt + (w.length ? one(true, L.wordTip, L.wordTag(w)) : '') + one(clicheHit(r), L.clicheTip, L.clicheTag);
+        }
         const words = wordHits(r, r.form);
         const one = (on, tip, text) => (on ? `<span class="tbd-tag tbd-word-tag" title="${escapeHtml(tip)}">${escapeHtml(text)}</span>` : '');
         // v0.2.11: "AI polished" only when the spelling really changed; a name the AI left alone stays CACHE.
@@ -3479,7 +3814,7 @@
     function tabsHtml(st = settings()) {
         const L = T();
         const tab = (id, label, on) => `<button type="button" class="tbd-tab" id="tbd_tab_${id}" data-tab="${id}" role="tab" aria-selected="${on}">${label}</button>`;
-        return `<div class="tbd-tabs" role="tablist">${tab('form', escapeHtml(L.tabFind), view === 'form')}${tab('found', `${escapeHtml(L.tabFound)} <i class="fa-solid fa-star" aria-hidden="true"></i> <span class="tbd-tab-n">${st.found.length}</span>`, view === 'found')}</div>`;
+        return `<div class="tbd-tabs" role="tablist">${tab('form', escapeHtml(L.tabFind), view === 'form')}${tab('found', `${escapeHtml(L.tabFound)} <i class="fa-solid fa-star" aria-hidden="true"></i> <span class="tbd-tab-n">${st.found.length}</span>`, view === 'found')}${tab('roster', `${escapeHtml(L.tabRoster)} <i class="fa-solid fa-box-archive" aria-hidden="true"></i> <span class="tbd-tab-n">${st.rosters.length}</span>`, view === 'roster')}</div>`;
     }
     function foundHtml(st = settings()) {
         const L = T();
@@ -3505,6 +3840,120 @@
                 <button id="tbd_found_import" class="tbd-small-btn" title="${escapeHtml(L.foundImportTip)}"><i class="fa-solid fa-file-import"></i> ${escapeHtml(L.foundImport)}</button>
                 <input type="file" id="tbd_found_file" accept=".json,application/json" hidden></div>
         </div>`;
+    }
+
+    // ---------- Roster screens ----------
+    // Lists to pick from (only the ones made for this target) and "As is" / "Vary (AI)".
+    function rosterChipsHtml(form) {
+        const L = T();
+        const st = settings();
+        const lists = st.rosters.filter(l => l.target === form.target);
+        if (!lists.length) {
+            return `<div class="tbd-wide tbd-chipset" id="tbd_rosters"><div class="tbd-chips-label">${escapeHtml(L.rosterLists)}</div>
+                <div class="tbd-note">${escapeHtml(L.rosterNone)}</div>
+                <div class="tbd-chips"><button type="button" class="tbd-small-btn" id="tbd_roster_open"><i class="fa-solid fa-plus" aria-hidden="true"></i> ${escapeHtml(L.rosterNew)}</button></div></div>`;
+        }
+        const ids = pickedRosterIds(form);
+        const picked = lists.filter(l => ids.includes(l.id));
+        const use = ROSTER_USES.includes(form.rosterUse) ? form.rosterUse : 'asis';
+        let hint = '';
+        if (form.target === 'person') {
+            const has = k => picked.some(l => l.kind === k);
+            if (has('given') && has('family')) hint = L.rosterJoinOn;
+            else if (lists.some(l => l.kind !== 'full')) hint = L.rosterJoinHint;
+        }
+        return `<div class="tbd-wide tbd-chipset" id="tbd_rosters"><div class="tbd-chips-label">${escapeHtml(L.rosterLists)}</div>
+            <div class="tbd-chips">${lists.map(l => chipHtml('roster', l.id, `${l.title} ${l.items.length}`, ids.includes(l.id))).join('')}</div>
+            ${picked.length ? '' : `<div class="tbd-note">${escapeHtml(L.rosterNeed.pick)}</div>`}
+            ${hint ? `<div class="tbd-note">${escapeHtml(hint)}</div>` : ''}
+            <div class="tbd-chips-label">${escapeHtml(L.rosterUse)}</div>
+            <div class="tbd-chips tbd-mix">${ROSTER_USES.map(u => chipHtml('rosteruse', u, L.rosterUses[u], use === u)).join('')}</div>
+            ${use === 'vary' ? `<div class="tbd-note">${escapeHtml(L.rosterVaryNote)}</div>` : ''}</div>`;
+    }
+    let rosterEdit = null;      // null (the lists), 'new', or a list id being edited
+    let rosterUndo = null;      // { list, at, picked } of the list deleted last, until the window closes
+    function rosterHtml(st = settings()) {
+        if (rosterEdit) return rosterEditHtml(st);
+        const L = T();
+        const kindText = l => (l.target === 'person' ? ` · ${L.rosterKinds[l.kind]}` : '');
+        const cards = st.rosters.map(l => `<div class="tbd-rcard" data-id="${escapeHtml(l.id)}">
+                <div class="tbd-rtext"><div class="tbd-rtitle">${escapeHtml(l.title)}</div><div class="tbd-rsub">${escapeHtml(`${L.t[l.target]}${kindText(l)} · ${l.items.length}`)}</div></div>
+                <button type="button" class="tbd-small-btn tbd-rs-edit"><i class="fa-solid fa-pen" aria-hidden="true"></i> ${escapeHtml(L.rosterEdit)}</button>
+                <button type="button" class="tbd-icon-btn tbd-rs-export" title="${escapeHtml(L.rosterExportOne)}" aria-label="${escapeHtml(L.rosterExportOne)}"><i class="fa-solid fa-file-export"></i></button>
+            </div>`).join('');
+        return `<div class="tbd-roster"><div class="tbd-rlist">
+                <button type="button" id="tbd_rs_new" class="tbd-go menu_button"${st.rosters.length >= ROSTER_LISTS_MAX ? ' disabled' : ''}><i class="fa-solid fa-plus" aria-hidden="true"></i> ${escapeHtml(L.rosterNew)}</button>
+                ${cards || `<div class="tbd-empty">${escapeHtml(L.rosterEmpty)}</div>`}
+                <div class="tbd-note">${escapeHtml(L.rosterPrivacy)}</div>
+            </div>
+            <div class="tbd-foot"><span class="tbd-status">${escapeHtml(L.rosterTotal(st.rosters.length, rosterTotal(st), ROSTER_MAX))}</span>
+                ${rosterUndo ? `<button type="button" id="tbd_rs_undo" class="tbd-small-btn"><i class="fa-solid fa-rotate-left"></i> ${escapeHtml(L.rosterUndo(rosterUndo.list.title))}</button>` : ''}
+                <button type="button" id="tbd_rs_export" class="tbd-small-btn"${st.rosters.length ? '' : ' disabled'}><i class="fa-solid fa-file-export"></i> ${escapeHtml(L.rosterExport)}</button>
+                <button type="button" id="tbd_rs_import" class="tbd-small-btn" title="${escapeHtml(L.rosterImportTip)}"><i class="fa-solid fa-file-import"></i> ${escapeHtml(L.rosterImport)}</button>
+                <input type="file" id="tbd_rs_file" accept=".json,.txt,.csv,.tsv,application/json,text/plain,text/csv" hidden></div>
+        </div>`;
+    }
+    function rosterCountText(text) {
+        const p = parseRosterText(text);
+        return T().rosterCount(p.items.length, p.dupes, p.bad);
+    }
+    function rosterEditHtml(st = settings()) {
+        const L = T();
+        const list = rosterEdit === 'new' ? null : st.rosters.find(l => l.id === rosterEdit);
+        const form = st.form;
+        const target = list ? list.target : (ROSTER_TARGETS.includes(form.target) ? form.target : 'person');
+        const kind = list ? list.kind : 'full';
+        const text = list ? rosterText(list) : '';
+        const targets = Object.fromEntries(ROSTER_TARGETS.map(t => [t, L.t[t]]));
+        return `<div class="tbd-roster"><div class="tbd-rlist tbd-redit">
+            <label>${escapeHtml(L.rosterTitle)}<input id="tbd_rs_title" class="text_pole" type="text" maxlength="${ROSTER_TITLE_MAX}" placeholder="${escapeHtml(L.rosterUntitled(st.rosters.length + 1))}" value="${escapeHtml(list ? list.title : '')}"></label>
+            <div class="tbd-rrow"><label>${escapeHtml(L.target)}${selectHtml('tbd_rs_target', targets, target)}</label>
+                <label id="tbd_rs_kind_wrap"${target === 'person' ? '' : ' hidden'}>${escapeHtml(L.rosterKind)}${selectHtml('tbd_rs_kind', L.rosterKinds, kind)}</label></div>
+            <div class="tbd-note">${escapeHtml(L.rosterHelp)}</div>
+            <textarea id="tbd_rs_text" class="text_pole tbd-rs-text" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="${escapeHtml(L.rosterPh)}">${escapeHtml(text)}</textarea>
+            <div class="tbd-note" id="tbd_rs_count">${escapeHtml(rosterCountText(text))}</div>
+            <div class="tbd-rrow tbd-rbtns">
+                ${list ? `<button type="button" id="tbd_rs_delete" class="tbd-small-btn"><i class="fa-solid fa-trash" aria-hidden="true"></i> ${escapeHtml(L.rosterDelete)}</button>` : ''}
+                <button type="button" id="tbd_rs_cancel" class="tbd-small-btn">${escapeHtml(L.rosterCancel)}</button>
+                <button type="button" id="tbd_rs_save" class="tbd-go menu_button">${escapeHtml(L.rosterSave)}</button>
+            </div>
+        </div></div>`;
+    }
+    // Save what's in the edit page. Returns false (and says why) when nothing was saved.
+    function rosterSaveEdit(st = settings()) {
+        const L = T();
+        const list = rosterEdit === 'new' ? null : st.rosters.find(l => l.id === rosterEdit);
+        const parsed = parseRosterText($('#tbd_rs_text').val());
+        if (!parsed.items.length) { toastr.warning(L.rosterNoNames, 'TBD'); return false; }
+        if (!list && st.rosters.length >= ROSTER_LISTS_MAX) { toastr.warning(L.rosterListsFull(ROSTER_LISTS_MAX), 'TBD'); return false; }
+        const room = ROSTER_MAX - rosterTotal(st, list ? list.id : '');
+        if (room <= 0) { toastr.warning(L.rosterFull(ROSTER_MAX), 'TBD'); return false; }
+        const items = parsed.items.slice(0, room);
+        if (items.length < parsed.items.length) toastr.warning(L.rosterCut(items.length, ROSTER_MAX), 'TBD');
+        const target = ROSTER_TARGETS.includes($('#tbd_rs_target').val()) ? $('#tbd_rs_target').val() : 'person';
+        const kind = target === 'person' && ROSTER_KINDS.includes($('#tbd_rs_kind').val()) ? $('#tbd_rs_kind').val() : 'full';
+        const title = String($('#tbd_rs_title').val() || '').trim().slice(0, ROSTER_TITLE_MAX) || L.rosterUntitled(st.rosters.length + (list ? 0 : 1));
+        if (list) Object.assign(list, { title, target, kind, items });
+        else {
+            const id = newRosterId();
+            st.rosters.push({ id, title, target, kind, items });
+            // A new list is ready to use right away.
+            st.form.rosterIds = [...pickedRosterIds(st.form), id];
+        }
+        save();
+        toastr.success(L.rosterSaved, 'TBD');
+        return true;
+    }
+    function downloadText(text, fileName, type) {
+        const blob = new Blob([text], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function resultsHtml() {
@@ -3542,6 +3991,16 @@
     function reviewFormLine(form = {}) {
         const en = STRINGS.en;
         const bits = [];
+        if (isRoster(form)) {
+            bits.push(`Made with: Roster (${form.rosterUse === 'vary' ? 'vary with AI' : 'as is'})`);
+            bits.push(`Target: ${form.target}`);
+            const lists = rosterLists(form);
+            if (lists.length) bits.push(`Lists: ${lists.map(l => `${l.title}${form.target === 'person' ? ` [${l.kind}]` : ''}`).join(', ')}`);
+            if (form.length && form.length !== 'any') bits.push(`Length: ${form.length}`);
+            if (form.sound && form.sound !== 'any') bits.push(`Sound: ${form.sound}`);
+            if (String(form.mustContain || '').trim()) bits.push(`Must contain: ${String(form.mustContain).trim()}`);
+            return bits.join(' · ');
+        }
         const cache = isCache(form);
         bits.push(`Made with: ${en.methods[isPolish(form) ? 'polish' : cache ? 'cache' : 'ai'] || 'AI'}`);
         bits.push(`Target: ${form.target || 'person'}`);
@@ -3577,12 +4036,14 @@
             if (formLine !== lastForm) { lines.push('', `[${formLine}]`); lastForm = formLine; }
             const marks = [];
             if (r.tag) marks.push(`variant: ${r.tag}`);
+            const own = r.roster && !r.varied;
+            if (r.roster) marks.push(r.varied ? 'ROSTER, AI varied' : 'ROSTER');
             if (polishChanged(r)) marks.push('AI polished'); else if (r.polished) marks.push('ARCHIVE, AI read only'); else if (r.cache) marks.push('ARCHIVE');
             if (r.real) marks.push('real');
             if (r.word) marks.push(`word: ${[r.word.meaning, r.word.lang].filter(Boolean).join(', ')}`);
-            else if (wordHits(r, r.form).length) marks.push(`plain word: ${wordHits(r, r.form).map(w => w.word).join(', ')}`);
-            if (clicheHit(r)) marks.push('AI favorite');
-            if (canonHit(r)) marks.push('Lovecraft');
+            else if (!own && wordHits(r, r.form).length) marks.push(`plain word: ${wordHits(r, r.form).map(w => w.word).join(', ')}`);
+            if (!own && clicheHit(r)) marks.push('AI favorite');
+            if (!own && canonHit(r)) marks.push('Lovecraft');
             if (r.gender === 'm' || r.gender === 'f') marks.push(r.gender === 'm' ? 'male' : 'female');
             if (r.kind) marks.push(en.ck[r.kind] || r.kind);
             const indent = '  '.repeat(r.depth || 0);
@@ -3591,6 +4052,10 @@
             if (r.from) lines.push(`${sub}from: ${typeof r.from === 'object' ? r.from.name : r.from}`);
             if (r.read) lines.push(`${sub}reading: ${r.read}`);
             if (r.note) lines.push(`${sub}note: ${r.note}`);
+            if (r.roster) {
+                if (r.lists?.length) lines.push(`${sub}from list: ${r.lists.join(' + ')}`);
+                if (r.varied && r.orig) lines.push(`${sub}before: ${r.orig}`);
+            }
             if (r.cache) {
                 const rootText = Array.isArray(r.mix) && r.mix.length === 2 ? r.mix.map(x => en.roots[x]).join(' + ') : (en.roots[r.root] || '');
                 if (r.pieces) {
@@ -3641,6 +4106,10 @@
             $p.html(`${headerHtml(st.theme)}${tabsHtml(st)}${foundHtml(st)}`);
             return;
         }
+        if (view === 'roster') {
+            $p.html(`${headerHtml(st.theme)}${tabsHtml(st)}${rosterHtml(st)}`);
+            return;
+        }
         $p.html(`${headerHtml(st.theme)}${tabsHtml(st)}${formHtml(st.form)}
             <div class="tbd-results" id="tbd_results">${resultsHtml()}</div>
             <div class="tbd-foot" id="tbd_foot">${footerHtml()}</div>`);
@@ -3671,6 +4140,8 @@
     function openPanel() {
         if (!$('#tbd_panel').length) $('body').append('<div id="tbd_panel" role="dialog" aria-modal="false"></div>');
         view = 'form';
+        rosterEdit = null;
+        rosterUndo = null;
         render();
         $('#tbd_panel').show();
     }
@@ -3704,6 +4175,8 @@
             rootMix: st.form.rootMix === 'merge' ? 'merge' : 'split',
             aiRootMix: st.form.aiRootMix === 'merge' ? 'merge' : 'split',
             wordMode: WORD_MODES.includes(st.form.wordMode) ? st.form.wordMode : 'avoid',
+            rosterIds: pickedRosterIds(st.form),
+            rosterUse: ROSTER_USES.includes(st.form.rosterUse) ? st.form.rosterUse : 'asis',
         };
         save();
         return st.form;
@@ -3726,6 +4199,14 @@
             renderResultsOnly();
             return;
         }
+        const rneed = rosterNeed(form, st);
+        if (rneed) {
+            status = { kind: 'error', text: T().needErr(T().rosterNeed[rneed]) };
+            rawOpen = false;
+            renderResultsOnly();
+            return;
+        }
+        if (isRoster(form)) { await rosterGenerate(form, count, st); return; }
         if (isPolish(form)) { await polishGenerate(form, count, avoid, st); return; }
         if (isCache(form)) { cacheGenerate(form, count, avoid, st); return; }
         const seeds = rollSeeds(count, form);
@@ -3766,6 +4247,90 @@
                 renderResultsOnly();
             }
         }
+    }
+
+    // Roster: picked from the user's lists right here; "Vary (AI)" then asks once for all of them.
+    async function rosterGenerate(form, count, st) {
+        const made = rosterPick(form, count, splitList(st.banList), rosterLists(form, st));
+        rawOpen = false;
+        if (!made.length) { status = { kind: 'error', text: T().err(T().rosterEmptyErr) }; renderResultsOnly(); return; }
+        const used = { ...form };
+        if (form.rosterUse !== 'vary') {
+            // Names from the user's own lists don't go into the past names (small lists would run dry).
+            results = made.map(n => ({ ...n, form: used }));
+            status = { kind: 'ok', text: T().foundRoster(results.length) };
+            renderResultsOnly();
+            autoCheck(results);
+            return;
+        }
+        busy = true;
+        controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const myController = controller;
+        status = { kind: 'busy', text: '' };
+        renderResultsOnly();
+        let names = made, done = 0, raw;
+        try {
+            ({ names, done, raw } = await rosterVary(made, form, st, myController?.signal));
+        } catch (e) {
+            if (controller !== myController) return;
+            if (myController?.signal.aborted || e?.name === 'AbortError') {
+                status = { kind: 'error', text: T().cancelled };
+                busy = false; controller = null; renderResultsOnly();
+                return;
+            }
+        }
+        if (controller !== myController) return;
+        results = names.map(n => ({ ...n, form: used }));
+        rememberNames(results.filter(n => n.varied).map(n => n.name), st); refreshHistory();
+        save();
+        const L = T();
+        if (done === results.length) status = { kind: 'ok', text: L.found(results.length) };
+        else if (!done) status = { kind: 'error', text: L.varyFail, ...(typeof raw === 'string' ? { raw } : {}) };
+        else status = { kind: 'error', text: L.varySome(done, results.length), ...(typeof raw === 'string' ? { raw } : {}) };
+        busy = false;
+        controller = null;
+        renderResultsOnly();
+        autoCheck(results);
+    }
+    // 🔄 on a Roster name: another one from the same lists (changed by the AI again when it was).
+    async function rosterReroll(src, st) {
+        const L = T();
+        const form = src.form || st.form;
+        const avoid = [...splitList(st.banList), ...results.map(r => r.name), ...results.map(r => r.orig).filter(Boolean)];
+        const [n] = rosterPick(form, 1, avoid, rosterLists(form, st));
+        if (!n) { status = { kind: 'error', text: L.err(L.rosterEmptyErr) }; menuFor = null; renderResultsOnly(); return; }
+        let fresh = n;
+        if (form.rosterUse === 'vary') {
+            const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const job = { src, ctl, kind: 'reroll' };
+            refining = job;
+            menuFor = null;
+            status = { kind: 'busy', text: '' }; rawOpen = false;
+            renderResultsOnly();
+            let done = 0, raw;
+            try {
+                const r = await rosterVary([n], form, st, ctl?.signal);
+                fresh = r.names[0]; done = r.done; raw = r.raw;
+            } catch (e) {
+                if (refining !== job) return;
+                if (ctl?.signal.aborted || e?.name === 'AbortError') { status = { kind: 'error', text: L.cancelled }; refining = null; renderResultsOnly(); return; }
+            }
+            if (refining !== job) return;
+            refining = null;
+            status = done ? { kind: 'ok', text: L.rerolled } : { kind: 'error', text: L.varyFail, ...(typeof raw === 'string' ? { raw } : {}) };
+        } else status = { kind: 'ok', text: L.rerolled };
+        const at = results.indexOf(src);
+        if (at !== -1) {
+            const item = { ...fresh, form: src.form };
+            const depth = src.depth || 0;
+            let end = at + 1;
+            while (end < results.length && (results[end].depth || 0) > depth) end++;
+            results.splice(at, end - at, item);
+            if (item.varied) { rememberNames([item.name], st); refreshHistory(); save(); }
+            autoCheck([item]);
+        }
+        menuFor = null;
+        renderResultsOnly();
     }
 
     // Cache names are made right here: no request, no waiting.
@@ -3903,7 +4468,7 @@
         const L = T();
         // A Cache name goes to the AI as one whole name, with its roots in place of a vibe.
         const form = aiForm(src.form || st.form, src);
-        const base = src.cache ? { ...src, pieces: undefined } : src;
+        const base = src.cache || src.roster ? { ...src, pieces: undefined } : src;
         const avoid = [...new Set([...avoidList(st, form), ...results.flatMap(memoryNames)])];
         const messages = buildRefineMessages(base, mode, form, { lang: detectLang(), avoid: promptAvoid(st, form, results.flatMap(memoryNames)), reading: !!st.showReading, nicks: nickOn(form, st) });
         const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -3952,6 +4517,7 @@
         const lang = detectLang();
         const isVariant = (src.depth || 0) > 0 && src.from && REFINE_DESC[src.tag];
         // A first-round Cache name is remade from the cache, right away and for free.
+        if (!isVariant && src.roster) { rosterReroll(src, st); return; }
         if (!isVariant && src.cache && isPolish(src.form || st.form)) { polishReroll(src, st); return; }
         if (!isVariant && src.cache) { cacheReroll(src, st); return; }
         const from = isVariant && src.from.cache ? { ...src.from, pieces: undefined } : src.from;
@@ -4201,7 +4767,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.50';
+    const TBD_VERSION = '0.2.51';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
@@ -4384,6 +4950,16 @@
                 render();
                 return;
             }
+            if (group === 'roster' || group === 'rosteruse') {
+                if (group === 'roster') {
+                    const set = new Set(pickedRosterIds(form));
+                    if (set.has(v0)) set.delete(v0); else set.add(v0);
+                    form.rosterIds = settings().rosters.map(l => l.id).filter(x => set.has(x));
+                } else form.rosterUse = ROSTER_USES.includes(v0) ? v0 : 'asis';
+                save();
+                $('#tbd_rosters').replaceWith(rosterChipsHtml(form));
+                return;
+            }
             if (group === 'airoot') {
                 // "Any" clears the roots; a root turns "Any" off; the last root off means "Any" again.
                 const set = new Set(v0 === 'any' ? [] : form.aiRoots);
@@ -4506,8 +5082,10 @@
             $('#tbd_tab_found .tbd-tab-n').text(st.found.length);
         });
         $doc.on('click', '#tbd_panel .tbd-tab', function () {
-            const to = String($(this).data('tab')) === 'found' ? 'found' : 'form';
-            if (to === view) return;
+            const t = String($(this).data('tab'));
+            const to = t === 'found' || t === 'roster' ? t : 'form';
+            if (to === 'roster') rosterEdit = null;
+            if (to === view) { if (to === 'roster') render(); return; }
             if (view === 'form') readForm();
             view = to;
             menuFor = null;
@@ -4530,15 +5108,7 @@
         $doc.on('click', '#tbd_found_export', () => {
             const st = settings();
             if (!st.found.length) return;
-            const blob = new Blob([foundExportText(st)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `tbd-found-${new Date().toISOString().slice(0, 10)}.json`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            downloadText(foundExportText(st), `tbd-found-${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
         });
         $doc.on('click', '#tbd_found_import', () => $('#tbd_found_file').trigger('click'));
         $doc.on('change', '#tbd_found_file', function () {
@@ -4552,6 +5122,74 @@
                 if (n < 0) toastr.warning(T().foundImportBad, 'TBD');
                 else toastr.success(T().foundImported(n), 'TBD');
                 if (n > 0 && st.found.length >= FOUND_MAX) toastr.warning(T().foundFull(FOUND_MAX), 'TBD');
+                render();
+            };
+            reader.onerror = () => toastr.warning(T().foundImportBad, 'TBD');
+            reader.readAsText(file);
+        });
+        // ---------- Roster ----------
+        $doc.on('click', '#tbd_roster_open', () => { readForm(); view = 'roster'; rosterEdit = 'new'; menuFor = null; render(); });
+        $doc.on('click', '#tbd_rs_new', () => { if (settings().rosters.length >= ROSTER_LISTS_MAX) return; rosterEdit = 'new'; render(); });
+        $doc.on('click', '#tbd_panel .tbd-rs-edit', function () { rosterEdit = String($(this).closest('.tbd-rcard').data('id')); render(); });
+        $doc.on('click', '#tbd_rs_cancel', () => { rosterEdit = null; render(); });
+        $doc.on('click', '#tbd_rs_save', () => { if (rosterSaveEdit()) { rosterEdit = null; render(); } });
+        $doc.on('input', '#tbd_rs_text', function () { $('#tbd_rs_count').text(rosterCountText($(this).val())); });
+        $doc.on('change', '#tbd_rs_target', function () { $('#tbd_rs_kind_wrap').prop('hidden', $(this).val() !== 'person'); });
+        $doc.on('click', '#tbd_rs_delete', function () {
+            // Two taps: the first asks, the second deletes (and the list can be brought back until the window closes).
+            if (!$(this).data('armed')) { $(this).data('armed', 1).addClass('tbd-armed').text(T().rosterDeleteSure); return; }
+            const st = settings();
+            const at = st.rosters.findIndex(l => l.id === rosterEdit);
+            if (at === -1) return;
+            const [list] = st.rosters.splice(at, 1);
+            const picked = pickedRosterIds(st.form).includes(list.id);
+            st.form.rosterIds = pickedRosterIds(st.form).filter(x => x !== list.id);
+            rosterUndo = { list, at, picked };
+            rosterEdit = null;
+            save();
+            render();
+        });
+        $doc.on('click', '#tbd_rs_undo', () => {
+            const st = settings();
+            if (!rosterUndo) return;
+            const { list, at, picked } = rosterUndo;
+            rosterUndo = null;
+            if (st.rosters.length >= ROSTER_LISTS_MAX) toastr.warning(T().rosterListsFull(ROSTER_LISTS_MAX), 'TBD');
+            else if (rosterTotal(st) + list.items.length > ROSTER_MAX) toastr.warning(T().rosterFull(ROSTER_MAX), 'TBD');
+            else {
+                st.rosters.splice(Math.min(at, st.rosters.length), 0, list);
+                if (picked) st.form.rosterIds = [...pickedRosterIds(st.form), list.id];
+                save();
+            }
+            render();
+        });
+        $doc.on('click', '#tbd_panel .tbd-rs-export', function () {
+            const list = settings().rosters.find(l => l.id === String($(this).closest('.tbd-rcard').data('id')));
+            if (!list) return;
+            const safe = list.title.replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 40) || 'list';
+            downloadText(rosterText(list) + '\n', `${safe}.txt`, 'text/plain');
+        });
+        $doc.on('click', '#tbd_rs_export', () => {
+            const st = settings();
+            if (!st.rosters.length) return;
+            downloadText(rosterExportText(st), `tbd-roster-${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
+        });
+        $doc.on('click', '#tbd_rs_import', () => $('#tbd_rs_file').trigger('click'));
+        $doc.on('change', '#tbd_rs_file', function () {
+            const file = this.files?.[0];
+            this.value = '';
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const st = settings();
+                const r = rosterImport(reader.result, file.name, st, st.form.target);
+                const L = T();
+                if (!r) toastr.warning(L.foundImportBad, 'TBD');
+                else {
+                    if (r.lists) toastr.success(L.rosterImported(r.lists, r.names), 'TBD');
+                    if (r.cut) toastr.warning(L.rosterCut(r.names, ROSTER_MAX), 'TBD');
+                    if (r.full && !r.lists) toastr.warning(st.rosters.length >= ROSTER_LISTS_MAX ? L.rosterListsFull(ROSTER_LISTS_MAX) : L.rosterFull(ROSTER_MAX), 'TBD');
+                }
                 render();
             };
             reader.onerror = () => toastr.warning(T().foundImportBad, 'TBD');
@@ -4574,6 +5212,7 @@
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki, echoSyllable, slavicOvo, scholarFamily, oppositeClash,
+            isRoster, notAi, parseRosterText, rosterText, cleanRoster, rosterPick, rosterLists, rosterNeed, rosterImport, rosterExportText, buildVaryMessages, applyVary, rosterVary, rosterHtml, rosterChipsHtml, ROSTER_MAX,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },

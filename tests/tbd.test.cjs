@@ -1262,7 +1262,7 @@ test('Cache + AI counts as Cache, only for people and places', () => {
     assert.equal(api.isPolish({ method: 'polish', target: 'place' }), true);
     assert.equal(api.isPolish({ method: 'polish', target: 'shop' }), false);
     assert.equal(api.isPolish({ method: 'cache', target: 'person' }), false);
-    assert.deepEqual([...api.METHODS], ['ai', 'cache', 'polish']);
+    assert.deepEqual([...api.METHODS], ['ai', 'cache', 'polish', 'roster']);
 });
 
 test('polish prompt lists only the parts it may change, and no meanings', () => {
@@ -2765,4 +2765,100 @@ test('v0.2.50: no man/woman pair of one family, Slavic -ka, short -ski, word nam
             }
         }
     }
+});
+
+test('v0.2.51 Roster: pasted lists, picking as is, joining, varying, import', async () => {
+    const { api } = load();
+    // Paste: one per line, "name | note" or a tab, # skipped, repeats and JSON bits dropped.
+    const p = api.parseRosterText('# a heading\nAubert\n  Gautier  |  13th c. roll \nIsabeau\tfrom a sheet\naubert\n\n[{"x\nAmaury');
+    assert.deepEqual([...p.items.map(it => it.n)], ['Aubert', 'Gautier', 'Isabeau', 'Amaury']);
+    assert.equal(p.items[1].note, '13th c. roll');
+    assert.equal(p.items[2].note, 'from a sheet');
+    assert.equal(p.dupes, 1);
+    assert.equal(p.bad, 1);
+    assert.equal(api.rosterText({ items: p.items }).split('\n')[1], 'Gautier | 13th c. roll');
+
+    const given = { id: 'g', title: 'Given', target: 'person', kind: 'given', items: api.parseRosterText('Aubert\nGautier\nIsabeau\nAmaury\nHersende\nOsbern').items };
+    const family = { id: 'f', title: 'Family', target: 'person', kind: 'family', items: api.parseRosterText('Varenne\nMarchand | a trade\nDelacroix\nBeaumont').items };
+    const towns = { id: 't', title: 'Towns', target: 'place', kind: 'given', items: api.parseRosterText('Harfleur\nValmont\nBarfleur').items };
+    const settings = { rosters: [given, family, towns], form: { target: 'person', method: 'roster', rosterIds: ['g', 'f', 't'] } };
+    const env = load({ extensionSettings: { tbd_names: settings } });
+    const R = env.api;
+    const form = { target: 'person', method: 'roster', rosterIds: ['g', 'f', 't'], rosterUse: 'asis' };
+    assert.ok(R.isRoster(form) && R.notAi(form) && !R.isCache(form));
+    assert.ok(!R.isRoster({ ...form, target: 'shop' }));
+    // Only lists for this target count (a place list never names a person).
+    assert.deepEqual([...R.rosterLists(form).map(l => l.id)], ['g', 'f']);
+    assert.equal(R.rosterNeed(form), '');
+    assert.equal(R.rosterNeed({ ...form, rosterIds: [] }), 'pick');
+    assert.equal(R.rosterNeed({ ...form, target: 'place', rosterIds: [] }), 'pick');
+    const env2 = load({ extensionSettings: { tbd_names: { rosters: [towns] } } });
+    assert.equal(env2.api.rosterNeed(form), 'none');
+
+    // Given-only + family-only lists are joined; never the same name twice; the user's avoid list holds.
+    const list = R.rosterPick(form, 10, ['Gautier'], R.rosterLists(form), seeded(2030));
+    assert.equal(list.length, 10);
+    assert.equal(new Set(list.map(n => n.name)).size, 10);
+    for (const n of list) {
+        assert.match(n.name, /^\S+ \S+$/);
+        assert.ok(!n.name.startsWith('Gautier'), n.name);
+        assert.ok(n.roster && !n.cache);
+        assert.deepEqual([...n.lists], ['Given', 'Family']);
+    }
+    assert.ok(list.some(n => n.note === 'a trade'));
+    // Parts spread out: with 4 family names, none comes a third time in 8 joined names.
+    const fams = R.rosterPick(form, 8, [], R.rosterLists(form), seeded(77)).map(n => n.name.split(' ')[1]);
+    assert.ok(Math.max(...['Varenne', 'Marchand', 'Delacroix', 'Beaumont'].map(f => fams.filter(x => x === f).length)) <= 2, fams.join(' '));
+    // A list on its own gives its own names; letters asked for come first.
+    const one = R.rosterPick({ ...form, mustContain: 'ers' }, 2, [], [given], seeded(11));
+    assert.equal(one[0].name, 'Hersende');
+    // Runs out instead of repeating.
+    assert.equal(R.rosterPick({ target: 'place' }, 9, [], [towns], seeded(3)).length, 3);
+
+    // Vary: the prompt carries the names only; an answer that is the same, banned or another listed name is refused.
+    const msgs = R.buildVaryMessages([{ name: 'Aubert Varenne' }], form, { lang: 'ko', reading: true });
+    assert.match(msgs[1].content, /1\. "Aubert Varenne"/);
+    assert.match(msgs[1].content, /same number of words/);
+    assert.match(msgs[1].content, /"read"/);
+    const src = { name: 'Aubert Varenne', roster: true, lists: ['Given', 'Family'], note: 'memo' };
+    const banned = new Set(['gautier varenne']);
+    assert.equal(R.applyVary(src, { name: 'Aubert Varenne' }, form, banned), null);
+    assert.equal(R.applyVary(src, { name: 'Gautier Varenne' }, form, banned), null);
+    assert.equal(R.applyVary(src, { name: 'Aubrecht' }, form, banned), null);
+    const v = R.applyVary(src, { name: 'Aubrecht Varenne', note: 'firmer end', read: 'AU-brecht' }, form, banned);
+    assert.equal(v.name, 'Aubrecht Varenne');
+    assert.equal(v.orig, 'Aubert Varenne');
+    assert.ok(v.varied && v.roster);
+    assert.equal(v.note, 'firmer end');
+
+    // Kept in Found with where it came from; the review text says so too.
+    const e = R.foundEntry(v);
+    assert.ok(e.roster && e.varied);
+    assert.deepEqual([...e.lists], ['Given', 'Family']);
+    assert.equal(e.orig, 'Aubert Varenne');
+    const review = R.reviewText([{ ...list[0], form }]);
+    assert.match(review, /Made with: Roster \(as is\)/);
+    assert.match(review, /Lists: Given \[given\], Family \[family\]/);
+    assert.match(review, /\{ROSTER\}/);
+    assert.match(review, /from list: Given \+ Family/);
+
+    // Import: a Roster file adds its lists; plain text becomes one list named after the file; other files are refused.
+    const st = { rosters: [], form: {} };
+    const r1 = R.rosterImport(R.rosterExportText({ rosters: [given, towns] }), 'x.json', st);
+    assert.deepEqual({ ...r1 }, { lists: 2, names: 9, cut: false, full: false });
+    assert.equal(st.rosters[1].target, 'place');
+    const r2 = R.rosterImport('Ashby\nKirkby, an old note\n', 'Old_towns.csv', st, 'place');
+    assert.equal(r2.lists, 1);
+    assert.equal(st.rosters[2].title, 'Old towns');
+    assert.equal(st.rosters[2].items[1].note, 'an old note');
+    assert.equal(R.rosterImport(JSON.stringify({ type: 'found', items: [] }), 'f.json', st), null);
+    // The cap across all lists holds.
+    const big = { rosters: [{ id: 'b', title: 'Big', target: 'person', kind: 'full', items: Array.from({ length: R.ROSTER_MAX - 1 }, (_, i) => ({ n: `N${i}` })) }] };
+    const r3 = R.rosterImport('Ana\nBo\nCy', 'more.txt', big);
+    assert.equal(r3.names, 1);
+    assert.ok(r3.cut);
+    // A broken saved list is cleaned on load.
+    const env3 = load({ extensionSettings: { tbd_names: { rosters: [{ title: 'x', items: ['A', { n: 'B', note: 'n' }, 5] }, 'junk'] } } });
+    const s3 = env3.api.settings ? env3.api.settings() : null;
+    if (s3) assert.equal(s3.rosters.length, 1);
 });
