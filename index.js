@@ -108,6 +108,7 @@
             method: 'Made with', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI', roster: 'Roster' }, rootsLabel: 'Roots', ckLabel: 'Kind of name',
             roots: { latin: 'Latin', oldenglish: 'Old English', norman: 'Norman / French', germanic: 'Germanic', celtic: 'Celtic', norse: 'Norse', greek: 'Ancient Greek', slavic: 'Slavic' },
             rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: 'Each name from one root, taking turns.', merge: 'Each name mixes two roots: one part from each.' },
+            mergeOff: { place: 'Split for now: "Real places only" can\'t give place names that blend two roots.', person: 'Split for now: "Real names only" can\'t give names that blend two roots.' },
             aiRootAny: 'Any', aiRootOff: { like: 'Not used now: the "Like this" words lead.', cosmic: 'Not used now: Lovecraftian invented names stay eldritch.' },
             ck: { common: 'Common name', noble: 'Noble house', religious: 'Monastic / saint', royal: 'Royal / ruler', warrior: 'Warrior / byname', scholar: 'Scholar (Latin)' },
             branch: { patron: "father's name", place: 'home place', dwell: 'where they lived', trade: 'trade', looks: 'looks / nickname' },
@@ -244,6 +245,7 @@
             method: '만드는 방식', methods: { ai: 'AI', cache: 'Archive', polish: 'Archive + AI', roster: 'Roster' }, rootsLabel: '뿌리', ckLabel: '이름 종류',
             roots: { latin: '라틴', oldenglish: '옛 영어', norman: '노르만·프랑스', germanic: '게르만', celtic: '켈트', norse: '북유럽', greek: '고대 그리스', slavic: '슬라브' },
             rootMix: { split: 'Split', merge: 'Merge' }, rootMixTip: { split: '이름마다 뿌리 하나씩, 돌아가며.', merge: '이름마다 뿌리 두 개를 섞어요: 조각 하나씩.' },
+            mergeOff: { place: '지금은 Split로 뽑아요: "실제 지명만"은 두 뿌리를 섞은 지명을 줄 수 없어요.', person: '지금은 Split로 뽑아요: "실제 이름만"은 두 뿌리를 섞은 이름을 줄 수 없어요.' },
             aiRootAny: '상관없음', aiRootOff: { like: '지금은 안 써요: "비슷하게" 단어를 따라가요.', cosmic: '지금은 안 써요: 러브크래프트풍 지어낸 이름은 이질적인 이름이라서요.' },
             ck: { common: '일반 인명', noble: '귀족 가문', religious: '수도원·성인', royal: '왕족·군주', warrior: '전사·별칭', scholar: '학자 (라틴식)' },
             branch: { patron: '아버지 이름', place: '출신 지명', dwell: '사는 곳', trade: '직업', looks: '생김새·별명' },
@@ -1293,7 +1295,16 @@
         return aiRootsOff(form) ? [] : aiRoots(form);
     }
     function aiMerge(form = {}) {
-        return form.aiRootMix === 'merge' && aiRootsUsed(form).length > 1;
+        return form.aiRootMix === 'merge' && aiRootsUsed(form).length > 1 && !mergeBlocked(form);
+    }
+    // v0.2.55: "real names / places only" can't come back blended from two roots, so Merge goes out as Split
+    // (the row says so; the saved choice stays Merge for when the real choice changes).
+    function mergeBlocked(form = {}) {
+        return form.aiRootMix === 'merge' && aiRootsUsed(form).length > 1 && realMode(form) === 'only';
+    }
+    function mixNoteHtml(form) {
+        const on = mergeBlocked(form);
+        return `<div class="tbd-note" id="tbd_mix_note"${on ? '' : ' hidden'}>${on ? escapeHtml(T().mergeOff[form.target === 'place' ? 'place' : 'person']) : ''}</div>`;
     }
     // "built from Latin or Celtic" / "blending Latin and Celtic" for the short ✨ and part lines.
     function rootsPhrase(form, roots, verb) {
@@ -3750,9 +3761,11 @@
     function aiRootsHtml(form) {
         const L = T();
         const roots = aiRoots(form);
+        const mix = rootMixHtml('airootmix', 'tbd_airootmix', form.aiRootMix, roots.length > 1);
         return `<div class="tbd-wide tbd-chipset tbd-ai-only" id="tbd_airoots"><div class="tbd-chips-label">${escapeHtml(L.rootsLabel)}</div>
             <div class="tbd-chips">${chipHtml('airoot', 'any', L.aiRootAny, !roots.length)}${CACHE_ROOTS.map(v => chipHtml('airoot', v, L.roots[v], roots.includes(v))).join('')}</div>
-            ${rootMixHtml('airootmix', 'tbd_airootmix', form.aiRootMix, roots.length > 1)}
+            ${mergeBlocked(form) ? mix.replace(/class="tbd-chip"( data-chip="airootmix" data-v="merge")/, 'class="tbd-chip tbd-mix-off"$1') : mix}
+            ${mixNoteHtml(form)}
             ${aiRootNoteHtml(form)}</div>`;
     }
     // Split / Merge, right under the roots; only shown with two or more roots.
@@ -3782,6 +3795,8 @@
         $('#tbd_more_fold').replaceWith(moreFoldHtml(form));
         $('#tbd_airoot_note').replaceWith(aiRootNoteHtml(form));
         $('#tbd_word_note').replaceWith(wordNoteHtml(form));
+        $('#tbd_mix_note').replaceWith(mixNoteHtml(form));
+        $('#tbd_airootmix .tbd-chip[data-v=merge]').toggleClass('tbd-mix-off', mergeBlocked(form));
     }
 
     // Toggle buttons for what a person's name is made of, plus the kept family name.
@@ -3815,7 +3830,8 @@
         if (wordBit && !wordOff(form)) on.push(wordBit);
         const roots = aiRoots(form);
         const merged = roots.length > 1 && form.aiRootMix === 'merge';
-        const rootsBit = roots.length ? `${L.rootsLabel}: ${roots.map(r => L.roots[r]).join(merged ? ' + ' : ', ')}${merged ? ` (${L.rootMix.merge})` : ''}` : '';
+        const blocked = merged && mergeBlocked(form);
+        const rootsBit = roots.length ? `${L.rootsLabel}: ${roots.map(r => L.roots[r]).join(merged && !blocked ? ' + ' : ', ')}${merged ? ` (${blocked ? `${L.rootMix.merge} → ${L.rootMix.split}` : L.rootMix.merge})` : ''}` : '';
         // Roots another choice overrides show dimmed, so it's clear they're set but not used now.
         const offBit = rootsBit && aiRootsOff(form) ? `<span class="tbd-fold-off" title="${escapeHtml(L.aiRootOff[aiRootsOff(form)])}">${escapeHtml(rootsBit)}</span>` : '';
         if (rootsBit && !offBit) on.push(rootsBit);
@@ -4074,7 +4090,7 @@
             if (form.target === 'person') bits.push(`Kind of name: ${cacheKinds(form).map(k => en.ck[k]).join(', ')}`);
         } else {
             const roots = aiRoots(form);
-            if (roots.length) bits.push(`Roots: ${roots.map(r => en.roots[r]).join(', ')}${roots.length > 1 ? ` (${form.aiRootMix === 'merge' ? 'Merge' : 'Split'})` : ''}${aiRootsOff(form) ? ' [not used now]' : ''}`);
+            if (roots.length) bits.push(`Roots: ${roots.map(r => en.roots[r]).join(', ')}${roots.length > 1 ? ` (${form.aiRootMix === 'merge' ? (mergeBlocked(form) ? 'Merge → Split now' : 'Merge') : 'Split'})` : ''}${aiRootsOff(form) ? ' [not used now]' : ''}`);
             if (realMode(form) !== 'invented') bits.push(`${form.target === 'place' ? 'Real places' : 'Real names'}: ${realMode(form)}`);
             if (likeWords(form).length) bits.push(`Like: ${likeWords(form).join(', ')} (${form.likeMode === 'feel' ? 'feel' : 'sound'})`);
             if (wordMode(form) !== 'avoid') bits.push(`Word names: ${wordMode(form)}${wordOff(form) ? ' [not used now]' : ''}`);
@@ -4829,7 +4845,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.54';
+    const TBD_VERSION = '0.2.55';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
@@ -5272,7 +5288,7 @@
             tokensFor, settings, historyHtml, STRINGS, THEMES, CLICHES, KINDS, targetText, SPARKS, normalizeKind,
             nameShape, applyShape, joinPieces, memoryNames, buildPieceMessages, FAMILY_STYLES,
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
-            realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
+            realMode, realRoles, realRule, mergeBlocked, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki, echoSyllable, slavicOvo, scholarFamily, oppositeClash,
             isRoster, notAi, parseRosterText, rosterText, cleanRoster, rosterPick, rosterLists, rosterNeed, rosterImport, rosterExportText, buildVaryMessages, applyVary, rosterVary, varyPlan, rosterHtml, rosterChipsHtml, ROSTER_MAX,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,

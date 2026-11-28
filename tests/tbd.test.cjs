@@ -2925,3 +2925,29 @@ test('v0.2.54: real places (AI only) have their own choice', () => {
     assert.match(api.reviewFormLine(only), /Real places: only/);
     assert.match(api.tagsHtml({ name: 'Whitby', real: true, form: only }), /실제로 있는 지명/);
 });
+
+test('v0.2.55: "real … only" sends Merge as Split and says so', () => {
+    const { api } = load({ lang: 'ko' });
+    api.settings();
+    const place = { target: 'place', vibe: 'medieval', kind: 'any', length: 'any', method: 'ai', aiRoots: ['latin', 'norse'], aiRootMix: 'merge', placeReal: 'only' };
+    assert.equal(api.mergeBlocked(place), true);
+    assert.equal(api.aiMerge(place), false);
+    // Same prompt as Split.
+    const split = { ...place, aiRootMix: 'split' };
+    assert.equal(api.buildMessages(place, api.rollSeeds(5, place, seeded(4)))[1].content,
+        api.buildMessages(split, api.rollSeeds(5, split, seeded(4)))[1].content);
+    // Only "only" with Merge and two roots.
+    for (const f of [{ placeReal: 'near' }, { placeReal: 'mix' }, { aiRootMix: 'split' }, { aiRoots: ['latin'] }, { method: 'cache' }]) assert.equal(api.mergeBlocked({ ...place, ...f }), false, JSON.stringify(f));
+    const person = { target: 'person', parts: ['given'], extras: [], aiRoots: ['greek', 'slavic'], aiRootMix: 'merge', realNames: 'only', method: 'ai' };
+    assert.equal(api.mergeBlocked(person), true);
+    assert.equal(api.mergeBlocked({ ...person, realNames: 'near' }), false);
+    // Note, dimmed chip, fold and review line.
+    const html = api.aiRootsHtml(place);
+    assert.match(html, /id="tbd_mix_note">지금은 Split로 뽑아요: &quot;실제 지명만&quot;/);
+    assert.match(html, /class="tbd-chip tbd-mix-off" data-chip="airootmix" data-v="merge"/);
+    assert.match(api.aiRootsHtml(person), /&quot;실제 이름만&quot;/);
+    assert.match(api.aiRootsHtml({ ...place, placeReal: 'near' }), /id="tbd_mix_note" hidden>/);
+    assert.ok(!/tbd-mix-off/.test(api.aiRootsHtml({ ...place, placeReal: 'near' })));
+    assert.match(api.moreFoldHtml(place), /라틴, 북유럽 \(Merge → Split\)/);
+    assert.match(api.reviewFormLine(place), /\(Merge → Split now\)/);
+});

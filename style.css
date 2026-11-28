@@ -729,6 +729,8 @@
 
 /* v0.2.1: roots that another choice overrides stay visible in the fold line, dimmed */
 #tbd_panel .tbd-fold-sum .tbd-fold-off { opacity: 0.55; text-decoration: line-through; font-weight: normal; }
+/* v0.2.55: Merge that "real … only" turns into Split for now */
+#tbd_panel .tbd-chip.tbd-mix-off { opacity: 0.55; text-decoration: line-through; }
 
 /* ---------- Found ⭐ ---------- */
 /* Two tabs under the top: [Find names] [Found ⭐ 12]. */
