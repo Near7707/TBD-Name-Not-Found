@@ -92,6 +92,8 @@
             ex: { title: 'Title', particle: 'Noble particle', origin: 'Place of origin', patronymic: "Father's-name surname", epithet: 'Nickname / epithet', religious: 'Religious name', codename: 'Codename', alias: 'Alias / stage name' },
             fixedFamily: 'Keep this family name (optional)', fixedFamilyPh: 'e.g. Holloway',
             realNames: 'Real names', realOpts: { invented: 'Invented only', near: 'Close to real names', mix: 'Mix in real names', only: 'Real names only' },
+            realPlaces: 'Real places', realPlaceOpts: { invented: 'Invented only', near: 'Close to real places', mix: 'Mix in real places', only: 'Real places only' },
+            realPlaceTip: 'The AI says this is a real place name. It can be wrong: check with 🔎.',
             realTag: 'real', realTip: 'The AI says real people use this name. It can be wrong: check with 🔎.',
             wordMode: 'Word names', wordModes: { avoid: 'Avoid', mix: 'Mix in', main: 'Mostly' },
             wordModeTip: { avoid: 'Invented names, not plain words (as before).', mix: 'About one name in three is made from a pretty real word.', main: 'Nearly every name is made from a pretty real word.' },
@@ -226,6 +228,8 @@
             ex: { title: '직함·존칭', particle: '귀족 표시', origin: '출신지', patronymic: '아버지 이름 성', epithet: '별명·칭호', religious: '세례명·수도명', codename: '코드네임', alias: '가명·예명' },
             fixedFamily: '성 고정 (안 써도 됨)', fixedFamilyPh: '예: Holloway',
             realNames: '실제 이름', realOpts: { invented: '지어낸 이름만', near: '실제 이름 비슷하게', mix: '실제 이름도 섞기', only: '실제 이름만' },
+            realPlaces: '실제 지명', realPlaceOpts: { invented: '지어낸 지명만', near: '실제 지명 비슷하게', mix: '실제 지명도 섞기', only: '실제 지명만' },
+            realPlaceTip: 'AI가 실제로 있는 지명이라고 했어요. 틀릴 수 있으니 🔎로 확인해 보세요.',
             realTag: '실제', realTip: 'AI가 실제로 쓰는 이름이라고 했어요. 틀릴 수 있으니 🔎로 확인해 보세요.',
             wordMode: '낱말 이름', wordModes: { avoid: '피하기', mix: '섞기', main: '위주로' },
             wordModeTip: { avoid: '낱말이 아닌 지어낸 이름(지금까지와 같음).', mix: '3개 중 1개쯤은 예쁜 진짜 낱말로 만들어요.', main: '거의 다 예쁜 진짜 낱말로 만들어요.' },
@@ -354,7 +358,15 @@
     // The parts the choice applies to. Extras (codename, epithet…) stay invented; a kept family name stays as it is.
     const REAL_ROLES = ['given', 'middle', 'family'];
     function realMode(form = {}) {
-        return form.target === 'person' && REAL_MODES.includes(form.realNames) ? form.realNames : 'invented';
+        if (form.target === 'person') return REAL_MODES.includes(form.realNames) ? form.realNames : 'invented';
+        // v0.2.54: places (AI only) have their own choice, kept apart so "real names only" for people
+        // doesn't suddenly bring real places when the target changes.
+        if (form.target === 'place' && !notAi(form)) return REAL_MODES.includes(form.placeReal) ? form.placeReal : 'invented';
+        return 'invented';
+    }
+    // Whether the AI is asked to say "real" for each name.
+    function realAsk(form = {}) {
+        return realMode(form) !== 'invented' && (form.target === 'place' || realRoles(form).length > 0);
     }
     // v0.2.19 word names (people, AI only): avoid (as before) / mix (about 1 in 3) / main (nearly all).
     // A pretty real word from any language, as it is or lightly changed; with roots on, from those roots' languages.
@@ -783,7 +795,7 @@
                 seed.ending = pick(fresh.length ? fresh : endings, rnd);
                 usedEndings.add(seed.ending);
             }
-            if (shapes) seed.shape = pick(shapes, rnd);
+            if (shapes && !(real && target === 'place')) seed.shape = pick(shapes, rnd);
             // v0.2.20: no "no v" for Slavic: -slav, Vlad- and -vit are its core parts (0 of 20 names had a v).
             const slavic = seed.root === 'slavic' || seed.root2 === 'slavic';
             if (rootsOn && !like && !slavic && (i + Math.floor(i / 2) + noVStart) % 2 === 0 && !'VW'.includes(seed.start || '')) seed.noV = true;
@@ -2269,7 +2281,7 @@
             // A Roster name goes as one whole name; the AI keeps to its language instead of a vibe.
             const full = form.target === 'person' && /\s/.test(String(src?.name || ''));
             return {
-                ...form, method: 'ai', vibe: 'custom', customVibe: 'in the same language and naming custom as the name it comes from', realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'], wordMode: 'avoid',
+                ...form, method: 'ai', vibe: 'custom', customVibe: 'in the same language and naming custom as the name it comes from', realNames: 'invented', placeReal: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'], wordMode: 'avoid',
                 ...(full ? { target: 'other', kind: 'any', kindText: 'a full name for a person; keep the same number of words and any "de", "von" or "of" part' } : {}),
             };
         }
@@ -2278,7 +2290,7 @@
         const roots = (mix || cacheRoots(form)).map(r => STRINGS.en.roots[r]).join(' and ');
         const full = form.target === 'person' && /\s/.test(String(src?.name || ''));
         return {
-            ...form, method: 'ai', vibe: 'custom', customVibe: mix ? `blending ${roots} name roots in one name` : `built from ${roots} name roots`, realNames: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'], wordMode: 'avoid',
+            ...form, method: 'ai', vibe: 'custom', customVibe: mix ? `blending ${roots} name roots in one name` : `built from ${roots} name roots`, realNames: 'invented', placeReal: 'invented', likeText: '', aiRoots: [], extras: [], parts: ['given'], wordMode: 'avoid',
             ...(full ? { target: 'other', kind: 'any', kindText: 'a full name for a person; keep the same number of words and any title or "of …" part' } : {}),
         };
     }
@@ -2787,7 +2799,7 @@
         extrasOpen: false,
         moreOpen: false,
         wordNames: 'mark',
-        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [], rootMix: 'split', aiRootMix: 'split', wordMode: 'avoid', rosterIds: [], rosterUse: 'asis' },
+        form: { target: 'person', vibe: 'fantasy', customVibe: '', gender: 'any', kind: 'any', kindText: '', length: 'any', sound: 'any', mustContain: '', likeText: '', likeMode: 'sound', realNames: 'invented', placeReal: 'invented', parts: ['given'], extras: [], fixedFamily: '', method: 'ai', roots: ['oldenglish'], ckinds: ['common'], aiRoots: [], rootMix: 'split', aiRootMix: 'split', wordMode: 'avoid', rosterIds: [], rosterUse: 'asis' },
     };
 
     // "Thinking effort": SillyTavern's own reasoning_effort values. 'default' sends nothing (some APIs reject the field).
@@ -2815,6 +2827,7 @@
         if (st.wordNames !== 'filter') st.wordNames = 'mark';
         if (!REASONING_LEVELS.includes(st.reasoning)) st.reasoning = 'default';
         if (!REAL_MODES.includes(st.form.realNames)) st.form.realNames = 'invented';
+        if (!REAL_MODES.includes(st.form.placeReal)) st.form.placeReal = 'invented';
         if (!WORD_MODES.includes(st.form.wordMode)) st.form.wordMode = 'avoid';
         if (!METHODS.includes(st.form.method)) st.form.method = 'ai';
         st.form.roots = pickedRoots(st.form);
@@ -2989,11 +3002,11 @@
             out.push("It must sound like a place, not like a person's first name.");
             if (form.vibe === 'scifi') out.push('Sci-fi places can use tech or corporate roots, designations and numbers (a station, array, sector, hub, a "-7" suffix).');
             else if (form.vibe === 'modern') out.push('Modern places can sound like real towns, streets or districts (-ton, -field, Heights, Bay, Park…).');
-            else if (form.vibe === 'cosmic') out.push('Cosmic-horror places are either decaying old towns by the sea or marsh, or ancient alien places that should not exist. Mix both.');
+            else if (form.vibe === 'cosmic' && realMode(form) === 'invented') out.push('Cosmic-horror places are either decaying old towns by the sea or marsh, or ancient alien places that should not exist. Mix both.');
             else if (form.vibe === 'game') out.push('Game places sound like map areas or dungeons: grand, clear and easy to remember.');
             else if (form.vibe === 'myth') out.push('Myth places sound like sacred or legendary sites from old stories.');
             // Picked roots bring their own place endings (-heim, -ville), so the old English-style list would fight them.
-            else if (form.vibe !== 'custom' && form.vibe !== 'weird' && !aiRootsUsed(form).length) out.push('Old-world places often use landscape endings (-holm, -mere, -wick, -ford, -by, -moor…). Mix them; don\'t put the same ending on every name.');
+            else if (form.vibe !== 'custom' && form.vibe !== 'weird' && !aiRootsUsed(form).length && realMode(form) !== 'only') out.push('Old-world places often use landscape endings (-holm, -mere, -wick, -ford, -by, -moor…). Mix them; don\'t put the same ending on every name.');
         } else if (form.target === 'shop') {
             out.push('It must sound like a shop sign, not like a person. Shop names may use real words or a short phrase, as long as the whole name is fresh.');
         } else if (form.target === 'item') {
@@ -3002,7 +3015,9 @@
         } else if (form.target === 'other') {
             out.push('It must fit what is being named.');
         }
-        if (form.target === 'place') {
+        if (form.target === 'place' && ['mix', 'only'].includes(realMode(form))) {
+            // v0.2.54: real places can be a single word (Bath, Reading), so the bare-word rule would fight the choice.
+        } else if (form.target === 'place') {
             out.push('Place names may use real words: joined real words or a real word plus a place word are welcome. Just never a single bare everyday word on its own (like "Mold" or "Salt").');
         } else if (['mix', 'only'].includes(realMode(form))) {
             // Real names may be words too (Rose, Hope), so the plain-word rule would fight the real-name choice.
@@ -3052,7 +3067,28 @@
         game: 'Here use real names the way a fantasy video game would, for heroes, villains and party members.',
         weird: 'Here pick real names that are rare and sound strange or old-fashioned today.',
     };
+    // v0.2.54: what "real" means for places in vibes where real places would otherwise fight the setting.
+    const REAL_PLACE_HINT = {
+        myth: 'Here "real" means places from actual myths and legends.',
+        game: 'Here use real place names the way a fantasy video game borrows them for its maps.',
+        weird: 'Here pick real place names that are rare and sound strange or old-fashioned today.',
+        cosmic: 'Here "real" means old New England coastal or marsh towns, the kind those stories are set in.',
+        scifi: 'Here "real" means real Earth place names, reused the way colonies, stations and ships borrow them.',
+    };
+    // The default (invented) adds nothing, so place prompts stay as they were.
+    function placeRealRule(form) {
+        const mode = realMode(form);
+        if (mode === 'invented') return [];
+        const out = [];
+        if (mode === 'near') out.push('Base the place names on real place names used in this setting, each changed a little so it is new but still feels familiar.');
+        else if (mode === 'mix') out.push('Mix real place names from this setting with invented ones, roughly half and half.');
+        else out.push('Use real place names that exist or existed in this setting, not invented ones.');
+        if (REAL_PLACE_HINT[form.vibe]) out.push(REAL_PLACE_HINT[form.vibe]);
+        out.push('Add "real": true if it is a real place name, otherwise false.');
+        return out;
+    }
     function realRule(form) {
+        if (form.target === 'place') return placeRealRule(form);
         const roles = realRoles(form);
         if (!roles.length) return [];
         const what = realWhat(roles);
@@ -3295,7 +3331,7 @@
         const words = seeds.some(s => s.word);
         if (words) lines.push(...wordRule(form, lang));
         lines.push('Reply with ONLY a JSON array, nothing else:');
-        lines.push(answerJson(shape, { reading: opts.reading, real: mode !== 'invented' && realRoles(form).length > 0, nicks: opts.nicks, word: words }));
+        lines.push(answerJson(shape, { reading: opts.reading, real: realAsk(form), nicks: opts.nicks, word: words }));
         return [
             { role: 'system', content: 'You are a naming assistant for fiction writers. You invent fresh, pronounceable names and avoid overused, cliché names.' },
             { role: 'user', content: lines.join('\n') },
@@ -3326,7 +3362,7 @@
         lines.push('Change the sounds inside the name, not just by gluing a letter on the end. Every variant must be easy to pronounce (no clusters like "-etd").');
         lines.push('Also cut sounds that pull the other way (for "sharper", drop soft r/l/m endings; for "softer", drop hard k/t/g stops).');
         // With a real-names choice, a variant landing on a real name is fine; it just gets marked.
-        const real = realMode(form) !== 'invented' && realRoles(form).length > 0;
+        const real = realAsk(form);
         if (real) lines.push(...realRule(form).slice(1));
         else lines.push('Avoid anything only a letter or two away from a well-known real or mythological name (like Bridget or Thor).');
         if (avoid.length) lines.push(`Do NOT use these names or close variants: ${avoid.join(', ')}.`);
@@ -3677,6 +3713,7 @@
             <label class="tbd-ai-only">${escapeHtml(L.like)}<input id="tbd_like" class="text_pole" type="text" maxlength="${LIKE_MAX}" placeholder="${escapeHtml(L.likePh)}" value="${escapeHtml(form.likeText || '')}"></label>
             <label class="tbd-ai-only">${escapeHtml(L.likeMode)}${selectHtml('tbd_likemode', L.likeModes, form.likeMode === 'feel' ? 'feel' : 'sound')}</label>
             ${form.target === 'person' ? `<label class="tbd-wide tbd-ai-only" id="tbd_real_wrap">${escapeHtml(L.realNames)}${selectHtml('tbd_realnames', L.realOpts, realMode(form))}</label>` : ''}
+            ${form.target === 'place' ? `<label class="tbd-wide tbd-ai-only" id="tbd_placereal_wrap">${escapeHtml(L.realPlaces)}${selectHtml('tbd_placereal', L.realPlaceOpts, REAL_MODES.includes(form.placeReal) ? form.placeReal : 'invented')}</label>` : ''}
             ${form.target === 'person' ? wordModeHtml(form) : ''}
             ${canCache ? aiRootsHtml(form) : ''}
             </div>
@@ -3772,7 +3809,7 @@
         if (String(form.mustContain || '').trim()) on.push(`${L.mustContain}: ${String(form.mustContain).trim()}`);
         const like = notAi(form) ? [] : likeWords(form);
         if (like.length) on.push(`${L.like.replace(/\s*\(.*\)\s*$/, '')}: ${like.join(', ')}`);
-        if (!notAi(form) && form.target === 'person' && realMode(form) !== 'invented') on.push(L.realOpts[realMode(form)]);
+        if (!notAi(form) && realMode(form) !== 'invented') on.push((form.target === 'place' ? L.realPlaceOpts : L.realOpts)[realMode(form)]);
         const wm = wordMode(form);
         const wordBit = wm !== 'avoid' ? `${L.wordMode}: ${L.wordModes[wm]}` : '';
         if (wordBit && !wordOff(form)) on.push(wordBit);
@@ -3827,7 +3864,7 @@
             : one(r.cache, r.polished ? L.keptTip : L.cacheTip, L.cacheTag);
         // A word name shows its own meaning and language; the plain English word mark would say the same thing twice.
         const wordName = r.word && (r.word.meaning || r.word.lang) ? one(true, L.wordMeanTip, L.wordMeanTag(r.word.meaning, r.word.lang)) : '';
-        return tag + cacheTag + one(r.real, L.realTip, L.realTag) + (wordName || (words.length ? one(true, L.wordTip, L.wordTag(words)) : ''))
+        return tag + cacheTag + one(r.real, r.form?.target === 'place' ? L.realPlaceTip : L.realTip, L.realTag) + (wordName || (words.length ? one(true, L.wordTip, L.wordTag(words)) : ''))
             + one(clicheHit(r), L.clicheTip, L.clicheTag) + one(canonHit(r), L.canonTip, L.canonTag);
     }
     function nicksHtml(r, L = T()) {
@@ -4038,7 +4075,7 @@
         } else {
             const roots = aiRoots(form);
             if (roots.length) bits.push(`Roots: ${roots.map(r => en.roots[r]).join(', ')}${roots.length > 1 ? ` (${form.aiRootMix === 'merge' ? 'Merge' : 'Split'})` : ''}${aiRootsOff(form) ? ' [not used now]' : ''}`);
-            if (form.target === 'person' && realMode(form) !== 'invented') bits.push(`Real names: ${realMode(form)}`);
+            if (realMode(form) !== 'invented') bits.push(`${form.target === 'place' ? 'Real places' : 'Real names'}: ${realMode(form)}`);
             if (likeWords(form).length) bits.push(`Like: ${likeWords(form).join(', ')} (${form.likeMode === 'feel' ? 'feel' : 'sound'})`);
             if (wordMode(form) !== 'avoid') bits.push(`Word names: ${wordMode(form)}${wordOff(form) ? ' [not used now]' : ''}`);
         }
@@ -4189,6 +4226,7 @@
             likeText: String($('#tbd_like').val() || '').slice(0, LIKE_MAX),
             likeMode: $('#tbd_likemode').val() === 'feel' ? 'feel' : 'sound',
             realNames: REAL_MODES.includes($('#tbd_realnames').val()) ? $('#tbd_realnames').val() : (REAL_MODES.includes(st.form.realNames) ? st.form.realNames : 'invented'),
+            placeReal: REAL_MODES.includes($('#tbd_placereal').val()) ? $('#tbd_placereal').val() : (REAL_MODES.includes(st.form.placeReal) ? st.form.placeReal : 'invented'),
             parts: Array.isArray(st.form.parts) ? st.form.parts : ['given'],
             extras: Array.isArray(st.form.extras) ? st.form.extras : [],
             fixedFamily: String($('#tbd_fixed').val() ?? st.form.fixedFamily ?? '').slice(0, 40),
@@ -4791,7 +4829,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.53';
+    const TBD_VERSION = '0.2.54';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
@@ -4945,7 +4983,7 @@
         $doc.on('change', '#tbd_kind', () => readForm());
         $doc.on('change', '#tbd_vibe', function () { $('#tbd_custom_wrap').prop('hidden', $(this).val() !== 'custom'); refreshAiRoots(readForm()); });
         $doc.on('change', '#tbd_gender, #tbd_length, #tbd_custom, #tbd_kindtext, #tbd_fixed', readForm);
-        $doc.on('change', '#tbd_sound, #tbd_must, #tbd_like, #tbd_likemode, #tbd_realnames', () => refreshAiRoots(readForm()));
+        $doc.on('change', '#tbd_sound, #tbd_must, #tbd_like, #tbd_likemode, #tbd_realnames, #tbd_placereal', () => refreshAiRoots(readForm()));
         $doc.on('click', '#tbd_more_fold', () => {
             const st = settings();
             const form = readForm();

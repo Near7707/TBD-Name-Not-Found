@@ -2886,3 +2886,42 @@ test('v0.2.51 Roster: pasted lists, picking as is, joining, varying, import', as
     const s3 = env3.api.settings ? env3.api.settings() : null;
     if (s3) assert.equal(s3.rosters.length, 1);
 });
+
+test('v0.2.54: real places (AI only) have their own choice', () => {
+    const { api } = load({ lang: 'ko' });
+    api.settings();
+    const place = { target: 'place', vibe: 'medieval', kind: 'any', length: 'any', method: 'ai' };
+    // Default and the people's choice leave place prompts as they were.
+    assert.equal(api.realMode(place), 'invented');
+    assert.equal(api.realMode({ ...place, realNames: 'only' }), 'invented');
+    assert.deepEqual([...api.realRule(place)], []);
+    // Archive / Roster places stay invented.
+    assert.equal(api.realMode({ ...place, placeReal: 'only', method: 'cache' }), 'invented');
+    assert.equal(api.realMode({ ...place, placeReal: 'only', method: 'roster' }), 'invented');
+    // A person's form ignores placeReal.
+    assert.equal(api.realMode({ target: 'person', placeReal: 'only' }), 'invented');
+
+    const only = { ...place, placeReal: 'only' };
+    const user = api.buildMessages(only, api.rollSeeds(4, only, seeded(5)))[1].content;
+    assert.match(user, /^Give 4 names for a place/);
+    assert.match(user, /Use real place names that exist or existed/);
+    assert.match(user, /"real": false/);
+    assert.ok(!/bare everyday word|Old-world places/.test(user), 'no rules that fight real places');
+    assert.ok(!/not place names that already exist/.test(api.buildMessages({ ...only, aiRoots: ['norse'] }, api.rollSeeds(3, { ...only, aiRoots: ['norse'] }, seeded(5)))[1].content), 'roots line drops "new" for real places');
+    // Vibe hints, and Lovecraftian real places drop the alien-places line.
+    const cosmic = api.buildMessages({ ...place, vibe: 'cosmic', placeReal: 'near' }, api.rollSeeds(3, { ...place, vibe: 'cosmic', placeReal: 'near' }, seeded(5)))[1].content;
+    assert.match(cosmic, /New England coastal or marsh towns/);
+    assert.ok(!/ancient alien places/.test(cosmic));
+    assert.ok(api.rollSeeds(10, only, seeded(3)).every(s => !s.shape && !s.ending && !s.spark));
+
+    // Answer, field, fold and review line.
+    const [n] = api.parseNames('[{"name": "Whitby", "note": "x", "real": true}]');
+    assert.equal(n.real, true);
+    const html = api.formHtml(only);
+    assert.ok(html.includes('id="tbd_placereal"') && !html.includes('id="tbd_realnames"'));
+    assert.match(html, /실제 지명/);
+    assert.ok(!api.formHtml({ target: 'person', parts: ['given'], extras: [] }).includes('id="tbd_placereal"'));
+    assert.match(api.moreFoldHtml(only), /실제 지명만/);
+    assert.match(api.reviewFormLine(only), /Real places: only/);
+    assert.match(api.tagsHtml({ name: 'Whitby', real: true, form: only }), /실제로 있는 지명/);
+});
