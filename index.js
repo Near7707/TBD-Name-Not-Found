@@ -717,7 +717,9 @@
         // v0.2.13: one-syllable names with roots on came out blunt or as plain words (Irk, Jorp, Hark),
         // so "any length" starts at two syllables then. "Short" still allows one.
         const anyLen = !SYLLABLES[opts.length] || opts.length === 'any';
-        const [lo, hi] = anyLen && target === 'person' && aiRootsUsed(opts).length ? [2, 4] : (SYLLABLES[opts.length] || SYLLABLES.any);
+        // v0.2.56: real places have no shape seed, so a one-syllable seed came back as a bare word (Ewe, Gorse, Dray).
+        const realPlace = target === 'place' && realMode(opts) !== 'invented';
+        const [lo, hi] = anyLen && ((target === 'person' && aiRootsUsed(opts).length) || realPlace) ? [2, 4] : (SYLLABLES[opts.length] || SYLLABLES.any);
         // No inspiration word when the user typed a vibe or details: their words already set the direction,
         // and a random word ("bus stop") pulled names away from what was typed ("bread").
         const typedDetail = target !== 'person' && String(opts.kindText || '').trim();
@@ -4845,7 +4847,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.55';
+    const TBD_VERSION = '0.2.56';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
