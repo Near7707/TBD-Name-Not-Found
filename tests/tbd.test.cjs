@@ -2831,6 +2831,25 @@ test('v0.2.51 Roster: pasted lists, picking as is, joining, varying, import', as
     assert.ok(v.varied && v.roster);
     assert.equal(v.note, 'firmer end');
 
+    // v0.2.52: swapping in another listed name is not a new name; the part asked for has to change.
+    const listed = new Set(['fontaine', 'marchand']);
+    assert.equal(R.applyVary(src, { name: 'Aubert Fontaine' }, form, listed), null);
+    assert.equal(R.applyVary(src, { name: 'Marchand Varenne' }, form, listed), null);
+    assert.ok(R.applyVary(src, { name: 'Aubert Fontenay' }, form, listed));
+    assert.equal(R.applyVary({ ...src, change: 'given' }, { name: 'Aubert Vareuil' }, form, listed), null);
+    assert.ok(R.applyVary({ ...src, change: 'given' }, { name: 'Aubrin Varenne' }, form, listed));
+    assert.equal(R.applyVary({ ...src, change: 'both' }, { name: 'Aubrin Varenne' }, form, listed), null);
+    const both = R.applyVary({ ...src, change: 'both' }, { name: 'Aubrin Vareuil' }, form, listed);
+    assert.ok(both && both.change === undefined);
+    // Full names take turns (given / family / both); a single name gets no part.
+    const plan = R.varyPlan([{ name: 'A B' }, { name: 'C D' }, { name: 'E F' }, { name: 'G' }], form, seeded(5));
+    assert.deepEqual(new Set(plan.slice(0, 3).map(n => n.change)).size, 3);
+    assert.equal(plan[3].change, undefined);
+    assert.equal(R.varyPlan([{ name: 'Old Harbor' }], { target: 'place' })[0].change, undefined);
+    const pm = R.buildVaryMessages(plan, form, {})[1].content;
+    assert.match(pm, /1\. "A B" — change (the given name|the family name|both)/);
+    assert.match(pm, /4\. "G"\n/);
+
     // Kept in Found with where it came from; the review text says so too.
     const e = R.foundEntry(v);
     assert.ok(e.roster && e.varied);

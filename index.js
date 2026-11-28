@@ -2647,6 +2647,19 @@
     function rosterAllNames(st = settings()) {
         return st.rosters.flatMap(l => l.items.map(it => it.n));
     }
+    // v0.2.52: a full name says which part to change, in turns (left alone, the AI changed only the
+    // family name in 18 of 19). Given = first word, family = last word.
+    const VARY_PARTS = ['given', 'family', 'both'];
+    const VARY_TEXT = {
+        given: 'change the given name (the first word); the rest stays',
+        family: 'change the family name (the last word); the given name stays',
+        both: 'change both the given name and the family name',
+    };
+    function varyPlan(list, form, rnd = Math.random) {
+        const start = Math.floor(rnd() * VARY_PARTS.length);
+        let k = 0;
+        return list.map(n => (form.target === 'person' && /\s/.test(n.name) ? { ...n, change: VARY_PARTS[(start + k++) % VARY_PARTS.length] } : n));
+    }
     function buildVaryMessages(list, form, opts = {}) {
         const lang = opts.lang || 'en';
         const place = form.target === 'place';
@@ -2654,11 +2667,11 @@
         const lines = [];
         lines.push(`These ${place ? 'place names' : 'names for people'} come from the user's own list of real names.`);
         lines.push('For each, make one new name that is clearly a different name but keeps its language, naming custom, feel and about the same length: change a syllable or two, swap the ending for another one that language uses, or blend in a sound. Do not hand back the original, a spelling-only change of it, or another real name you know.');
-        if (full) lines.push('A full name keeps the same number of words; small words such as "de", "von", "of" or "ap" stay as they are.');
+        if (full) lines.push('A full name keeps the same number of words; small words such as "de", "von", "of" or "ap" stay as they are. Each full name below says which part to change.');
         const must = String(form.mustContain || '').trim();
         if (must) lines.push(`Keep the letters "${must}" in each name.`);
         lines.push('');
-        list.forEach((n, i) => lines.push(`${i + 1}. "${n.name}"`));
+        list.forEach((n, i) => lines.push(`${i + 1}. "${n.name}"${VARY_TEXT[n.change] ? ` — ${VARY_TEXT[n.change]}` : ''}`));
         lines.push('');
         lines.push(`For each add a short note (under 12 words) in ${noteLang(lang)} about its feel.`);
         if (opts.reading) lines.push(`Also add ${readingRule(lang, full)}.`);
@@ -2676,10 +2689,20 @@
         if (!t || t.length > ROSTER_NAME_MAX || !looksLikeName(t)) return null;
         const low = t.toLowerCase();
         if (low === n.name.toLowerCase() || banned.has(low)) return null;
-        if (t.split(' ').length !== n.name.split(' ').length) return null;
+        const was = n.name.split(' '), now = t.split(' ');
+        if (now.length !== was.length) return null;
+        // v0.2.52: a word that changed may not just be another name from the lists
+        // (Hersende Marchand → Hersende Fontaine is a swap, not a new name).
+        const changed = now.map((w, i) => w.toLowerCase() !== was[i].toLowerCase());
+        if (now.some((w, i) => changed[i] && banned.has(w.toLowerCase()))) return null;
+        // The part it was asked to change has to change.
+        const last = now.length - 1;
+        if ((n.change === 'given' || n.change === 'both') && !changed[0]) return null;
+        if ((n.change === 'family' || n.change === 'both') && !changed[last]) return null;
         const must = String(form.mustContain || '').trim().toLowerCase();
         if (must && n.name.toLowerCase().includes(must) && !low.includes(must)) return null;
         const out = { ...n, name: t, orig: n.name, varied: true };
+        delete out.change;
         delete out.note;
         delete out.read;
         const read = String(ans.read ?? ans.reading ?? '').trim().slice(0, 80);
@@ -2691,13 +2714,14 @@
     // Ask once for all of them. Never loses names: anything the AI didn't change stays as listed.
     async function rosterVary(list, form, st, signal) {
         const lang = detectLang();
-        const messages = buildVaryMessages(list, form, { lang, reading: !!st.showReading });
+        const plan = varyPlan(list, form);
+        const messages = buildVaryMessages(plan, form, { lang, reading: !!st.showReading });
         const raw = await requestLLM(messages, { profileId: st.profileId, sendPreset: !!st.sendPreset, reasoning: st.reasoning, maxTokens: tokensFor(list.length, st), signal });
         const answers = polishAnswers(raw, list.length);
         const banned = new Set([...avoidList(st, form), ...rosterAllNames(st), ...list.map(n => n.name)].map(a => String(a).toLowerCase()));
         let done = 0;
         const names = list.map((n, i) => {
-            const v = applyVary(n, answers[i], form, banned);
+            const v = applyVary(plan[i], answers[i], form, banned);
             if (v) { done++; banned.add(v.name.toLowerCase()); return v; }
             return n;
         });
@@ -4767,7 +4791,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.51';
+    const TBD_VERSION = '0.2.52';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">
@@ -5212,7 +5236,7 @@
             wordHits, keepNames, WORD_NAMES, answerCut, answerEmpty, failText, requestLLM, looksLikeName, likeWords, likeRule, isLikeCopy,
             realMode, realRoles, realRule, realPieceRule, moreFoldHtml, formHtml, nickOn, cleanNicks, clicheHit, canonHit, answerJson, resultsHtml,
             aiRoots, aiRootsOff, aiRootsUsed, rootRule, aiRootsHtml, pickedRoots, pickedKinds, cacheNeed, cacheChipsHtml, sharedStems, polishChanged, tagsHtml, pickOrdinal, reviewText, reviewFormLine, seedLine, withSeeds, wordMode, wordOff, wordUsed, wordFrom, wordModeHtml, avoidList, promptAvoid, keepNames, aiMerge, cacheMerge, rootPairs, rootsPhrase, rerollForm, rootMixHtml, ROOT_MIXES, sameSound, meaningClash, twoAdjectives, slavicAgree, latinGiven, noAccents, newDoubleVowel, slavicSki, echoSyllable, slavicOvo, scholarFamily, oppositeClash,
-            isRoster, notAi, parseRosterText, rosterText, cleanRoster, rosterPick, rosterLists, rosterNeed, rosterImport, rosterExportText, buildVaryMessages, applyVary, rosterVary, rosterHtml, rosterChipsHtml, ROSTER_MAX,
+            isRoster, notAi, parseRosterText, rosterText, cleanRoster, rosterPick, rosterLists, rosterNeed, rosterImport, rosterExportText, buildVaryMessages, applyVary, rosterVary, varyPlan, rosterHtml, rosterChipsHtml, ROSTER_MAX,
             CACHE, CACHE_ROOTS, CACHE_KINDS, isCache, isPolish, polishRoles, foundEntry, foundKey, isFound, toggleFound, foundExportText, foundImport, foundHtml, tabsHtml, FOUND_MAX, buildPolishMessages, polishAnswers, polishOk, applyPolish, polishNames, METHODS, cacheRoots, cacheOne, cacheNames, cachePiece, cacheFamily, cacheFamilyBranch, cachePlace, royalEpithet, royalTitle, warEpithet, latinGiven, fragsHtml, aiForm, glue, sayable, soundScore,
             checkTargets, readWikiAnswer, wikiLookup, checkNames, checkHtml, checkWarns, buildCheckMessages, googleUrl,
             setResults: list => { results = list; },
