@@ -717,9 +717,11 @@
         // v0.2.13: one-syllable names with roots on came out blunt or as plain words (Irk, Jorp, Hark),
         // so "any length" starts at two syllables then. "Short" still allows one.
         const anyLen = !SYLLABLES[opts.length] || opts.length === 'any';
-        // v0.2.56: real places have no shape seed, so a one-syllable seed came back as a bare word (Ewe, Gorse, Dray).
-        const realPlace = target === 'place' && realMode(opts) !== 'invented';
-        const [lo, hi] = anyLen && ((target === 'person' && aiRootsUsed(opts).length) || realPlace) ? [2, 4] : (SYLLABLES[opts.length] || SYLLABLES.any);
+        const [lo, hi] = anyLen && target === 'person' && aiRootsUsed(opts).length ? [2, 4] : (SYLLABLES[opts.length] || SYLLABLES.any);
+        // v0.2.57: real places keep their own length, so with "any length" they get no syllable seed.
+        // v0.2.56 tried 2 to 4: one syllable had come back as a bare word (Ewe, Gorse), but then three and four
+        // were met by tacking a word onto a real place (Kettlewell Ford, Ravenscar Ness: 10 of 20).
+        const realPlaceAnyLen = anyLen && target === 'place' && realMode(opts) !== 'invented';
         // No inspiration word when the user typed a vibe or details: their words already set the direction,
         // and a random word ("bus stop") pulled names away from what was typed ("bread").
         const typedDetail = target !== 'person' && String(opts.kindText || '').trim();
@@ -775,6 +777,7 @@
             else if (roots.length) seed.root = roots[(rootStart + i) % roots.length];
             // Sound-alike keeps the typed word's rhythm, so no random syllable count then.
             if (like !== 'sound') seed.syllables = lo + Math.floor(rnd() * (hi - lo + 1));
+            if (realPlaceAnyLen) delete seed.syllables; // the draw stays, so other seeds don't move
             if (!like && !real) seed.texture = pick(textures, rnd);
             if (like === 'sound') seed.likeFocus = LIKE_FOCUS[(focusStart + i) % LIKE_FOCUS.length];
             // Like endings, no inspiration word twice in one batch (three "neon" names looked samey).
@@ -4847,7 +4850,7 @@
     }
 
     // v0.2.41: shown at the bottom of the settings and on the review text. Keep it the same as manifest.json (a test checks).
-    const TBD_VERSION = '0.2.56';
+    const TBD_VERSION = '0.2.57';
     function settingsHtml() {
         return `<div id="tbd_settings" class="tbd-settings">
             <div class="inline-drawer">

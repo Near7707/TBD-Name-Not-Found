@@ -2952,14 +2952,16 @@ test('v0.2.55: "real … only" sends Merge as Split and says so', () => {
     assert.match(api.reviewFormLine(place), /\(Merge → Split now\)/);
 });
 
-test('v0.2.56: real places with any length get 2 to 4 syllables', () => {
+test('v0.2.57: real places with any length get no syllable seed', () => {
     const { api } = load();
     const base = { target: 'place', vibe: 'medieval', kind: 'any', length: 'any', method: 'ai' };
     for (const placeReal of ['near', 'mix', 'only']) {
         const seeds = api.rollSeeds(40, { ...base, placeReal }, seeded(3));
-        assert.ok(seeds.every(s => s.syllables >= 2 && s.syllables <= 4), placeReal);
+        assert.ok(seeds.every(s => s.syllables === undefined && s.start), placeReal);
+        const user = api.buildMessages({ ...base, placeReal }, seeds)[1].content;
+        assert.ok(!/syllable/.test(user), placeReal);
     }
-    // "Short" still allows one syllable; invented places are as before.
+    // A picked length still gives one; invented places are as before.
     assert.ok(api.rollSeeds(40, { ...base, placeReal: 'near', length: 'short' }, seeded(3)).some(s => s.syllables === 1));
     assert.ok(api.rollSeeds(40, base, seeded(3)).some(s => s.syllables === 1));
 });
